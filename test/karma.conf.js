@@ -7,13 +7,15 @@ module.exports = function(config) {
     basePath: '..',
     frameworks: ['mocha', 'chai', 'commonjs'],
     files: [
-      'index.js',
-      'test/spec/core.js',
-      { pattern: 'bower_components/**/*.js', watched: false, included: false },
-      { pattern: 'node_modules/**/*.js', watched: false, included: false },
+      { pattern: 'node_modules/angular/lib/angular.js', watched: false },
+      { pattern: 'node_modules/angular-mocks/angular-mocks.js', watched: false },
+      { pattern: 'node_modules/firebase/lib/firebase-web.js', watched: false },
+      { pattern: 'node_modules/fireproof/index.js', watched: false },
+      'src/**/*.js',
+      'test/spec/**/*.js'
     ],
     preprocessors: {
-      'index.js': ['commonjs']
+      'node_modules/fireproof/index.js': 'commonjs'
     }
   });
 

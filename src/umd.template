@@ -1,0 +1,30 @@
+
+(function (root) {
+
+  'use strict';
+
+  function creator(Firebase, Fireproof, angular) {
+
+    <%= contents.replace(/^/mg, '    ').replace(/'use strict';/mg, '').trim() %>
+
+  }
+
+  if (typeof define === 'function' && define.amd) {
+
+    // AMD
+    define(['firebase', 'fireproof', 'angular'], creator);
+
+  } else if (typeof exports === 'object') {
+
+    // CommonJS
+    creator(require('firebase'), require('fireproof'), require('angular'));
+
+  } else {
+
+    // Browser globals (root is window)
+    creator(root.Firebase, root.Fireproof, root.angular);
+
+  }
+
+})(this);
+
