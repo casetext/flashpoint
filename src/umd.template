@@ -1,8 +1,6 @@
 
 (function (root) {
 
-  'use strict';
-
   function creator(Firebase, Fireproof, angular) {
 
     <%= contents.replace(/^/mg, '    ').replace(/'use strict';/mg, '').trim() %>
