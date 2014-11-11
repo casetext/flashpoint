@@ -9,3 +9,5 @@ angular.module('angular-fireproof', [])
   return new Fireproof(new Firebase(FIREBASE_URL));
 });
 
+
+

@@ -11,7 +11,8 @@ module.exports = function(config) {
       { pattern: 'node_modules/angular-mocks/angular-mocks.js', watched: false },
       { pattern: 'node_modules/firebase/lib/firebase-web.js', watched: false },
       { pattern: 'node_modules/fireproof/dist/fireproof.js', watched: false },
-      'src/**/*.js',
+      { pattern: 'node_modules/chai-fireproof/dist/chai-fireproof.js', watched: false },
+      'dist/angular-fireproof.js',
       'test/spec/**/*.js'
     ]
   });
