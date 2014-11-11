@@ -1,6 +1,4 @@
 
-'use strict';
-
 angular.module('angular-fireproof', [])
 .run(function($q) {
   Fireproof.bless($q);

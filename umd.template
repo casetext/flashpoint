@@ -16,6 +16,7 @@
 
 }(this, function (angular, firebase, fireproof) {
 
-<%= contents.replace(/^/mg, '  ') %>
+  'use strict';
+  <%= contents.replace(/^/mg, '  ') %>
 
 }));

@@ -59,11 +59,7 @@ gulp.task('clean', 'Remove all build files', function(done) {
 
 gulp.task('build', 'Builds the Javascript for distribution.', ['clean'], function() {
 
-  return gulp.src([
-    'lib/log.js',
-    'lib/assertion-extensions.js',
-    'lib/security.js'
-  ])
+  return gulp.src('src/**/*.js')
   .pipe(concat('angular-fireproof.js'))
   .pipe(wrap({ src: 'umd.template' }, { version: version }))
   .pipe(gulp.dest('./dist'));
@@ -93,7 +89,7 @@ gulp.task('test', 'Runs tests once and exits.', function(done) {
 
 });
 
-gulp.task('watch', 'Runs tests as you develop!', function() {
+gulp.task('watch', 'Runs tests as you develop!', ['build'], function() {
 
   gulp.watch('src/**/*.js', ['build']);
 
