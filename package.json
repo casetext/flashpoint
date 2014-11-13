@@ -3,7 +3,6 @@
   "version": "0.1.1",
   "description": "Angular bindings for Fireproof. Replaces AngularFire.",
   "main": "dist/angular-fireproof.js",
-  "private": true,
   "scripts": {
     "test": "./node_modules/karma/bin/karma start --single-run --browsers Firefox test/karma.conf.js"
   },
