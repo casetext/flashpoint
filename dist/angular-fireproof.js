@@ -44,6 +44,7 @@
         _fireproofStatus.finish(ref.toString());
       }
   
+      delete $scope.$fireproofError;
       $scope[$attrs.as] = currentSnap.val();
   
       if ($attrs.sync) {
@@ -63,7 +64,6 @@
       }
   
       $scope.$syncing = false;
-      $attrs.$removeClass('syncing');
   
     }
   
@@ -77,14 +77,18 @@
         _fireproofStatus.finish(ref.toString());
       }
   
-      if ($attrs.onError) {
+      $scope.$fireproofError = err;
+      $scope.syncing = false;
+  
+      var code = err.code.toLowerCase().replace(/[^a-z]/g, '-');
+      var lookup = $attrs.$attr['on-' + code];
+  
+      if ($attrs[lookup]) {
+        $scope.$eval($attrs[lookup], { '$error': err });
+      } else if ($attrs.onError) {
         $scope.$eval($attrs.onError, { '$error': err });
-      } else {
-        throw err;
       }
   
-      $scope.syncing = false;
-      $attrs.$removeClass('syncing');
   
     }
   
@@ -95,8 +99,8 @@
   
         firstLoad = false;
   
+        delete $scope.$fireproofError;
         $scope.$syncing = true;
-        $attrs.$addClass('syncing');
   
         if (fpWatcher) {
           ref.off('value', fpWatcher);
@@ -134,7 +138,7 @@
       if (!$scope.$syncing) {
   
         $scope.$syncing = true;
-        $attrs.$addClass('syncing');
+        delete $scope.$fireproofError;
   
         return ref.set($scope[$attrs.as])
         .then(function() {
@@ -146,18 +150,20 @@
         })
         .catch(function(err) {
   
-          if ($attrs.onError) {
+          $scope.$fireproofError = err;
+  
+          var code = err.code.toLowerCase().replace(/[^a-z]/g, '-');
+          var lookup = $attrs.$attr['on-' + code];
+  
+          if ($attrs[lookup]) {
+            $scope.$eval($attrs[lookup], { '$error': err });
+          } else if ($attrs.onError) {
             $scope.$eval($attrs.onError, { '$error': err });
-          } else {
-            throw err;
           }
   
         })
         .finally(function() {
-  
           $scope.$syncing = false;
-          $attrs.$removeClass('syncing');
-  
         });
   
       }
@@ -166,6 +172,8 @@
   
   
     $attrs.$observe('fpBind', function(path) {
+  
+      delete $scope.$fireproofError;
   
       if (path[path.length-1] === '/') {
         // this is an incomplete eval. we're done.
@@ -223,6 +231,7 @@
   
     function handleSnaps(snaps) {
   
+      paging = false;
       currentSnaps = snaps;
   
       if (snaps.length > 0) {
@@ -230,6 +239,26 @@
         $scope[$attrs.as] = snaps.map(function(snap) {
           return snap.val();
         });
+  
+        $scope[$attrs.as].$keys = snaps.map(function(snap) {
+          return snap.name();
+        });
+  
+        $scope[$attrs.as].$priorities = snaps.map(function(snap) {
+          return snap.getPriority();
+        });
+  
+        $scope[$attrs.as].$next = function() {
+          $scope.$next();
+        };
+  
+        $scope[$attrs.as].$previous = function() {
+          $scope.$previous();
+        };
+  
+        $scope[$attrs.as].$reset = function() {
+          $scope.$reset();
+        };
   
         if ($attrs.onPage) {
           $scope.$eval($attrs.onPage, { '$snaps': snaps });
@@ -244,10 +273,15 @@
   
     function handleError(err) {
   
-      if ($attrs.onError) {
-        $scope.$eval($attrs.onError, { 'error': err });
-      } else {
-        throw err;
+      paging = false;
+  
+      var code = err.code.toLowerCase().replace(/[^a-z]/g, '-');
+      var lookup = $attrs.$attr['on-' + code];
+  
+      if ($attrs[lookup]) {
+        $scope.$eval($attrs[lookup], { '$error': err });
+      } else if ($attrs.onError) {
+        $scope.$eval($attrs.onError, { '$error': err });
       }
   
     }
@@ -258,7 +292,6 @@
       if ($scope.$hasNext && !paging) {
   
         paging = true;
-        $attrs.$addClass('paging');
   
         var limit;
         if ($attrs.limit) {
@@ -267,22 +300,24 @@
           limit = 5;
         }
   
-        var lastSnap = currentSnaps[currentSnaps.length-1];
-        pager.setPosition(lastSnap.getPriority(), lastSnap.name());
+        if (currentSnaps) {
+          var lastSnap = currentSnaps[currentSnaps.length-1];
+          pager.setPosition(lastSnap.getPriority(), lastSnap.name());
+        }
   
         return pager.next(limit)
         .then(handleSnaps, handleError)
         .then(function(snaps) {
   
-          paging = false;
-          $attrs.removeClass('paging');
-  
           $scope.$hasPrevious = true;
           $scope.$hasNext = snaps.length > 0;
+  
           return snaps;
   
         });
   
+      } else if (paging) {
+        return $q.reject(new Error('cannot call $next from here, no more objects'));
       } else {
         return $q.reject(new Error('cannot call $next from here, no more objects'));
       }
@@ -296,7 +331,6 @@
       if ($scope.$hasPrevious && !paging) {
   
         paging = true;
-        $attrs.$addClass('paging');
   
         var limit;
         if ($attrs.limit) {
@@ -305,18 +339,18 @@
           limit = 5;
         }
   
-        var firstSnap = currentSnaps[0];
-        pager.setPosition(firstSnap.getPriority(), firstSnap.name());
+  
+        if (currentSnaps && currentSnaps.length > 0) {
+          var firstSnap = currentSnaps[0];
+          pager.setPosition(firstSnap.getPriority(), firstSnap.name());
+        }
   
         return pager.previous(limit)
-        .then(handleSnaps)
+        .then(handleSnaps, handleError)
         .then(function(snaps) {
   
-          paging = false;
-          $attrs.removeClass('paging');
-  
-          $scope.hasNext = true;
-          $scope.hasPrevious = snaps.length > 0;
+          $scope.$hasNext = true;
+          $scope.$hasPrevious = snaps.length > 0;
           return snaps;
   
         });
@@ -331,11 +365,22 @@
   
     $scope.$reset = function() {
   
+      $scope.$hasNext = true;
+      $scope.$hasPrevious = true;
+  
+      currentSnaps = null;
+  
       // create the pager.
       pager = new Fireproof.Pager(ref);
   
-      if ($attrs.startAt) {
-        pager.setPosition($scope.$eval($attrs.startAt));
+      if ($attrs.startAtPriority && $attrs.startAtName) {
+  
+        pager.setPosition(
+          $scope.$eval($attrs.startAtPriority),
+          $scope.$eval($attrs.startAtName));
+  
+      } else if ($attrs.startAtPriority) {
+        pager.setPosition($scope.$eval($attrs.startAtPriority));
       }
   
       // pull the first round of results out of the pager.
@@ -358,7 +403,7 @@
       ref = $scope.$fireproof.child(path);
   
       // shut down everything.
-      return $scope.$reset();
+      $scope.$reset();
   
     });
   
@@ -366,8 +411,6 @@
     $scope.$on('$destroy', function() {
   
       // if this scope object is destroyed, finalize the controller
-  
-      // finalize as a favor to GC
       ref = null;
       pager = null;
       currentSnaps = null;
@@ -389,9 +432,38 @@
       priority: 10,
       link: { pre: function(scope, el, attrs) {
   
-        scope.$fireproof = new Fireproof(new Firebase(attrs.firebaseUrl));
-        attrs.$observe('firebaseUrl', function() {
+        var authHandler = function(authData) {
+  
+          scope.$auth = authData;
+          if (attrs.onAuth) {
+            scope.$eval(attrs.onAuth, { '$auth': authData });
+          }
+  
+        };
+  
+  
+        var attachFireproof = function() {
+  
+          if (scope.$fireproof) {
+            scope.$fireproof.offAuth(authHandler);
+          }
+  
           scope.$fireproof = new Fireproof(new Firebase(attrs.firebaseUrl));
+          scope.$fireproof.onAuth(authHandler);
+  
+        };
+  
+  
+        attrs.$observe('firebaseUrl', attachFireproof);
+        if (attrs.firebaseUrl) {
+          attachFireproof();
+        }
+  
+        scope.$on('$destroy', function() {
+  
+          // detach onAuth listener.
+          scope.$fireproof.offAuth(authHandler);
+  
         });
   
       }}
@@ -423,6 +495,22 @@
   
         });
   
+        scope.$watch('$fireproofError', function(error, oldError) {
+  
+          var code;
+  
+          if (oldError) {
+            code = oldError.code.toLowerCase().replace(/\W/g, '-');
+            el.removeClass('fireproof-error-' + code);
+          }
+  
+          if (error) {
+            code = error.code.toLowerCase().replace(/\W/g, '-');
+            el.addClass('fireproof-error-' + code);
+          }
+  
+        });
+  
       }
   
     };
@@ -439,7 +527,33 @@
     return {
       restrict: 'A',
       scope: true,
-      controller: 'PageCtl'
+      controller: 'PageCtl',
+      link: function(scope, el) {
+  
+        scope.$watch('$syncing', function(syncing) {
+  
+          if (syncing) {
+            el.addClass('syncing');
+          } else {
+            el.removeClass('syncing');
+          }
+  
+        });
+  
+        scope.$watch('$fireproofError', function(error, oldError) {
+  
+          if (oldError) {
+            el.removeClass('fireproof-error-' + oldError.code);
+          }
+  
+          if (error) {
+            el.addClass('fireproof-error-' + error.code);
+          }
+  
+        });
+  
+      }
+  
     };
   
   });

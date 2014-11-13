@@ -10,6 +10,7 @@ angular.module('angular-fireproof.controllers.PageCtl', [
 
   function handleSnaps(snaps) {
 
+    paging = false;
     currentSnaps = snaps;
 
     if (snaps.length > 0) {
@@ -17,6 +18,26 @@ angular.module('angular-fireproof.controllers.PageCtl', [
       $scope[$attrs.as] = snaps.map(function(snap) {
         return snap.val();
       });
+
+      $scope[$attrs.as].$keys = snaps.map(function(snap) {
+        return snap.name();
+      });
+
+      $scope[$attrs.as].$priorities = snaps.map(function(snap) {
+        return snap.getPriority();
+      });
+
+      $scope[$attrs.as].$next = function() {
+        $scope.$next();
+      };
+
+      $scope[$attrs.as].$previous = function() {
+        $scope.$previous();
+      };
+
+      $scope[$attrs.as].$reset = function() {
+        $scope.$reset();
+      };
 
       if ($attrs.onPage) {
         $scope.$eval($attrs.onPage, { '$snaps': snaps });
@@ -31,10 +52,15 @@ angular.module('angular-fireproof.controllers.PageCtl', [
 
   function handleError(err) {
 
-    if ($attrs.onError) {
-      $scope.$eval($attrs.onError, { 'error': err });
-    } else {
-      throw err;
+    paging = false;
+
+    var code = err.code.toLowerCase().replace(/[^a-z]/g, '-');
+    var lookup = $attrs.$attr['on-' + code];
+
+    if ($attrs[lookup]) {
+      $scope.$eval($attrs[lookup], { '$error': err });
+    } else if ($attrs.onError) {
+      $scope.$eval($attrs.onError, { '$error': err });
     }
 
   }
@@ -45,7 +71,6 @@ angular.module('angular-fireproof.controllers.PageCtl', [
     if ($scope.$hasNext && !paging) {
 
       paging = true;
-      $attrs.$addClass('paging');
 
       var limit;
       if ($attrs.limit) {
@@ -54,22 +79,24 @@ angular.module('angular-fireproof.controllers.PageCtl', [
         limit = 5;
       }
 
-      var lastSnap = currentSnaps[currentSnaps.length-1];
-      pager.setPosition(lastSnap.getPriority(), lastSnap.name());
+      if (currentSnaps) {
+        var lastSnap = currentSnaps[currentSnaps.length-1];
+        pager.setPosition(lastSnap.getPriority(), lastSnap.name());
+      }
 
       return pager.next(limit)
       .then(handleSnaps, handleError)
       .then(function(snaps) {
 
-        paging = false;
-        $attrs.removeClass('paging');
-
         $scope.$hasPrevious = true;
         $scope.$hasNext = snaps.length > 0;
+
         return snaps;
 
       });
 
+    } else if (paging) {
+      return $q.reject(new Error('cannot call $next from here, no more objects'));
     } else {
       return $q.reject(new Error('cannot call $next from here, no more objects'));
     }
@@ -83,7 +110,6 @@ angular.module('angular-fireproof.controllers.PageCtl', [
     if ($scope.$hasPrevious && !paging) {
 
       paging = true;
-      $attrs.$addClass('paging');
 
       var limit;
       if ($attrs.limit) {
@@ -92,18 +118,18 @@ angular.module('angular-fireproof.controllers.PageCtl', [
         limit = 5;
       }
 
-      var firstSnap = currentSnaps[0];
-      pager.setPosition(firstSnap.getPriority(), firstSnap.name());
+
+      if (currentSnaps && currentSnaps.length > 0) {
+        var firstSnap = currentSnaps[0];
+        pager.setPosition(firstSnap.getPriority(), firstSnap.name());
+      }
 
       return pager.previous(limit)
-      .then(handleSnaps)
+      .then(handleSnaps, handleError)
       .then(function(snaps) {
 
-        paging = false;
-        $attrs.removeClass('paging');
-
-        $scope.hasNext = true;
-        $scope.hasPrevious = snaps.length > 0;
+        $scope.$hasNext = true;
+        $scope.$hasPrevious = snaps.length > 0;
         return snaps;
 
       });
@@ -118,11 +144,22 @@ angular.module('angular-fireproof.controllers.PageCtl', [
 
   $scope.$reset = function() {
 
+    $scope.$hasNext = true;
+    $scope.$hasPrevious = true;
+
+    currentSnaps = null;
+
     // create the pager.
     pager = new Fireproof.Pager(ref);
 
-    if ($attrs.startAt) {
-      pager.setPosition($scope.$eval($attrs.startAt));
+    if ($attrs.startAtPriority && $attrs.startAtName) {
+
+      pager.setPosition(
+        $scope.$eval($attrs.startAtPriority),
+        $scope.$eval($attrs.startAtName));
+
+    } else if ($attrs.startAtPriority) {
+      pager.setPosition($scope.$eval($attrs.startAtPriority));
     }
 
     // pull the first round of results out of the pager.
@@ -145,7 +182,7 @@ angular.module('angular-fireproof.controllers.PageCtl', [
     ref = $scope.$fireproof.child(path);
 
     // shut down everything.
-    return $scope.$reset();
+    $scope.$reset();
 
   });
 
@@ -153,8 +190,6 @@ angular.module('angular-fireproof.controllers.PageCtl', [
   $scope.$on('$destroy', function() {
 
     // if this scope object is destroyed, finalize the controller
-
-    // finalize as a favor to GC
     ref = null;
     pager = null;
     currentSnaps = null;

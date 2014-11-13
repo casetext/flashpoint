@@ -80,11 +80,17 @@ gulp.task('docs', 'Generates a new version of the docs.', ['build'], function() 
 
 gulp.task('test', 'Runs tests once and exits.', ['build'], function(done) {
 
-  karma.start({
-    singleRun: true,
-    browsers: ['Firefox'],
-    configFile: __dirname + '/test/karma.conf.js'
-  }, done);
+  if (!(process.env.FIREBASE_TEST_URL && process.env.FIREBASE_TEST_SECRET)) {
+    done(new Error('You must supply FIREBASE_TEST_URL and FIREBASE_TEST_SECRET to run the tests'));
+  } else {
+
+    karma.start({
+      singleRun: true,
+      browsers: ['Firefox'],
+      configFile: __dirname + '/test/karma.conf.js'
+    }, done);
+
+  }
 
 });
 
@@ -117,3 +123,23 @@ gulp.task('bump:major', 'Publishes a new major version.', bumpDeps, function(don
   inc('major', done);
 });
 
+
+gulp.task('demo', 'Run a demo server forever.', function(done) {
+
+  var express = require('express');
+  var app = express();
+
+
+  app.use('/node_modules', express.static(__dirname + '/node_modules'));
+  app.use('/demo', express.static(__dirname + '/test/demo'));
+  app.get('angular-fireproof.js', function(req, res) {
+    res.sendFile(__dirname + '/dist/angular-fireproof.js');
+  });
+  app.get('/', function(req, res) {
+    res.sendFile(__dirname + '/test/demo/index.html');
+  });
+
+  app.listen(3000);
+  console.log('Demo server running on port 3000.');
+
+});

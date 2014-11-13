@@ -20,6 +20,22 @@ angular.module('angular-fireproof.directives.fpBind', [
 
       });
 
+      scope.$watch('$fireproofError', function(error, oldError) {
+
+        var code;
+
+        if (oldError) {
+          code = oldError.code.toLowerCase().replace(/\W/g, '-');
+          el.removeClass('fireproof-error-' + code);
+        }
+
+        if (error) {
+          code = error.code.toLowerCase().replace(/\W/g, '-');
+          el.addClass('fireproof-error-' + code);
+        }
+
+      });
+
     }
 
   };

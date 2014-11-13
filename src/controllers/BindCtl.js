@@ -20,6 +20,7 @@ angular.module('angular-fireproof.controllers.BindCtl', [
       _fireproofStatus.finish(ref.toString());
     }
 
+    delete $scope.$fireproofError;
     $scope[$attrs.as] = currentSnap.val();
 
     if ($attrs.sync) {
@@ -39,7 +40,6 @@ angular.module('angular-fireproof.controllers.BindCtl', [
     }
 
     $scope.$syncing = false;
-    $attrs.$removeClass('syncing');
 
   }
 
@@ -53,14 +53,18 @@ angular.module('angular-fireproof.controllers.BindCtl', [
       _fireproofStatus.finish(ref.toString());
     }
 
-    if ($attrs.onError) {
+    $scope.$fireproofError = err;
+    $scope.syncing = false;
+
+    var code = err.code.toLowerCase().replace(/[^a-z]/g, '-');
+    var lookup = $attrs.$attr['on-' + code];
+
+    if ($attrs[lookup]) {
+      $scope.$eval($attrs[lookup], { '$error': err });
+    } else if ($attrs.onError) {
       $scope.$eval($attrs.onError, { '$error': err });
-    } else {
-      throw err;
     }
 
-    $scope.syncing = false;
-    $attrs.$removeClass('syncing');
 
   }
 
@@ -71,8 +75,8 @@ angular.module('angular-fireproof.controllers.BindCtl', [
 
       firstLoad = false;
 
+      delete $scope.$fireproofError;
       $scope.$syncing = true;
-      $attrs.$addClass('syncing');
 
       if (fpWatcher) {
         ref.off('value', fpWatcher);
@@ -110,7 +114,7 @@ angular.module('angular-fireproof.controllers.BindCtl', [
     if (!$scope.$syncing) {
 
       $scope.$syncing = true;
-      $attrs.$addClass('syncing');
+      delete $scope.$fireproofError;
 
       return ref.set($scope[$attrs.as])
       .then(function() {
@@ -122,18 +126,20 @@ angular.module('angular-fireproof.controllers.BindCtl', [
       })
       .catch(function(err) {
 
-        if ($attrs.onError) {
+        $scope.$fireproofError = err;
+
+        var code = err.code.toLowerCase().replace(/[^a-z]/g, '-');
+        var lookup = $attrs.$attr['on-' + code];
+
+        if ($attrs[lookup]) {
+          $scope.$eval($attrs[lookup], { '$error': err });
+        } else if ($attrs.onError) {
           $scope.$eval($attrs.onError, { '$error': err });
-        } else {
-          throw err;
         }
 
       })
       .finally(function() {
-
         $scope.$syncing = false;
-        $attrs.$removeClass('syncing');
-
       });
 
     }
@@ -142,6 +148,8 @@ angular.module('angular-fireproof.controllers.BindCtl', [
 
 
   $attrs.$observe('fpBind', function(path) {
+
+    delete $scope.$fireproofError;
 
     if (path[path.length-1] === '/') {
       // this is an incomplete eval. we're done.

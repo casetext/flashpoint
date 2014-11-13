@@ -1,8 +1,6 @@
 
 describe('firebaseUrl', function() {
 
-  var FIREBASE_URL = 'https://' + Math.random().toString(36).slice(2) + '.firebaseio-demo.com';
-
   beforeEach(function() {
 
     module('angular-fireproof.directives.firebaseUrl');
@@ -17,7 +15,7 @@ describe('firebaseUrl', function() {
     inject(function($compile, $rootScope) {
 
       var element = angular.element('<div ' +
-        'firebase-url="' + FIREBASE_URL  + '" ' +
+        'firebase-url="' + window.__env__.FIREBASE_TEST_URL  + '" ' +
         '></div>');
 
       $compile(element)($rootScope);
@@ -28,7 +26,7 @@ describe('firebaseUrl', function() {
 
     expect(angular.isDefined($scope.$fireproof)).to.be.true;
     expect($scope.$fireproof).to.be.an.instanceof(Fireproof);
-    expect($scope.$fireproof.toString()).to.equal(FIREBASE_URL);
+    expect($scope.$fireproof.toString()).to.equal(window.__env__.FIREBASE_TEST_URL);
 
   });
 

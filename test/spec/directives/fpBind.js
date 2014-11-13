@@ -1,9 +1,7 @@
 
 describe('fpBind', function() {
 
-  var FIREBASE_URL = 'https://casetext-goldibex.firebaseio.com';
-  var root = new Fireproof(new Firebase(FIREBASE_URL));
-
+  var root;
   var $scope;
 
   beforeEach(function(done) {
@@ -12,20 +10,33 @@ describe('fpBind', function() {
     module('angular-fireproof.directives.fpBind');
     module('angular-firebase.mocks');
 
-    inject(function($compile, $rootScope) {
+    inject(function(Fireproof) {
+      root = new Fireproof(new Firebase(window.__env__.FIREBASE_TEST_URL));
+    });
 
-      $rootScope.done = function(err) {
-        done(err);
-      };
-      var element = angular.element('<div ' +
-        'firebase-url="' + FIREBASE_URL  + '" ' +
-        'fp-bind="things/something" as="object" watch="true" sync="true"' +
-        'on-load="done()" on-error="done($error)"' +
-        '></div>');
+    return root.authWithCustomToken(window.__env__.FIREBASE_TEST_SECRET, function() {
 
-      $compile(element)($rootScope);
-      $rootScope.$digest();
-      $scope = element.scope();
+      inject(function($compile, $rootScope) {
+
+        var firstDone = false;
+        $rootScope.done = function(error) {
+
+          if (!firstDone) {
+            firstDone = true;
+            done(error);
+          }
+
+        };
+        var element = angular.element('<div ' +
+          'firebase-url="' + window.__env__.FIREBASE_TEST_URL + '" ' +
+          'fp-bind="things/something" as="object" watch="true" sync="true"' +
+          'on-load="done()" on-error="done($error)"' +
+          '></div>');
+
+        $compile(element)($rootScope);
+        $scope = element.scope();
+
+      });
 
     });
 
@@ -49,7 +60,7 @@ describe('fpBind', function() {
 
   });
 
-  it('can send changes to the object back to Firebase', function(done) {
+  it('can sync changes to the object back to Firebase', function(done) {
 
     root.child('things/something')
     .on('value', function(snap) {

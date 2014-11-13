@@ -15,7 +15,11 @@ module.exports = function(config) {
       'dist/angular-fireproof.js',
       'test/mocks.js',
       'test/spec/**/*.js'
-    ]
+    ],
+    preprocessors: {
+      'test/spec/**/*.js': ['env']
+    },
+    envPreprocessor: [ 'FIREBASE_TEST_URL', 'FIREBASE_TEST_SECRET' ]
   });
 
 };
