@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html ng-app="angular-fireproof">
+
+  <head>
+    <style type="text/css">
+      body {
+        font-family: 'Helvetica', sans-serif;
+      }
+    </style>
+
+    <title>angular-fireproof demo</title>
+    <script>
+      window.module = {};
+    </script>
+    <script src="/node_modules/firebase/lib/firebase-web.js"></script>
+    <script>
+      window.Firebase = window.module.exports;
+    </script>
+    <script src="/node_modules/fireproof/dist/fireproof.js"></script>
+
+    <script src="/node_modules/angular/lib/angular.min.js"></script>
+    <script src="/angular-fireproof.js"></script>
+  </head>
+
+  <body firebase-url="https://angular-fireproof-demo.firebaseio-demo.com">
+    <h2>angular-fireproof demo</h2>
+    <div fp-page="dinosaurs" limit="3" as="dinosaurs">
+      <ul>
+        <li ng-repeat="dinosaur in dinosaurs">
+        The {{ dinosaurs.$keys[$index] }} is {{ dinosaur.carnivorous ? "carnivorous, so watch out" : "not carnivorous" }}
+        </li>
+      </ul>
+
+      <button ng-click="dinosaurs.$previous()">Previous Page</button>
+      <button ng-click="dinosaurs.$next()">Next Page</button>
+    </div>
+
+    <input fp-bind="foo" as="foo" ng-model="foo" watch="true" sync="true">
+  </body>
+
+</html>

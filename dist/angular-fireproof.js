@@ -19,7 +19,11 @@
   'use strict';
     
   angular.module('angular-fireproof', [
-  
+    'angular-fireproof.services.status',
+    'angular-fireproof.directives.firebaseUrl',
+    'angular-fireproof.directives.fpBind',
+    'angular-fireproof.directives.fpPage',
+    'angular-fireproof.services.Fireproof'
   ]);
   
   
@@ -226,13 +230,12 @@
   ])
   .controller('PageCtl', function($scope, $attrs, $timeout, $q, _fireproofStatus, Fireproof) {
   
-    var ref, currentSnaps, pager, paging;
+    var ref, pager, paging;
   
   
     function handleSnaps(snaps) {
   
       paging = false;
-      currentSnaps = snaps;
   
       if (snaps.length > 0) {
   
@@ -300,11 +303,6 @@
           limit = 5;
         }
   
-        if (currentSnaps) {
-          var lastSnap = currentSnaps[currentSnaps.length-1];
-          pager.setPosition(lastSnap.getPriority(), lastSnap.name());
-        }
-  
         return pager.next(limit)
         .then(handleSnaps, handleError)
         .then(function(snaps) {
@@ -339,12 +337,6 @@
           limit = 5;
         }
   
-  
-        if (currentSnaps && currentSnaps.length > 0) {
-          var firstSnap = currentSnaps[0];
-          pager.setPosition(firstSnap.getPriority(), firstSnap.name());
-        }
-  
         return pager.previous(limit)
         .then(handleSnaps, handleError)
         .then(function(snaps) {
@@ -368,10 +360,15 @@
       $scope.$hasNext = true;
       $scope.$hasPrevious = true;
   
-      currentSnaps = null;
   
       // create the pager.
-      pager = new Fireproof.Pager(ref);
+      var limit;
+      if ($attrs.limit) {
+        limit = parseInt($scope.$eval($attrs.limit));
+      } else {
+        limit = 5;
+      }
+      pager = new Fireproof.Pager(ref, limit);
   
       if ($attrs.startAtPriority && $attrs.startAtName) {
   
@@ -384,7 +381,16 @@
       }
   
       // pull the first round of results out of the pager.
-      return $scope.$next();
+      paging = true;
+      return pager.then(handleSnaps, handleError)
+      .then(function(snaps) {
+  
+        $scope.$hasPrevious = false;
+        $scope.$hasNext = true;
+  
+        return snaps;
+  
+      });
   
     };
   
@@ -413,7 +419,6 @@
       // if this scope object is destroyed, finalize the controller
       ref = null;
       pager = null;
-      currentSnaps = null;
   
     });
   
@@ -561,15 +566,15 @@
   
   
   angular.module('angular-fireproof.services.Fireproof', [])
-  .factory('Firebase', function($window) {
-    return $window.Firebase;
+  .factory('Firebase', function() {
+    return Firebase;
   })
-  .factory('Fireproof', function($window, $timeout, $q) {
+  .factory('Fireproof', function($timeout, $q) {
   
-    $window.Fireproof.setNextTick($timeout);
-    $window.Fireproof.bless($q);
+    Fireproof.setNextTick($timeout);
+    Fireproof.bless($q);
   
-    return $window.Fireproof;
+    return Fireproof;
   
   });
   

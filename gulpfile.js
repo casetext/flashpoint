@@ -132,7 +132,7 @@ gulp.task('demo', 'Run a demo server forever.', function(done) {
 
   app.use('/node_modules', express.static(__dirname + '/node_modules'));
   app.use('/demo', express.static(__dirname + '/test/demo'));
-  app.get('angular-fireproof.js', function(req, res) {
+  app.get('/angular-fireproof.js', function(req, res) {
     res.sendFile(__dirname + '/dist/angular-fireproof.js');
   });
   app.get('/', function(req, res) {

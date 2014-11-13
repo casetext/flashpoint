@@ -35,7 +35,13 @@ describe('fpPage', function() {
     })
     .then(inject(function($compile, $rootScope) {
 
-        $rootScope.done = done;
+        var firstDone = false;
+        $rootScope.done = function(err) {
+          if (!firstDone) {
+            firstDone = true;
+            done(err);
+          }
+        };
         var element = angular.element('<div ' +
           'firebase-url="' + window.__env__.FIREBASE_TEST_URL  + '" ' +
           'fp-page="angular-fireproof/things" as="things" limit="3"' +
