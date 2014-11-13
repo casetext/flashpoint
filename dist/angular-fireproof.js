@@ -11,10 +11,10 @@
     factory(require('angular'), require('firebase'), require('fireproof'));
   } else {
     // Browser globals (root is window)
-    factory(root.angular, root.firebase, root.fireproof);
+    factory(root.angular, root.Firebase, root.Fireproof);
   }
 
-}(this, function (angular, firebase, fireproof) {
+}(this, function (angular, Firebase, Fireproof) {
 
   'use strict';
     
