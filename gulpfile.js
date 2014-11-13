@@ -12,7 +12,6 @@ var rmdir = require('rimraf'),
   git = require('gulp-git'),
   tagVersion = require('gulp-tag-version'),
   version = require('./package.json').version,
-  gutil = require('gulp-util'),
   karma = require('karma').server;
 
 
@@ -79,7 +78,7 @@ gulp.task('docs', 'Generates a new version of the docs.', ['build'], function() 
 
 });
 
-gulp.task('test', 'Runs tests once and exits.', function(done) {
+gulp.task('test', 'Runs tests once and exits.', ['build'], function(done) {
 
   karma.start({
     singleRun: true,

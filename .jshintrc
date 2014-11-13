@@ -20,9 +20,11 @@
   "trailing": true,
   "smarttabs": true,
   "globals": {
+    "inject": false,
+    "module": false,
     "angular": false,
-    "firebase": false,
-    "fireproof": false,
+    "Firebase": false,
+    "Fireproof": false,
     "before": false,
     "after": false,
     "beforeEach": false,
