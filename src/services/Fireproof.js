@@ -1,13 +1,13 @@
 
 angular.module('angular-fireproof.services.Fireproof', [])
-.factory('Firebase', function($window) {
-  return $window.Firebase;
+.factory('Firebase', function() {
+  return Firebase;
 })
-.factory('Fireproof', function($window, $timeout, $q) {
+.factory('Fireproof', function($timeout, $q) {
 
-  $window.Fireproof.setNextTick($timeout);
-  $window.Fireproof.bless($q);
+  Fireproof.setNextTick($timeout);
+  Fireproof.bless($q);
 
-  return $window.Fireproof;
+  return Fireproof;
 
 });
