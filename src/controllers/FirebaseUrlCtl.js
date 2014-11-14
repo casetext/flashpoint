@@ -4,10 +4,12 @@ angular.module('angular-fireproof.controllers.FirebaseUrlCtl', [
 ])
 .controller('FirebaseUrlCtl', function(Firebase, Fireproof, $scope, $rootScope, $attrs) {
 
-  var isRootScope = false;
+  var self = this,
+    isRootScope = false;
 
   var authHandler = function(authData) {
 
+    self.$auth = authData;
     $scope.$auth = authData;
     if (isRootScope) {
       $rootScope.$auth = authData;
@@ -22,21 +24,13 @@ angular.module('angular-fireproof.controllers.FirebaseUrlCtl', [
 
   var attachFireproof = function() {
 
-    if ($scope.$fireproof) {
-      $scope.$fireproof.offAuth(authHandler);
+    if (self.root) {
+      self.root.offAuth(authHandler);
     }
 
-    $scope.$fireproof = new Fireproof(new Firebase($attrs.firebaseUrl));
-    $scope.$fireproof.onAuth(authHandler);
-
-    // does rootScope have a Fireproof yet? if not, we're it
-    if (!$rootScope.$fireproof) {
-      isRootScope = true;
-    }
-
-    if (isRootScope) {
-      $rootScope.$fireproof = $scope.$fireproof;
-    }
+    self.root = new Fireproof(new Firebase($attrs.firebaseUrl));
+    self.root.onAuth(authHandler);
+    $scope.$fireproof = self.root;
 
   };
 
@@ -49,7 +43,7 @@ angular.module('angular-fireproof.controllers.FirebaseUrlCtl', [
   $scope.$on('$destroy', function() {
 
     // detach onAuth listener.
-    $scope.$fireproof.offAuth(authHandler);
+    self.$fireproof.offAuth(authHandler);
 
   });
 
