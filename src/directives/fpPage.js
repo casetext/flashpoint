@@ -1,6 +1,6 @@
 
 angular.module('angular-fireproof.directives.fpPage', [
-  'angular-fireproof.directives.firebaseUrl',
+  'angular-fireproof.directives.firebase',
   'angular-fireproof.services.status'
 ])
 .directive('fpPage', function($q) {
@@ -9,7 +9,7 @@ angular.module('angular-fireproof.directives.fpPage', [
 
     restrict: 'A',
     scope: true,
-    require: '^firebaseUrl',
+    require: '^firebase',
     link: function(scope, el, attrs, fireproof) {
 
       var ref, pager, paging;

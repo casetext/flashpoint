@@ -1,15 +1,15 @@
 
-angular.module('angular-fireproof.directives.firebaseUrl', [
-  'angular-fireproof.controllers.FirebaseUrlCtl',
+angular.module('angular-fireproof.directives.firebase', [
+  'angular-fireproof.controllers.FirebaseCtl',
   'angular-fireproof.services.Fireproof'
 ])
-.directive('firebaseUrl', function() {
+.directive('firebase', function() {
 
   return {
 
     restrict: 'A',
     scope: true,
-    controller: 'FirebaseUrlCtl'
+    controller: 'FirebaseCtl'
 
   };
 

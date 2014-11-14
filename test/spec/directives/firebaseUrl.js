@@ -1,9 +1,9 @@
 
-describe('firebaseUrl', function() {
+describe('firebase', function() {
 
   beforeEach(function() {
 
-    module('angular-fireproof.directives.firebaseUrl');
+    module('angular-fireproof.directives.firebase');
     module('angular-firebase.mocks');
 
   });
@@ -15,7 +15,7 @@ describe('firebaseUrl', function() {
     inject(function($compile, $rootScope) {
 
       var element = angular.element('<div ' +
-        'firebase-url="' + window.__env__.FIREBASE_TEST_URL  + '" ' +
+        'firebase="' + window.__env__.FIREBASE_TEST_URL  + '" ' +
         '></div>');
 
       $compile(element)($rootScope);

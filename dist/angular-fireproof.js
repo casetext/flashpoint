@@ -20,17 +20,17 @@
     
   angular.module('angular-fireproof', [
     'angular-fireproof.services.status',
-    'angular-fireproof.directives.firebaseUrl',
+    'angular-fireproof.directives.firebase',
     'angular-fireproof.directives.fpBind',
     'angular-fireproof.directives.fpPage',
     'angular-fireproof.services.Fireproof'
   ]);
   
-  angular.module('angular-fireproof.controllers.FirebaseUrlCtl', [
+  angular.module('angular-fireproof.controllers.FirebaseCtl', [
     'angular-fireproof.services.Fireproof',
     'angular-fireproof.services.status'
   ])
-  .controller('FirebaseUrlCtl', function(Firebase, Fireproof, $scope, $rootScope, $attrs) {
+  .controller('FirebaseCtl', function(Firebase, Fireproof, $scope, $rootScope, $attrs) {
   
     var self = this,
       isRootScope = false;
@@ -56,15 +56,15 @@
         self.root.offAuth(authHandler);
       }
   
-      self.root = new Fireproof(new Firebase($attrs.firebaseUrl));
+      self.root = new Fireproof(new Firebase($attrs.firebase));
       self.root.onAuth(authHandler);
       $scope.$fireproof = self.root;
   
     };
   
   
-    $attrs.$observe('firebaseUrl', attachFireproof);
-    if ($attrs.firebaseUrl) {
+    $attrs.$observe('firebase', attachFireproof);
+    if ($attrs.firebase) {
       attachFireproof();
     }
   
@@ -78,17 +78,17 @@
   });
   
   
-  angular.module('angular-fireproof.directives.firebaseUrl', [
-    'angular-fireproof.controllers.FirebaseUrlCtl',
+  angular.module('angular-fireproof.directives.firebase', [
+    'angular-fireproof.controllers.FirebaseCtl',
     'angular-fireproof.services.Fireproof'
   ])
-  .directive('firebaseUrl', function() {
+  .directive('firebase', function() {
   
     return {
   
       restrict: 'A',
       scope: true,
-      controller: 'FirebaseUrlCtl'
+      controller: 'FirebaseCtl'
   
     };
   
@@ -97,7 +97,7 @@
   
   
   angular.module('angular-fireproof.directives.fpBind', [
-    'angular-fireproof.directives.firebaseUrl',
+    'angular-fireproof.directives.firebase',
     'angular-fireproof.services.status'
   ])
   .directive('fpBind', function(_fireproofStatus) {
@@ -106,7 +106,7 @@
   
       restrict: 'A',
       scope: true,
-      require: '^firebaseUrl',
+      require: '^firebase',
       link: function(scope, el, attrs, fireproof) {
   
         var ref, fpWatcher, scopeWatchCancel, currentSnap, firstLoad;
@@ -332,7 +332,7 @@
   
   
   angular.module('angular-fireproof.directives.fpPage', [
-    'angular-fireproof.directives.firebaseUrl',
+    'angular-fireproof.directives.firebase',
     'angular-fireproof.services.status'
   ])
   .directive('fpPage', function($q) {
@@ -341,7 +341,7 @@
   
       restrict: 'A',
       scope: true,
-      require: '^firebaseUrl',
+      require: '^firebase',
       link: function(scope, el, attrs, fireproof) {
   
         var ref, pager, paging;

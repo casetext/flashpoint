@@ -1,6 +1,6 @@
 
 angular.module('angular-fireproof.directives.fpBind', [
-  'angular-fireproof.directives.firebaseUrl',
+  'angular-fireproof.directives.firebase',
   'angular-fireproof.services.status'
 ])
 .directive('fpBind', function(_fireproofStatus) {
@@ -9,7 +9,7 @@ angular.module('angular-fireproof.directives.fpBind', [
 
     restrict: 'A',
     scope: true,
-    require: '^firebaseUrl',
+    require: '^firebase',
     link: function(scope, el, attrs, fireproof) {
 
       var ref, fpWatcher, scopeWatchCancel, currentSnap, firstLoad;

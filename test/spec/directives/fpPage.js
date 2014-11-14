@@ -7,7 +7,7 @@ describe('fpPage', function() {
 
   beforeEach(function(done) {
 
-    module('angular-fireproof.directives.firebaseUrl');
+    module('angular-fireproof.directives.firebase');
     module('angular-fireproof.directives.fpPage');
     module('angular-firebase.mocks');
 
@@ -43,7 +43,7 @@ describe('fpPage', function() {
           }
         };
         var element = angular.element('<div ' +
-          'firebase-url="' + window.__env__.FIREBASE_TEST_URL  + '" ' +
+          'firebase="' + window.__env__.FIREBASE_TEST_URL  + '" ' +
           'fp-page="angular-fireproof/things" as="things" limit="3"' +
           'on-page="done()" on-error="done($error)"' +
           '></div>');

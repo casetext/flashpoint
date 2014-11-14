@@ -1,8 +1,8 @@
-angular.module('angular-fireproof.controllers.FirebaseUrlCtl', [
+angular.module('angular-fireproof.controllers.FirebaseCtl', [
   'angular-fireproof.services.Fireproof',
   'angular-fireproof.services.status'
 ])
-.controller('FirebaseUrlCtl', function(Firebase, Fireproof, $scope, $rootScope, $attrs) {
+.controller('FirebaseCtl', function(Firebase, Fireproof, $scope, $rootScope, $attrs) {
 
   var self = this,
     isRootScope = false;
@@ -28,15 +28,15 @@ angular.module('angular-fireproof.controllers.FirebaseUrlCtl', [
       self.root.offAuth(authHandler);
     }
 
-    self.root = new Fireproof(new Firebase($attrs.firebaseUrl));
+    self.root = new Fireproof(new Firebase($attrs.firebase));
     self.root.onAuth(authHandler);
     $scope.$fireproof = self.root;
 
   };
 
 
-  $attrs.$observe('firebaseUrl', attachFireproof);
-  if ($attrs.firebaseUrl) {
+  $attrs.$observe('firebase', attachFireproof);
+  if ($attrs.firebase) {
     attachFireproof();
   }
 

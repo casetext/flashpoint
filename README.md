@@ -7,7 +7,7 @@ Angular bindings for Fireproof. Replaces AngularFire.
 
 All angular-fireproof directives generate new scope.
 
-### `firebase-url`
+### `firebase`
 
 Creates a Fireproof reference for the given Firebase URL and mounts the following
 properties on `$scope`:
@@ -17,20 +17,20 @@ properties on `$scope`:
 
 Attributes:
 
-- `firebase-url`: Required. The full URL to your Firebase.
+- `firebase`: Required. The full URL to your Firebase.
 - `on-auth`: A function to bind to the Firebase `onAuth` event.
 
 Example:
 
 ```html
-<div ng-app="myApp" firebase-url="https://myfirebase.firebaseio-demo.com">
+<div ng-app="myApp" firebase="https://myfirebase.firebaseio-demo.com">
 ...
 </div>
 ```
 
 ### `fp-bind`
 
-Binds scope to a given reference in the Firebase. Requires `firebase-url` to have
+Binds scope to a given reference in the Firebase. Requires `firebase` to have
 been used in a parent scope. The Firebase object will be available on scope
 at the path specified in the `as` attribute. It also creates the following
 functions on `$scope`:
@@ -68,7 +68,7 @@ a permission error occurs trying to read or write to Firebase. It gets the speci
 
 ### `fp-page`
 
-Pages through the child properties of a Firebase reference. Requires `firebase-url` to have been used in a parent scope. Its children will be available on scope at the
+Pages through the child properties of a Firebase reference. Requires `firebase` to have been used in a parent scope. Its children will be available on scope at the
 property specified in the `as` attribute. The page object will be an array with
 two special properties, `$keys` and `$priorities`.
 
