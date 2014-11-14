@@ -30,37 +30,137 @@
     'angular-fireproof.services.Fireproof',
     'angular-fireproof.services.status'
   ])
-  .controller('FirebaseCtl', function(Firebase, Fireproof, $scope, $rootScope, $attrs) {
+  .controller('FirebaseCtl', function(
+    $q,
+    Firebase,
+    Fireproof,
+    $scope,
+    $rootScope,
+    $attrs
+  ) {
   
     var self = this,
-      isRootScope = false;
+      isRootScope = false,
+      userRef,
+      userListener,
+      profileListeners = [];
   
-    var authHandler = function(authData) {
+    var authErrorMessage = 'auth-handler is not set for this firebase. All ' +
+      'authentication requests are therefore rejected.';
   
-      self.$auth = authData;
+    self.login = function() {
+  
+      var authWait;
+  
+      if ($attrs.authHandler) {
+  
+        authWait = $q.when(
+          $scope.$eval($attrs.authHandler, { $root: self.root }));
+  
+      } else {
+        return $q.reject(new Error(authErrorMessage));
+      }
+  
+      return authWait;
+  
+    };
+  
+    self.onProfile = function(cb) {
+  
+      profileListeners.push(cb);
+  
+      // always notify once immediately with whatever the current state is
+      Fireproof._nextTick(function() {
+        cb(self.profile);
+      });
+  
+    };
+  
+    self.offProfile = function(cb) {
+  
+      var index = profileListeners.indexOf(cb);
+      if (index !== -1) {
+        self._profileListeners.splice(cb, 1);
+      }
+  
+    };
+  
+    function notifyProfileListeners() {
+  
+      profileListeners.forEach(function(cb) {
+  
+        Fireproof._nextTick(function() {
+          cb(self.profile);
+        });
+  
+      });
+  
+    }
+  
+    function authHandler(authData) {
+  
+      if (userListener) {
+  
+        // detach any previous user listener.
+        userRef.off('value', userListener);
+        userRef = null;
+        userListener = null;
+  
+      }
+  
+      self.auth = authData;
       $scope.$auth = authData;
       if (isRootScope) {
         $rootScope.$auth = authData;
       }
   
-      if ($attrs.onAuth) {
-        $scope.$eval($attrs.onAuth, { '$auth': authData });
+      // get the user's profile object, if one exists
+      if (self.auth && self.auth.provider !== 'anonymous' && $attrs.profilePath) {
+  
+        userRef = self.fireproof.child($attrs.profilePath);
+        userListener = userRef.on('value', function(snap) {
+  
+          self.profile = snap.val();
+          $scope.$profile = snap.val();
+  
+          notifyProfileListeners();
+  
+        });
+  
+      } else {
+  
+        self.profile = null;
+        $scope.$profile = null;
+  
+        notifyProfileListeners();
+  
       }
   
-    };
+    }
   
   
-    var attachFireproof = function() {
+    function attachFireproof() {
   
       if (self.root) {
+  
+        // detach any remaining listeners here.
         self.root.offAuth(authHandler);
+        self.root.off();
+  
+        // clear the profile and
+        self.profile = null;
+        $scope.$profile = null;
+  
+        notifyProfileListeners();
+  
       }
   
       self.root = new Fireproof(new Firebase($attrs.firebase));
       self.root.onAuth(authHandler);
+  
       $scope.$fireproof = self.root;
   
-    };
+    }
   
   
     $attrs.$observe('firebase', attachFireproof);
@@ -73,7 +173,221 @@
       // detach onAuth listener.
       self.$fireproof.offAuth(authHandler);
   
+      // detach all remaining listeners to prevent leaks.
+      self.$fireproof.off();
+  
+      // help out GC.
+      userRef = null;
+      userListener = null;
+  
     });
+  
+  });
+  
+  
+  angular.module('angular-fireproof.directives.authClick', [
+    'angular-fireproof.directives.firebase'
+  ])
+  .directive('authClick', function($log) {
+  
+    return {
+      restrict: 'A',
+      require: '^firebase',
+      link: function(scope, el, attrs, firebase) {
+  
+        var authOK = false;
+        firebase.onProfile(profileListener);
+  
+        function profileListener() {
+  
+          if (attrs.authCondition) {
+  
+            authOK = scope.$eval(attrs.authCondition, {
+              $auth: firebase.$auth,
+              $profile: firebase.$profile
+            });
+  
+          } else {
+  
+            // by default, we check to see if the user is authed at all.
+            authOK = angular.isDefined(firebase.$auth) &&
+              firebase.$auth !== null &&
+              firebase.$auth.provider !== 'anonymous';
+  
+          }
+  
+        }
+  
+        el.bind('click', function() {
+  
+          if (authOK) {
+  
+            // auth check passed, perform the action
+            scope.$eval(attrs.authClick, {
+              $auth: firebase.$auth,
+              $user: firebase.$user
+            });
+  
+          } else {
+  
+            // Perform login check, then the action if it passes.
+            firebase.login()
+            .then(function() {
+  
+              // auth check passed, perform the action
+              scope.$eval(attrs.authClick, {
+                $auth: firebase.$auth,
+                $user: firebase.$user
+              });
+  
+            }, function(err) {
+  
+              // auth check FAILED, call the error handler if it exists.
+              $log.debug(err);
+              if (attrs.onAuthError) {
+                scope.$eval(attrs.onAuthError, { $error: err });
+              }
+  
+            });
+  
+          }
+  
+        });
+  
+        scope.$on('$destroy', function() {
+  
+          // clear the listener.
+          firebase.offProfile(profileListener);
+  
+        });
+  
+      }
+  
+    };
+  
+  });
+  
+  
+  angular.module('angular-fireproof.directives.authIf', [
+    'angular-fireproof.directives.firebase'
+  ])
+  .directive('authIf', function() {
+  
+    return {
+  
+      restrict: 'A',
+      transclude: true,
+      scope: true,
+      template: '<ng-transclude ng-if="$condition()"></ng-transclude>',
+      require: '^firebase',
+  
+      link: function(scope, el, attrs, firebase) {
+  
+        scope.$condition = false;
+        firebase.onProfile(profileListener);
+  
+        function profileListener() {
+  
+          if (attrs.authIf) {
+  
+            scope.$condition = scope.$eval(attrs.authIf, {
+              $auth: firebase.$auth,
+              $profile: firebase.$profile
+            });
+  
+          } else {
+  
+            // by default, we check to see if the user is authed at all.
+            scope.$condition = angular.isDefined(firebase.$auth) &&
+              firebase.$auth !== null &&
+              firebase.$auth.provider !== 'anonymous';
+  
+          }
+  
+        }
+  
+        scope.$on('$destroy', function() {
+          firebase.offProfile(profileListener);
+        });
+  
+      }
+  
+    };
+  
+  });
+  
+  
+  // by default we need this directive to be invisible. write some CSS classes
+  // to head right here.
+  
+  (function() {
+  
+    var css = '[auth-show]:not(.show) { display:none; }';
+  
+    try {
+  
+      var head = document.getElementsByTagName('head')[0];
+      var s = document.createElement('style');
+      s.setAttribute('type', 'text/css');
+      if (s.styleSheet) { // IE
+        s.styleSheet.cssText = css;
+      } else { // others
+        s.appendChild(document.createTextNode(css));
+      }
+  
+      head.appendChild(s);
+  
+    } catch(e) {}
+  
+  })();
+  
+  angular.module('angular-fireproof.directives.authShow', [
+    'angular-fireproof.directives.firebase'
+  ])
+  .directive('authShow', function() {
+  
+    return {
+  
+      restrict: 'A',
+      require: '^firebase',
+      link: function(scope, el, attrs, firebase) {
+  
+        var authOK = false;
+        firebase.onProfile(profileListener);
+  
+        function profileListener() {
+  
+          if (attrs.authShow) {
+  
+            authOK = scope.$eval(attrs.authShow, {
+              $auth: firebase.$auth,
+              $profile: firebase.$profile
+            });
+  
+          } else {
+  
+            // by default, we check to see if the user is authed at all.
+            authOK = angular.isDefined(firebase.$auth) &&
+              firebase.$auth !== null &&
+              firebase.$auth.provider !== 'anonymous';
+  
+          }
+  
+          if (authOK) {
+            el.addClass('show');
+          } else {
+            el.removeClass('show');
+          }
+  
+        }
+  
+        scope.$on('$destroy', function() {
+          firebase.offProfile(profileListener);
+        });
+  
+      }
+  
+    };
   
   });
   
