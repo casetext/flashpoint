@@ -53,6 +53,10 @@ scope.
 - `sync`: Watch the scope value for changes and synchronize them to Firebase. This way, any changes in your local scope will be reflected in Firebase. If you use
 this property, `$scope.$save` and `$scope.$revert` become no-ops.
 
+- `link-to`: Also save the value of this property to another location in Firebase
+anytime it gets synchronized. Useful for things like follower lists and other
+denormalizations where you want the same value to be maintained in two places.
+
 - `on-load`: Will be evaluated when a new value arrives from Firebase. It gets
 the special variable `$snap` containing the Firebase snapshot, so you can do things
 like `on-load=mySpecialHandler($snap)`.

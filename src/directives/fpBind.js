@@ -3,16 +3,16 @@ angular.module('angular-fireproof.directives.fpBind', [
   'angular-fireproof.directives.firebase',
   'angular-fireproof.services.status'
 ])
-.directive('fpBind', function(_fireproofStatus) {
+.directive('fpBind', function($q, _fireproofStatus) {
 
   return {
 
     restrict: 'A',
     scope: true,
     require: '^firebase',
-    link: function(scope, el, attrs, fireproof) {
+    link: function(scope, el, attrs, firebase) {
 
-      var ref, fpWatcher, scopeWatchCancel, currentSnap, firstLoad;
+      var fpWatcher, scopeWatchCancel, currentSnap, firstLoad;
 
       function loadOK(snap) {
 
@@ -24,7 +24,7 @@ angular.module('angular-fireproof.directives.fpBind', [
 
         if (!firstLoad) {
           firstLoad = true;
-          _fireproofStatus.finish(ref.toString());
+          _fireproofStatus.finish(firebase.root.child(attrs.fpBind).toString());
         }
 
         delete scope.$fireproofError;
@@ -57,7 +57,7 @@ angular.module('angular-fireproof.directives.fpBind', [
 
         if (!firstLoad) {
           firstLoad = true;
-          _fireproofStatus.finish(ref.toString());
+          _fireproofStatus.finish(firebase.root.child(attrs.fpBind).toString());
         }
 
         scope.$fireproofError = err;
@@ -86,19 +86,21 @@ angular.module('angular-fireproof.directives.fpBind', [
           scope.$syncing = true;
 
           if (fpWatcher) {
-            ref.off('value', fpWatcher);
+            firebase.root.child(attrs.fpBind).off('value', fpWatcher);
           }
 
           if (scopeWatchCancel) {
             scopeWatchCancel();
           }
 
-          _fireproofStatus.start(ref.toString());
+          _fireproofStatus.start(firebase.root.child(attrs.fpBind).toString());
 
           if (attrs.watch) {
-            fpWatcher = ref.on('value', loadOK, loadError);
+            fpWatcher = firebase.root.child(attrs.fpBind)
+            .on('value', loadOK, loadError);
           } else {
-            ref.once('value', loadOK, loadError);
+            firebase.root.child(attrs.fpBind)
+            .once('value', loadOK, loadError);
           }
 
         }
@@ -123,7 +125,22 @@ angular.module('angular-fireproof.directives.fpBind', [
           scope.$syncing = true;
           delete scope.$fireproofError;
 
-          return ref.set(scope[attrs.as])
+          // if there's another location we're supposed to save to,
+          // save there also
+          var savePromises = [];
+
+          savePromises.push(firebase.root.child(attrs.fpBind)
+          .set(scope[attrs.as]));
+
+          if (attrs.linkTo) {
+
+            savePromises.push(
+              firebase.root.child(attrs.linkTo)
+              .set(scope[attrs.as]));
+
+          }
+
+          return $q.all(savePromises)
           .then(function() {
 
             if (attrs.onSave) {
@@ -171,9 +188,7 @@ angular.module('angular-fireproof.directives.fpBind', [
           scopeWatchCancel();
         }
 
-        ref = fireproof.root.child(path);
         scope.$reload();
-
 
       });
 
@@ -183,7 +198,7 @@ angular.module('angular-fireproof.directives.fpBind', [
         // cancel the Firebase watcher if one exists
 
         if (fpWatcher) {
-          ref.off('value', fpWatcher);
+          firebase.root.child(attrs.fpBind).off('value', fpWatcher);
         }
 
         if (scopeWatchCancel) {
@@ -192,7 +207,6 @@ angular.module('angular-fireproof.directives.fpBind', [
 
         // finalize as a favor to GC
         fpWatcher = null;
-        ref = null;
         scopeWatchCancel = null;
         currentSnap = null;
 

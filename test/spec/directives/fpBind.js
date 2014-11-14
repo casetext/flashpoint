@@ -30,7 +30,7 @@ describe('fpBind', function() {
         var element = angular.element('<div ' +
           'firebase="' + window.__env__.FIREBASE_TEST_URL + '" ' +
           'fp-bind="things/something" as="object" watch="true" sync="true" ' +
-          'on-load="done()" on-error="done($error)"' +
+          'on-load="done()" on-error="done($error)" link-to="things/else"' +
           '></div>');
 
         $compile(element)($rootScope);
@@ -73,6 +73,15 @@ describe('fpBind', function() {
     });
 
     $scope.object = 'bazquux';
+
+  });
+
+  it('can also save those changes elsewhere via link-to', function() {
+
+    return root.child('things/else')
+    .then(function(snap) {
+      expect(snap.val()).to.equal('bazquux');
+    });
 
   });
 
