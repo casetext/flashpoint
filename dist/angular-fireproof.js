@@ -223,6 +223,63 @@
   
   });
   
+  angular.module('angular-fireproof.controllers.FirebaseUrlCtl', [
+    'angular-fireproof.services.Fireproof',
+    'angular-fireproof.services.status'
+  ])
+  .controller('FirebaseUrlCtl', function(Firebase, Fireproof, $scope, $rootScope, $attrs) {
+  
+    var isRootScope = false;
+  
+    var authHandler = function(authData) {
+  
+      $scope.$auth = authData;
+      if (isRootScope) {
+        $rootScope.$auth = authData;
+      }
+  
+      if ($attrs.onAuth) {
+        $scope.$eval($attrs.onAuth, { '$auth': authData });
+      }
+  
+    };
+  
+  
+    var attachFireproof = function() {
+  
+      if ($scope.$fireproof) {
+        $scope.$fireproof.offAuth(authHandler);
+      }
+  
+      $scope.$fireproof = new Fireproof(new Firebase($attrs.firebaseUrl));
+      $scope.$fireproof.onAuth(authHandler);
+  
+      // does rootScope have a Fireproof yet? if not, we're it
+      if (!$rootScope.$fireproof) {
+        isRootScope = true;
+      }
+  
+      if (isRootScope) {
+        $rootScope.$fireproof = $scope.$fireproof;
+      }
+  
+    };
+  
+  
+    $attrs.$observe('firebaseUrl', attachFireproof);
+    if ($attrs.firebaseUrl) {
+      attachFireproof();
+    }
+  
+    $scope.$on('$destroy', function() {
+  
+      // detach onAuth listener.
+      $scope.$fireproof.offAuth(authHandler);
+  
+    });
+  
+  });
+  
   
   angular.module('angular-fireproof.controllers.PageCtl', [
     'angular-fireproof.services.Fireproof',
@@ -426,67 +483,16 @@
   
   
   angular.module('angular-fireproof.directives.firebaseUrl', [
+    'angular-fireproof.controllers.FirebaseUrlCtl',
     'angular-fireproof.services.Fireproof'
   ])
-  .directive('firebaseUrl', function(Firebase, Fireproof, $rootScope) {
+  .directive('firebaseUrl', function() {
   
     return {
   
       restrict: 'A',
       scope: true,
-      priority: 10,
-      link: { pre: function(scope, el, attrs) {
-  
-        var isRootScope = false;
-  
-        var authHandler = function(authData) {
-  
-          scope.$auth = authData;
-          if (isRootScope) {
-            $rootScope.$auth = authData;
-          }
-  
-          if (attrs.onAuth) {
-            scope.$eval(attrs.onAuth, { '$auth': authData });
-          }
-  
-        };
-  
-  
-        var attachFireproof = function() {
-  
-          if (scope.$fireproof) {
-            scope.$fireproof.offAuth(authHandler);
-          }
-  
-          scope.$fireproof = new Fireproof(new Firebase(attrs.firebaseUrl));
-          scope.$fireproof.onAuth(authHandler);
-  
-          // does rootScope have a Fireproof yet? if not, we're it
-          if (!$rootScope.$fireproof) {
-            isRootScope = true;
-          }
-  
-          if (isRootScope) {
-            $rootScope.$fireproof = scope.$fireproof;
-          }
-  
-        };
-  
-  
-        attrs.$observe('firebaseUrl', attachFireproof);
-        if (attrs.firebaseUrl) {
-          attachFireproof();
-        }
-  
-        scope.$on('$destroy', function() {
-  
-          // detach onAuth listener.
-          scope.$fireproof.offAuth(authHandler);
-  
-        });
-  
-      }}
+      controller: 'FirebaseUrlCtl'
   
     };
   
@@ -495,14 +501,17 @@
   
   
   angular.module('angular-fireproof.directives.fpBind', [
+    'angular-fireproof.controllers.FirebaseUrlCtl',
     'angular-fireproof.controllers.BindCtl'
   ])
   .directive('fpBind', function() {
   
     return {
+  
       restrict: 'A',
       scope: true,
       controller: 'BindCtl',
+      require: '^firebaseUrl',
       link: function(scope, el) {
   
         scope.$watch('$syncing', function(syncing) {
@@ -540,14 +549,17 @@
   
   
   angular.module('angular-fireproof.directives.fpPage', [
+    'angular-fireproof.controllers.FirebaseUrlCtl',
     'angular-fireproof.controllers.PageCtl'
   ])
   .directive('fpPage', function() {
   
     return {
+  
       restrict: 'A',
       scope: true,
       controller: 'PageCtl',
+      require: '^firebaseUrl',
       link: function(scope, el) {
   
         scope.$watch('$syncing', function(syncing) {

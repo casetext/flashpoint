@@ -29,7 +29,7 @@ describe('fpBind', function() {
         };
         var element = angular.element('<div ' +
           'firebase-url="' + window.__env__.FIREBASE_TEST_URL + '" ' +
-          'fp-bind="things/something" as="object" watch="true" sync="true"' +
+          'fp-bind="things/something" as="object" watch="true" sync="true" ' +
           'on-load="done()" on-error="done($error)"' +
           '></div>');
 

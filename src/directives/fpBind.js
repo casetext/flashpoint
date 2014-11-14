@@ -1,13 +1,16 @@
 
 angular.module('angular-fireproof.directives.fpBind', [
+  'angular-fireproof.controllers.FirebaseUrlCtl',
   'angular-fireproof.controllers.BindCtl'
 ])
 .directive('fpBind', function() {
 
   return {
+
     restrict: 'A',
     scope: true,
     controller: 'BindCtl',
+    require: '^firebaseUrl',
     link: function(scope, el) {
 
       scope.$watch('$syncing', function(syncing) {
