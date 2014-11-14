@@ -258,8 +258,6 @@
           if (path[path.length-1] === '/') {
             // this is an incomplete eval. we're done.
             return;
-          } else if (!scope.$fireproof) {
-            throw new Error('No $fireproof on this scope. Maybe you forgot firebase-url?');
           } else if (!attrs.as) {
             throw new Error('Missing "as" attribute on fp-bind="' + attrs.fpBind + '"');
           }
