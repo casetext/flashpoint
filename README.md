@@ -18,7 +18,7 @@ properties on `$scope`:
 Attributes:
 
 - `firebase-url`: Required. The full URL to your Firebase.
-- `on-auth`: Optional. A function to bind to the Firebase `onAuth` event.
+- `on-auth`: A function to bind to the Firebase `onAuth` event.
 
 Example:
 
