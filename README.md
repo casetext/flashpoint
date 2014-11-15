@@ -9,24 +9,44 @@ All angular-fireproof directives generate new scope.
 
 ### `firebase`
 
-Creates a Fireproof reference for the given Firebase URL and mounts the following
-properties on `$scope`:
+Creates a Fireproof reference for the given Firebase URL and mounts a controller
+with the following properties and methods:
 
-- `$scope.$fireproof`: The root reference of the specified Firebase.
-- `$scope.$auth`: The auth data, if a user authentication event occurs.
+- `root`: The root reference of the specified Firebase.
+- `auth`: The auth data, if a user authentication event occurs.
+- `profile`: User profile data, if a user authentication event occurs.
+- `onProfile(cb)`: Notifies when changes to the user profile are discovered,
+either because the underlying data has changed or because the user logged in
+or out.
+- `offProfile(cb)`: Detaches a listener previously attached with `onProfile(cb)`.
+- `login()`: Triggers the login handler. Returns a promise that resolves on
+successful login and rejects on unsuccessful login.
 
 Attributes:
 
 - `firebase`: Required. The full URL to your Firebase.
-- `on-auth`: A function to bind to the Firebase `onAuth` event.
+- `login-handler`: A handler that manages requests to log in and returns a promise
+that resolves if authentication succeeds and rejects if authentication fails. It gets the special variable `$root` containing the Firebase snapshot, so you can
+do things like `return $root.authWithCustomToken(...)`. NB: IF YOU DO NOT SUPPLY
+THIS, ANY ATTEMPT TO USE AUTHENTICATION DIRECTIVES LIKE `auth-click` WILL FAIL!
+- `profile-path`: The path to a place where user profile data is kept in the
+Firebase, keyed under uid. So if a user is logged in as { uid: 'simplelogin:1' },
+and `profile-path` is set to, say, "users", angular-fireproof will take the
+value of `/users/simplelogin:1` and bind it to `$profile`.
+
 
 Example:
 
 ```html
-<div ng-app="myApp" firebase="https://myfirebase.firebaseio-demo.com">
+<div ng-app="myApp"
+firebase="https://myfirebase.firebaseio.com"
+login-handler="doLogin($root)"
+profile-path="users"
+>
 ...
 </div>
 ```
+
 
 ### `fp-bind`
 
@@ -69,6 +89,7 @@ a permission error occurs trying to read or write to Firebase. It gets the speci
 
 - `on-error`: Will be evaluated for other Firebase errors. It gets the special variable `$error` containing the error, so you can do things like
 `on-error="showPrettyErrorBox($error)"`.
+
 
 ### `fp-page`
 
@@ -114,3 +135,58 @@ Example:
   </li>
 </ul>
 ```
+
+### authClick
+
+Wraps click behavior in authentication, so you can do things like
+```<button auth-click="deleteEverything()" auth-condition="$profile.super"></button>```
+
+authClick's behavior is as follows:
+
+- If the user is not logged in, the auth flow is started and any action is deferred
+until the auth flow returns.
+
+   - If the user fails or refuses to log in, ```on-auth-error``` is executed.
+
+- If the user is logged in, ```auth-condition``` is evaluated. If it evaluates
+to something truthy, then the expression in ```auth-click``` is executed.
+
+Attributes:
+
+- `auth-click`: The expression to execute if the user passes the test, e.g.
+```<button auth-click="deleteOnlyOneThing()"></button>```.
+
+- `auth-condition`: Specifies a custom authentication condition for the user. It provides the special variables `$auth`, containing the core Firebase
+authentication data, and `$profile`, containing the user profile if one exists.E.g., ```<button auth-click="deleteAllTheThings()" auth-condition="$profile.super"></button>```.
+
+
+### authIf
+
+Places the element in the DOM if the authentication logic passes, so you can
+do things like ```<div auth-if="$profile.super">SUPER SECRET MENU!!!!</div>```
+
+Attributes:
+
+- `auth-if`: If you supply an expression to `auth-if`, you can use custom logic
+to decide if the element should exist. By default this
+just checks to see that the user is logged in using some provider other than
+anonymous, so you can do things like
+`<div auth-if>NOT SO SECRET, ALL LOGGED IN USERS CAN SEE IT</div>`. It provides
+the special variables `$auth`, containing the core Firebase authentication data,
+and `$profile`, containing the user profile if one exists.
+
+
+### authShow
+
+Shows the element (using "display: none" shenanigans) if the authentication logic
+passes, so you can do things like ```<div auth-show="$profile.super">YOU ARE A SUPER USER!</div>```
+
+Attributes:
+
+- `auth-show`: If you supply an expression to `auth-show`, you can use custom logic
+to decide if the element should exist. By default this
+just checks to see that the user is logged in using some provider other than
+anonymous, so you can do things like
+`<div auth-show>YOU ARE A PLAIN OLD LOGGED IN USER</div>`. It provides
+the special variables `$auth`, containing the core Firebase authentication data,
+and `$profile`, containing the user profile if one exists.
