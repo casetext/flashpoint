@@ -26,6 +26,7 @@
     'angular-fireproof.services.Fireproof'
   ]);
   
+  
   angular.module('angular-fireproof.controllers.FirebaseCtl', [
     'angular-fireproof.services.Fireproof',
     'angular-fireproof.services.status'
@@ -50,18 +51,11 @@
   
     self.login = function() {
   
-      var authWait;
-  
-      if ($attrs.authHandler) {
-  
-        authWait = $q.when(
-          $scope.$eval($attrs.authHandler, { $root: self.root }));
-  
+      if ($attrs.loginHandler) {
+        return $q.when($scope.$eval($attrs.loginHandler, { $root: self.root }));
       } else {
         return $q.reject(new Error(authErrorMessage));
       }
-  
-      return authWait;
   
     };
   
@@ -78,9 +72,13 @@
   
     self.offProfile = function(cb) {
   
-      var index = profileListeners.indexOf(cb);
-      if (index !== -1) {
-        self._profileListeners.splice(cb, 1);
+      if (profileListeners && profileListeners.length > 0) {
+  
+        var index = profileListeners.indexOf(cb);
+        if (index !== -1) {
+          profileListeners.splice(cb, 1);
+        }
+  
       }
   
     };
@@ -115,9 +113,9 @@
       }
   
       // get the user's profile object, if one exists
-      if (self.auth && self.auth.provider !== 'anonymous' && $attrs.profilePath) {
+      if (self.auth && self.auth.provider !== 'anonymous' && self.auth.uid && $attrs.profilePath) {
   
-        userRef = self.fireproof.child($attrs.profilePath);
+        userRef = self.root.child($attrs.profilePath).child(self.auth.uid);
         userListener = userRef.on('value', function(snap) {
   
           self.profile = snap.val();
@@ -129,8 +127,19 @@
   
       } else {
   
-        self.profile = null;
-        $scope.$profile = null;
+        if (self.auth && self.auth.provider === 'custom' && self.auth.uid === null) {
+  
+          // superuser!
+          self.profile = { super: true };
+          $scope.$profile = self.profile;
+  
+        } else {
+  
+          // nobody.
+          self.profile = null;
+          $scope.$profile = null;
+  
+        }
   
         notifyProfileListeners();
   
@@ -164,17 +173,23 @@
   
   
     $attrs.$observe('firebase', attachFireproof);
+  
+    // always run attach at least once
     if ($attrs.firebase) {
       attachFireproof();
     }
   
+  
     $scope.$on('$destroy', function() {
   
+      // remove all onProfile listeners.
+      profileListeners = null;
+  
       // detach onAuth listener.
-      self.$fireproof.offAuth(authHandler);
+      self.root.offAuth(authHandler);
   
       // detach all remaining listeners to prevent leaks.
-      self.$fireproof.off();
+      self.root.off();
   
       // help out GC.
       userRef = null;
@@ -218,7 +233,7 @@
   
         }
   
-        el.bind('click', function() {
+        el.on('click', function() {
   
           if (authOK) {
   
@@ -271,36 +286,98 @@
   angular.module('angular-fireproof.directives.authIf', [
     'angular-fireproof.directives.firebase'
   ])
-  .directive('authIf', function() {
+  .directive('authIf', function($animate) {
   
     return {
   
       restrict: 'A',
-      transclude: true,
+      transclude: 'element',
       scope: true,
-      template: '<ng-transclude ng-if="$condition()"></ng-transclude>',
+      priority: 600,
+      terminal: true,
       require: '^firebase',
   
-      link: function(scope, el, attrs, firebase) {
+      link: function(scope, el, attrs, firebase, transclude) {
   
-        scope.$condition = false;
+        var block, childScope, previousElements;
+  
         firebase.onProfile(profileListener);
   
         function profileListener() {
   
+          var authOK;
           if (attrs.authIf) {
   
-            scope.$condition = scope.$eval(attrs.authIf, {
-              $auth: firebase.$auth,
-              $profile: firebase.$profile
+            authOK = scope.$eval(attrs.authIf, {
+              $auth: firebase.auth,
+              $profile: firebase.profile
             });
   
           } else {
   
             // by default, we check to see if the user is authed at all.
-            scope.$condition = angular.isDefined(firebase.$auth) &&
+            authOK = angular.isDefined(firebase.$auth) &&
               firebase.$auth !== null &&
               firebase.$auth.provider !== 'anonymous';
+  
+          }
+  
+          if (authOK) {
+  
+            if (!childScope) {
+  
+              childScope = scope.$new();
+              transclude(childScope, function (clone) {
+  
+                clone[clone.length++] = document.createComment(' end authIf: ' + attrs.authIf + ' ');
+                // Note: We only need the first/last node of the cloned nodes.
+                // However, we need to keep the reference to the jqlite wrapper as it might be changed later
+                // by a directive with templateUrl when its template arrives.
+                block = {
+                  clone: clone
+                };
+  
+                $animate.enter(clone, el.parent(), el);
+  
+              });
+  
+            }
+  
+          } else {
+  
+            if (previousElements) {
+              previousElements.remove();
+              previousElements = null;
+            }
+            if (childScope) {
+              childScope.$destroy();
+              childScope = null;
+            }
+            if (block) {
+  
+              previousElements = (function getBlockNodes(nodes) {
+                var node = nodes[0];
+                var endNode = nodes[nodes.length - 1];
+                var blockNodes = [node];
+  
+                do {
+                  node = node.nextSibling;
+                  if (!node) {
+                    break;
+                  }
+                  blockNodes.push(node);
+                } while (node !== endNode);
+  
+                return angular.element(blockNodes);
+              })(block.clone);
+  
+              $animate.leave(previousElements, function() {
+                previousElements = null;
+              });
+  
+              block = null;
+  
+            }
   
           }
   
@@ -352,24 +429,24 @@
       require: '^firebase',
       link: function(scope, el, attrs, firebase) {
   
-        var authOK = false;
         firebase.onProfile(profileListener);
   
         function profileListener() {
   
+          var authOK;
           if (attrs.authShow) {
   
             authOK = scope.$eval(attrs.authShow, {
-              $auth: firebase.$auth,
-              $profile: firebase.$profile
+              $auth: firebase.auth,
+              $profile: firebase.profile
             });
   
           } else {
   
             // by default, we check to see if the user is authed at all.
             authOK = angular.isDefined(firebase.$auth) &&
-              firebase.$auth !== null &&
-              firebase.$auth.provider !== 'anonymous';
+              firebase.auth !== null &&
+              firebase.auth.provider !== 'anonymous';
   
           }
   

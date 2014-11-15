@@ -1,3 +1,4 @@
+
 angular.module('angular-fireproof.controllers.FirebaseCtl', [
   'angular-fireproof.services.Fireproof',
   'angular-fireproof.services.status'
@@ -22,18 +23,11 @@ angular.module('angular-fireproof.controllers.FirebaseCtl', [
 
   self.login = function() {
 
-    var authWait;
-
-    if ($attrs.authHandler) {
-
-      authWait = $q.when(
-        $scope.$eval($attrs.authHandler, { $root: self.root }));
-
+    if ($attrs.loginHandler) {
+      return $q.when($scope.$eval($attrs.loginHandler, { $root: self.root }));
     } else {
       return $q.reject(new Error(authErrorMessage));
     }
-
-    return authWait;
 
   };
 
@@ -50,9 +44,13 @@ angular.module('angular-fireproof.controllers.FirebaseCtl', [
 
   self.offProfile = function(cb) {
 
-    var index = profileListeners.indexOf(cb);
-    if (index !== -1) {
-      self._profileListeners.splice(cb, 1);
+    if (profileListeners && profileListeners.length > 0) {
+
+      var index = profileListeners.indexOf(cb);
+      if (index !== -1) {
+        profileListeners.splice(cb, 1);
+      }
+
     }
 
   };
@@ -87,9 +85,9 @@ angular.module('angular-fireproof.controllers.FirebaseCtl', [
     }
 
     // get the user's profile object, if one exists
-    if (self.auth && self.auth.provider !== 'anonymous' && $attrs.profilePath) {
+    if (self.auth && self.auth.provider !== 'anonymous' && self.auth.uid && $attrs.profilePath) {
 
-      userRef = self.fireproof.child($attrs.profilePath);
+      userRef = self.root.child($attrs.profilePath).child(self.auth.uid);
       userListener = userRef.on('value', function(snap) {
 
         self.profile = snap.val();
@@ -101,8 +99,19 @@ angular.module('angular-fireproof.controllers.FirebaseCtl', [
 
     } else {
 
-      self.profile = null;
-      $scope.$profile = null;
+      if (self.auth && self.auth.provider === 'custom' && self.auth.uid === null) {
+
+        // superuser!
+        self.profile = { super: true };
+        $scope.$profile = self.profile;
+
+      } else {
+
+        // nobody.
+        self.profile = null;
+        $scope.$profile = null;
+
+      }
 
       notifyProfileListeners();
 
@@ -136,17 +145,23 @@ angular.module('angular-fireproof.controllers.FirebaseCtl', [
 
 
   $attrs.$observe('firebase', attachFireproof);
+
+  // always run attach at least once
   if ($attrs.firebase) {
     attachFireproof();
   }
 
+
   $scope.$on('$destroy', function() {
 
+    // remove all onProfile listeners.
+    profileListeners = null;
+
     // detach onAuth listener.
-    self.$fireproof.offAuth(authHandler);
+    self.root.offAuth(authHandler);
 
     // detach all remaining listeners to prevent leaks.
-    self.$fireproof.off();
+    self.root.off();
 
     // help out GC.
     userRef = null;

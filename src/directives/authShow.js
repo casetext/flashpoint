@@ -34,24 +34,24 @@ angular.module('angular-fireproof.directives.authShow', [
     require: '^firebase',
     link: function(scope, el, attrs, firebase) {
 
-      var authOK = false;
       firebase.onProfile(profileListener);
 
       function profileListener() {
 
+        var authOK;
         if (attrs.authShow) {
 
           authOK = scope.$eval(attrs.authShow, {
-            $auth: firebase.$auth,
-            $profile: firebase.$profile
+            $auth: firebase.auth,
+            $profile: firebase.profile
           });
 
         } else {
 
           // by default, we check to see if the user is authed at all.
           authOK = angular.isDefined(firebase.$auth) &&
-            firebase.$auth !== null &&
-            firebase.$auth.provider !== 'anonymous';
+            firebase.auth !== null &&
+            firebase.auth.provider !== 'anonymous';
 
         }
 

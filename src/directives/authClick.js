@@ -32,7 +32,7 @@ angular.module('angular-fireproof.directives.authClick', [
 
       }
 
-      el.bind('click', function() {
+      el.on('click', function() {
 
         if (authOK) {
 

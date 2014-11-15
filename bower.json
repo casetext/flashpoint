@@ -1,0 +1,25 @@
+{
+  "name": "angular-fireproof",
+  "version": "0.5.0",
+  "authors": [
+    "Harry Schmidt <goldibex@casetext.com>"
+  ],
+  "main": "dist/angular-fireproof.js",
+  "moduleType": [
+    "amd",
+    "globals",
+    "node"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "devDependencies": {
+    "angular": "1.2.26",
+    "angular-mocks": "1.2.26"
+  }
+}
