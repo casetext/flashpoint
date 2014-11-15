@@ -19,7 +19,7 @@ with the following properties and methods:
 either because the underlying data has changed or because the user logged in
 or out.
 - `offProfile(cb)`: Detaches a listener previously attached with `onProfile(cb)`.
-- `login()`: Triggers the login handler. Returns a promise that resolves on
+- `login(options)`: Triggers the login handler. Returns a promise that resolves on
 successful login and rejects on unsuccessful login.
 
 Attributes:
@@ -27,7 +27,10 @@ Attributes:
 - `firebase`: Required. The full URL to your Firebase.
 - `login-handler`: A handler that manages requests to log in and returns a promise
 that resolves if authentication succeeds and rejects if authentication fails. It gets the special variable `$root` containing the Firebase snapshot, so you can
-do things like `return $root.authWithCustomToken(...)`. NB: IF YOU DO NOT SUPPLY
+do things like `return $root.authWithCustomToken(...)`. It also receives a special
+variable `$options` that contains any options that were passed to the
+`login` in the first argument.
+ NB: IF YOU DO NOT SUPPLY
 THIS, ANY ATTEMPT TO USE AUTHENTICATION DIRECTIVES LIKE `auth-click` WILL FAIL!
 - `profile-path`: The path to a place where user profile data is kept in the
 Firebase, keyed under uid. So if a user is logged in as { uid: 'simplelogin:1' },

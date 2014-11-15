@@ -20,10 +20,10 @@ angular.module('angular-fireproof.controllers.FirebaseCtl', [
   var authErrorMessage = 'auth-handler is not set for this firebase. All ' +
     'authentication requests are therefore rejected.';
 
-  self.login = function() {
+  self.login = function(options) {
 
     if ($attrs.loginHandler) {
-      return $q.when($scope.$eval($attrs.loginHandler, { $root: self.root }));
+      return $q.when($scope.$eval($attrs.loginHandler, { $root: self.root, $options: options }));
     } else {
       return $q.reject(new Error(authErrorMessage));
     }
