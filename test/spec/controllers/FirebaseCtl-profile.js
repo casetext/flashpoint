@@ -65,14 +65,6 @@ describe('FirebaseCtl', function() {
 
   describe('when profile-path is provided', function() {
 
-    describe('$scope.$profile', function() {
-
-      it('sets the user profile', function() {
-        expect($scope.$profile).to.exist;
-      });
-
-    });
-
     describe('#onProfile', function() {
 
       it('hands back the user profile object', function(done) {

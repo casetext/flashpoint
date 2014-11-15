@@ -41,7 +41,6 @@
   ) {
   
     var self = this,
-      isRootScope = false,
       userRef,
       userListener,
       profileListeners = [];
@@ -107,10 +106,6 @@
       }
   
       self.auth = authData;
-      $scope.$auth = authData;
-      if (isRootScope) {
-        $rootScope.$auth = authData;
-      }
   
       // get the user's profile object, if one exists
       if (self.auth && self.auth.provider !== 'anonymous' && self.auth.uid && $attrs.profilePath) {
@@ -119,7 +114,6 @@
         userListener = userRef.on('value', function(snap) {
   
           self.profile = snap.val();
-          $scope.$profile = snap.val();
   
           notifyProfileListeners();
   
@@ -131,13 +125,11 @@
   
           // superuser!
           self.profile = { super: true };
-          $scope.$profile = self.profile;
   
         } else {
   
           // nobody.
           self.profile = null;
-          $scope.$profile = null;
   
         }
   
@@ -156,9 +148,8 @@
         self.root.offAuth(authHandler);
         self.root.off();
   
-        // clear the profile and
+        // clear the profile
         self.profile = null;
-        $scope.$profile = null;
   
         notifyProfileListeners();
   
@@ -166,8 +157,6 @@
   
       self.root = new Fireproof(new Firebase($attrs.firebase));
       self.root.onAuth(authHandler);
-  
-      $scope.$fireproof = self.root;
   
     }
   
