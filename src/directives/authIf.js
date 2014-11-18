@@ -17,9 +17,7 @@ angular.module('angular-fireproof.directives.authIf', [
 
       var block, childScope, previousElements;
 
-      firebase.onProfile(profileListener);
-
-      function profileListener() {
+      scope.$on('angular-fireproof:profile', function() {
 
         var authOK;
         if (attrs.authIf) {
@@ -97,10 +95,6 @@ angular.module('angular-fireproof.directives.authIf', [
 
         }
 
-      }
-
-      scope.$on('$destroy', function() {
-        firebase.offProfile(profileListener);
       });
 
     }

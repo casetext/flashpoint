@@ -5,17 +5,15 @@ angular.module('angular-fireproof.controllers.FirebaseCtl', [
 ])
 .controller('FirebaseCtl', function(
   $q,
-  Firebase,
-  Fireproof,
   $scope,
-  $rootScope,
-  $attrs
+  $attrs,
+  Firebase,
+  Fireproof
 ) {
 
   var self = this,
     userRef,
-    userListener,
-    profileListeners = [];
+    userListener;
 
   var authErrorMessage = 'auth-handler is not set for this firebase. All ' +
     'authentication requests are therefore rejected.';
@@ -30,42 +28,6 @@ angular.module('angular-fireproof.controllers.FirebaseCtl', [
 
   };
 
-  self.onProfile = function(cb) {
-
-    profileListeners.push(cb);
-
-    // always notify once immediately with whatever the current state is
-    Fireproof._nextTick(function() {
-      cb(self.profile);
-    });
-
-  };
-
-  self.offProfile = function(cb) {
-
-    if (profileListeners && profileListeners.length > 0) {
-
-      var index = profileListeners.indexOf(cb);
-      if (index !== -1) {
-        profileListeners.splice(cb, 1);
-      }
-
-    }
-
-  };
-
-  function notifyProfileListeners() {
-
-    profileListeners.forEach(function(cb) {
-
-      Fireproof._nextTick(function() {
-        cb(self.profile);
-      });
-
-    });
-
-  }
-
   function authHandler(authData) {
 
     if (userListener) {
@@ -79,6 +41,8 @@ angular.module('angular-fireproof.controllers.FirebaseCtl', [
 
     self.auth = authData;
 
+    $scope.$broadcast('angular-fireproof:auth', self.auth);
+
     // get the user's profile object, if one exists
     if (self.auth && self.auth.provider !== 'anonymous' && self.auth.uid && $attrs.profilePath) {
 
@@ -87,7 +51,7 @@ angular.module('angular-fireproof.controllers.FirebaseCtl', [
 
         self.profile = snap.val();
 
-        notifyProfileListeners();
+        $scope.$broadcast('angular-fireproof:profile', self.profile);
 
       });
 
@@ -105,7 +69,7 @@ angular.module('angular-fireproof.controllers.FirebaseCtl', [
 
       }
 
-      notifyProfileListeners();
+      $scope.$broadcast('angular-fireproof:profile', self.profile);
 
     }
 
@@ -120,10 +84,9 @@ angular.module('angular-fireproof.controllers.FirebaseCtl', [
       self.root.offAuth(authHandler);
       self.root.off();
 
-      // clear the profile
-      self.profile = null;
-
-      notifyProfileListeners();
+      // clear the profile and auth
+      delete self.auth;
+      delete self.profile;
 
     }
 
@@ -142,9 +105,6 @@ angular.module('angular-fireproof.controllers.FirebaseCtl', [
 
 
   $scope.$on('$destroy', function() {
-
-    // remove all onProfile listeners.
-    profileListeners = null;
 
     // detach onAuth listener.
     self.root.offAuth(authHandler);

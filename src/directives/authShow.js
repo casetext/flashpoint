@@ -34,9 +34,7 @@ angular.module('angular-fireproof.directives.authShow', [
     require: '^firebase',
     link: function(scope, el, attrs, firebase) {
 
-      firebase.onProfile(profileListener);
-
-      function profileListener() {
+      scope.$on('angular-fireproof:profile', function() {
 
         var authOK;
         if (attrs.authShow) {
@@ -61,10 +59,6 @@ angular.module('angular-fireproof.directives.authShow', [
           el.removeClass('show');
         }
 
-      }
-
-      scope.$on('$destroy', function() {
-        firebase.offProfile(profileListener);
       });
 
     }

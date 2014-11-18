@@ -10,9 +10,8 @@ angular.module('angular-fireproof.directives.authClick', [
     link: function(scope, el, attrs, firebase) {
 
       var authOK = false;
-      firebase.onProfile(profileListener);
 
-      function profileListener() {
+      scope.$on('angular-fireproof:profile', function() {
 
         if (attrs.authCondition) {
 
@@ -30,7 +29,7 @@ angular.module('angular-fireproof.directives.authClick', [
 
         }
 
-      }
+      });
 
       el.on('click', function() {
 
@@ -65,13 +64,6 @@ angular.module('angular-fireproof.directives.authClick', [
           });
 
         }
-
-      });
-
-      scope.$on('$destroy', function() {
-
-        // clear the listener.
-        firebase.offProfile(profileListener);
 
       });
 

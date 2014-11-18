@@ -36,17 +36,15 @@
   ])
   .controller('FirebaseCtl', function(
     $q,
-    Firebase,
-    Fireproof,
     $scope,
-    $rootScope,
-    $attrs
+    $attrs,
+    Firebase,
+    Fireproof
   ) {
   
     var self = this,
       userRef,
-      userListener,
-      profileListeners = [];
+      userListener;
   
     var authErrorMessage = 'auth-handler is not set for this firebase. All ' +
       'authentication requests are therefore rejected.';
@@ -61,42 +59,6 @@
   
     };
   
-    self.onProfile = function(cb) {
-  
-      profileListeners.push(cb);
-  
-      // always notify once immediately with whatever the current state is
-      Fireproof._nextTick(function() {
-        cb(self.profile);
-      });
-  
-    };
-  
-    self.offProfile = function(cb) {
-  
-      if (profileListeners && profileListeners.length > 0) {
-  
-        var index = profileListeners.indexOf(cb);
-        if (index !== -1) {
-          profileListeners.splice(cb, 1);
-        }
-  
-      }
-  
-    };
-  
-    function notifyProfileListeners() {
-  
-      profileListeners.forEach(function(cb) {
-  
-        Fireproof._nextTick(function() {
-          cb(self.profile);
-        });
-  
-      });
-  
-    }
-  
     function authHandler(authData) {
   
       if (userListener) {
@@ -110,6 +72,8 @@
   
       self.auth = authData;
   
+      $scope.$broadcast('angular-fireproof:auth', self.auth);
+  
       // get the user's profile object, if one exists
       if (self.auth && self.auth.provider !== 'anonymous' && self.auth.uid && $attrs.profilePath) {
   
@@ -118,7 +82,7 @@
   
           self.profile = snap.val();
   
-          notifyProfileListeners();
+          $scope.$broadcast('angular-fireproof:profile', self.profile);
   
         });
   
@@ -136,7 +100,7 @@
   
         }
   
-        notifyProfileListeners();
+        $scope.$broadcast('angular-fireproof:profile', self.profile);
   
       }
   
@@ -151,10 +115,9 @@
         self.root.offAuth(authHandler);
         self.root.off();
   
-        // clear the profile
-        self.profile = null;
-  
-        notifyProfileListeners();
+        // clear the profile and auth
+        delete self.auth;
+        delete self.profile;
   
       }
   
@@ -173,9 +136,6 @@
   
   
     $scope.$on('$destroy', function() {
-  
-      // remove all onProfile listeners.
-      profileListeners = null;
   
       // detach onAuth listener.
       self.root.offAuth(authHandler);
@@ -203,9 +163,8 @@
       link: function(scope, el, attrs, firebase) {
   
         var authOK = false;
-        firebase.onProfile(profileListener);
   
-        function profileListener() {
+        scope.$on('angular-fireproof:profile', function() {
   
           if (attrs.authCondition) {
   
@@ -223,7 +182,7 @@
   
           }
   
-        }
+        });
   
         el.on('click', function() {
   
@@ -261,13 +220,6 @@
   
         });
   
-        scope.$on('$destroy', function() {
-  
-          // clear the listener.
-          firebase.offProfile(profileListener);
-  
-        });
-  
       }
   
     };
@@ -293,10 +245,9 @@
   
         var block, childScope, previousElements;
   
-        firebase.onProfile(profileListener);
+        scope.$on('angular-fireproof:profile', function() {
   
-        function profileListener() {
-  
+          console.log('heard profile!!!');
           var authOK;
           if (attrs.authIf) {
   
@@ -373,10 +324,6 @@
   
           }
   
-        }
-  
-        scope.$on('$destroy', function() {
-          firebase.offProfile(profileListener);
         });
   
       }
@@ -421,9 +368,7 @@
       require: '^firebase',
       link: function(scope, el, attrs, firebase) {
   
-        firebase.onProfile(profileListener);
-  
-        function profileListener() {
+        scope.$on('angular-fireproof:profile', function() {
   
           var authOK;
           if (attrs.authShow) {
@@ -448,10 +393,6 @@
             el.removeClass('show');
           }
   
-        }
-  
-        scope.$on('$destroy', function() {
-          firebase.offProfile(profileListener);
         });
   
       }
