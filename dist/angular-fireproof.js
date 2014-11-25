@@ -19,14 +19,13 @@
   'use strict';
     
   angular.module('angular-fireproof', [
+    'angular-fireproof.services.Fireproof',
     'angular-fireproof.services.status',
     'angular-fireproof.directives.firebase',
+    'angular-fireproof.directives.fp',
     'angular-fireproof.directives.fpBind',
     'angular-fireproof.directives.fpPage',
-    'angular-fireproof.directives.authIf',
-    'angular-fireproof.directives.authShow',
-    'angular-fireproof.directives.authClick',
-    'angular-fireproof.services.Fireproof'
+    'angular-fireproof.directives.loginClick'
   ]);
   
   
@@ -38,16 +37,14 @@
     $q,
     $scope,
     $attrs,
-    Firebase,
-    Fireproof
+    Firebase
   ) {
   
-    var self = this,
-      userRef,
-      userListener;
+    var self = this;
   
     var authErrorMessage = 'auth-handler is not set for this firebase. All ' +
       'authentication requests are therefore rejected.';
+  
   
     self.login = function(options) {
   
@@ -59,345 +56,70 @@
   
     };
   
+    $scope.$login = self.login;
+  
+  
     function authHandler(authData) {
   
-      if (userListener) {
+      setTimeout(function() {
   
-        // detach any previous user listener.
-        userRef.off('value', userListener);
-        userRef = null;
-        userListener = null;
+        $scope.$apply(function() {
   
-      }
+          self.auth = authData;
+          $scope.$auth = authData;
+          if (authData && authData.uid) {
+            $scope.$userId = authData.uid;
+          }
   
-      self.auth = authData;
-  
-      $scope.$broadcast('angular-fireproof:auth', self.auth);
-  
-      // get the user's profile object, if one exists
-      if (self.auth && self.auth.provider !== 'anonymous' && self.auth.uid && $attrs.profilePath) {
-  
-        userRef = self.root.child($attrs.profilePath).child(self.auth.uid);
-        userListener = userRef.on('value', function(snap) {
-  
-          self.profile = snap.val();
-  
-          $scope.$broadcast('angular-fireproof:profile', self.profile);
+          if ($attrs.onAuthChange) {
+            $scope.$evalAsync($attrs.onAuthChange);
+          }
   
         });
   
-      } else {
-  
-        if (self.auth && self.auth.provider === 'custom' && self.auth.uid === null) {
-  
-          // superuser!
-          self.profile = { super: true };
-  
-        } else {
-  
-          // nobody.
-          self.profile = null;
-  
-        }
-  
-        $scope.$broadcast('angular-fireproof:profile', self.profile);
-  
-      }
+      }, 0);
   
     }
   
   
-    function attachFireproof() {
+    function cleanup() {
+  
+      // detach any remaining listeners here.
+      self.root.offAuth(authHandler);
+  
+      // detach all listeners to prevent leaks.
+      self.root.off();
+  
+      // clear auth data
+      delete self.auth;
+      delete $scope.$auth;
+      delete $scope.$userId;
+  
+    }
+  
+    function attachFirebase() {
   
       if (self.root) {
-  
-        // detach any remaining listeners here.
-        self.root.offAuth(authHandler);
-        self.root.off();
-  
-        // clear the profile and auth
-        delete self.auth;
-        delete self.profile;
+        cleanup();
   
       }
   
-      self.root = new Fireproof(new Firebase($attrs.firebase));
+      $scope.$auth = null;
+      $scope.$userId = null;
+      self.root = new Firebase($attrs.firebase);
       self.root.onAuth(authHandler);
   
     }
   
   
-    $attrs.$observe('firebase', attachFireproof);
+    $attrs.$observe('firebase', attachFirebase);
   
     // always run attach at least once
     if ($attrs.firebase) {
-      attachFireproof();
+      attachFirebase();
     }
   
-  
-    $scope.$on('$destroy', function() {
-  
-      // detach onAuth listener.
-      self.root.offAuth(authHandler);
-  
-      // detach all remaining listeners to prevent leaks.
-      self.root.off();
-  
-      // help out GC.
-      userRef = null;
-      userListener = null;
-  
-    });
-  
-  });
-  
-  
-  angular.module('angular-fireproof.directives.authClick', [
-    'angular-fireproof.directives.firebase'
-  ])
-  .directive('authClick', function($log) {
-  
-    return {
-      restrict: 'A',
-      require: '^firebase',
-      link: function(scope, el, attrs, firebase) {
-  
-        var authOK = false;
-  
-        scope.$on('angular-fireproof:profile', function() {
-  
-          if (attrs.authCondition) {
-  
-            authOK = scope.$eval(attrs.authCondition, {
-              $auth: firebase.$auth,
-              $profile: firebase.$profile
-            });
-  
-          } else {
-  
-            // by default, we check to see if the user is authed at all.
-            authOK = angular.isDefined(firebase.$auth) &&
-              firebase.$auth !== null &&
-              firebase.$auth.provider !== 'anonymous';
-  
-          }
-  
-        });
-  
-        el.on('click', function() {
-  
-          if (authOK) {
-  
-            // auth check passed, perform the action
-            scope.$eval(attrs.authClick, {
-              $auth: firebase.$auth,
-              $user: firebase.$user
-            });
-  
-          } else {
-  
-            // Perform login check, then the action if it passes.
-            firebase.login()
-            .then(function() {
-  
-              // auth check passed, perform the action
-              scope.$eval(attrs.authClick, {
-                $auth: firebase.$auth,
-                $user: firebase.$user
-              });
-  
-            }, function(err) {
-  
-              // auth check FAILED, call the error handler if it exists.
-              $log.debug(err);
-              if (attrs.onAuthError) {
-                scope.$eval(attrs.onAuthError, { $error: err });
-              }
-  
-            });
-  
-          }
-  
-        });
-  
-      }
-  
-    };
-  
-  });
-  
-  
-  angular.module('angular-fireproof.directives.authIf', [
-    'angular-fireproof.directives.firebase'
-  ])
-  .directive('authIf', function($animate) {
-  
-    return {
-  
-      restrict: 'A',
-      transclude: 'element',
-      scope: true,
-      priority: 600,
-      terminal: true,
-      require: '^firebase',
-  
-      link: function(scope, el, attrs, firebase, transclude) {
-  
-        var block, childScope, previousElements;
-  
-        scope.$on('angular-fireproof:profile', function() {
-  
-          console.log('heard profile!!!');
-          var authOK;
-          if (attrs.authIf) {
-  
-            authOK = scope.$eval(attrs.authIf, {
-              $auth: firebase.auth,
-              $profile: firebase.profile
-            });
-  
-          } else {
-  
-            // by default, we check to see if the user is authed at all.
-            authOK = angular.isDefined(firebase.$auth) &&
-              firebase.$auth !== null &&
-              firebase.$auth.provider !== 'anonymous';
-  
-          }
-  
-          if (authOK) {
-  
-            if (!childScope) {
-  
-              childScope = scope.$new();
-              transclude(childScope, function (clone) {
-  
-                clone[clone.length++] = document.createComment(' end authIf: ' + attrs.authIf + ' ');
-                // Note: We only need the first/last node of the cloned nodes.
-                // However, we need to keep the reference to the jqlite wrapper as it might be changed later
-                // by a directive with templateUrl when its template arrives.
-                block = {
-                  clone: clone
-                };
-  
-                $animate.enter(clone, el.parent(), el);
-  
-              });
-  
-            }
-  
-          } else {
-  
-            if (previousElements) {
-              previousElements.remove();
-              previousElements = null;
-            }
-            if (childScope) {
-              childScope.$destroy();
-              childScope = null;
-            }
-            if (block) {
-  
-              previousElements = (function getBlockNodes(nodes) {
-                var node = nodes[0];
-                var endNode = nodes[nodes.length - 1];
-                var blockNodes = [node];
-  
-                do {
-                  node = node.nextSibling;
-                  if (!node) {
-                    break;
-                  }
-                  blockNodes.push(node);
-                } while (node !== endNode);
-  
-                return angular.element(blockNodes);
-              })(block.clone);
-  
-              $animate.leave(previousElements, function() {
-                previousElements = null;
-              });
-  
-              block = null;
-  
-            }
-  
-          }
-  
-        });
-  
-      }
-  
-    };
-  
-  });
-  
-  
-  // by default we need this directive to be invisible. write some CSS classes
-  // to head right here.
-  
-  (function() {
-  
-    var css = '[auth-show]:not(.show) { display:none; }';
-  
-    try {
-  
-      var head = document.getElementsByTagName('head')[0];
-      var s = document.createElement('style');
-      s.setAttribute('type', 'text/css');
-      if (s.styleSheet) { // IE
-        s.styleSheet.cssText = css;
-      } else { // others
-        s.appendChild(document.createTextNode(css));
-      }
-  
-      head.appendChild(s);
-  
-    } catch(e) {}
-  
-  })();
-  
-  angular.module('angular-fireproof.directives.authShow', [
-    'angular-fireproof.directives.firebase'
-  ])
-  .directive('authShow', function() {
-  
-    return {
-  
-      restrict: 'A',
-      require: '^firebase',
-      link: function(scope, el, attrs, firebase) {
-  
-        scope.$on('angular-fireproof:profile', function() {
-  
-          var authOK;
-          if (attrs.authShow) {
-  
-            authOK = scope.$eval(attrs.authShow, {
-              $auth: firebase.auth,
-              $profile: firebase.profile
-            });
-  
-          } else {
-  
-            // by default, we check to see if the user is authed at all.
-            authOK = angular.isDefined(firebase.$auth) &&
-              firebase.auth !== null &&
-              firebase.auth.provider !== 'anonymous';
-  
-          }
-  
-          if (authOK) {
-            el.addClass('show');
-          } else {
-            el.removeClass('show');
-          }
-  
-        });
-  
-      }
-  
-    };
+    $scope.$on('$destroy', cleanup);
   
   });
   
@@ -412,7 +134,100 @@
   
       restrict: 'A',
       scope: true,
-      controller: 'FirebaseCtl'
+      controller: 'FirebaseCtl',
+      link: function(scope, el, attrs, firebase) {
+  
+        var watchers = {},
+          values = {},
+          arrayWatchers = {},
+          arrays = {};
+  
+  
+        scope.$val = function() {
+  
+          // check the arguments
+          var args = Array.prototype.slice(arguments, 0),
+            path = args.join('/');
+            console.log(path);
+          if (args.length === 0 || path === '' ||
+            args.indexOf(null) !== -1 || args.indexOf(undefined) !== -1) {
+  
+            // if any one of them is null/undefined, this is not a valid path
+            return;
+  
+          }
+  
+          if (!watchers[path]) {
+  
+            values[path] = null;
+            watchers[path] = firebase.root.child(path)
+            .on('value', function(snap) {
+  
+              scope.$apply(function() {
+                values[path] = snap.val();
+              });
+  
+            });
+  
+          }
+  
+          return values[path];
+  
+        };
+  
+  
+        scope.$array = function() {
+  
+          // check the arguments
+          var args = Array.prototype.slice(arguments, 0);
+          if (args.indexOf(null) !== -1 || args.indexOf(undefined) !== -1) {
+  
+            // if any one of them is null/undefined, this is not a valid path
+            return;
+  
+          }
+  
+          var path = args.join('/');
+  
+          if (!arrayWatchers[path]) {
+  
+            arrays[path] = [];
+            arrayWatchers[path] = firebase.root.child(path)
+            .on('value', function(snap) {
+  
+              scope.$apply(function() {
+  
+                // iterate the children in priority order and push them on the array.
+                snap.forEach(function(child) {
+                  arrays[path].push(child.val());
+                });
+  
+  
+              });
+  
+            });
+  
+          }
+  
+          return arrays[path];
+  
+        };
+  
+  
+        scope.$on('$destroy', function() {
+  
+          // remove all listeners
+          angular.forEach(watchers, function(watcher, path) {
+            firebase.root.child(path).off('value', watcher);
+          });
+  
+          angular.forEach(arrayWatchers, function(watcher, path) {
+            firebase.root.child(path).off('value', watcher);
+          });
+  
+        });
+  
+      }
   
     };
   
@@ -424,7 +239,7 @@
     'angular-fireproof.directives.firebase',
     'angular-fireproof.services.status'
   ])
-  .directive('fpBind', function($q, _fireproofStatus) {
+  .directive('fpBind', function() {
   
     return {
   
@@ -433,108 +248,30 @@
       require: '^firebase',
       link: function(scope, el, attrs, firebase) {
   
-        var fpWatcher, scopeWatchCancel, currentSnap, firstLoad;
+        var ref, snap, listener, removeScopeListener;
   
-        function loadOK(snap) {
-  
-          if (scopeWatchCancel) {
-            scopeWatchCancel();
-          }
-  
-          currentSnap = snap;
-  
-          if (!firstLoad) {
-            firstLoad = true;
-            _fireproofStatus.finish(firebase.root.child(attrs.fpBind).toString());
-          }
-  
-          delete scope.$fireproofError;
-          scope[attrs.as] = currentSnap.val();
-  
-          if (attrs.sync) {
-  
-            scopeWatchCancel = scope.$watch(attrs.as, function(newVal) {
-  
-              if (newVal !== undefined && !angular.equals(newVal, currentSnap.val())) {
-                scope.$sync(newVal);
-              }
-  
-            });
-  
-          }
-  
-          if (attrs.onLoad) {
-             scope.$eval(attrs.onLoad, { '$snap': snap });
-          }
-  
-          scope.$syncing = false;
-  
-        }
+        scope.$attached = false;
+        scope.$syncing = false;
   
   
-        function loadError(err) {
+        var setError = function(err) {
   
-          currentSnap = null;
-  
-          if (!firstLoad) {
-            firstLoad = true;
-            _fireproofStatus.finish(firebase.root.child(attrs.fpBind).toString());
-          }
-  
-          scope.$fireproofError = err;
-          scope.syncing = false;
-  
-          var code = err.code.toLowerCase().replace(/[^a-z]/g, '-');
-          var lookup = attrs.$attr['on-' + code];
-  
-          if (attrs[lookup]) {
-            scope.$eval(attrs[lookup], { '$error': err });
-          } else if (attrs.onError) {
-            scope.$eval(attrs.onError, { '$error': err });
-          }
-  
-  
-        }
-  
-  
-        scope.$reload = function() {
-  
-          if (!scope.$syncing) {
-  
-            firstLoad = false;
-  
-            delete scope.$fireproofError;
-            scope.$syncing = true;
-  
-            if (fpWatcher) {
-              firebase.root.child(attrs.fpBind).off('value', fpWatcher);
-            }
-  
-            if (scopeWatchCancel) {
-              scopeWatchCancel();
-            }
-  
-            _fireproofStatus.start(firebase.root.child(attrs.fpBind).toString());
-  
-            if (attrs.watch) {
-              fpWatcher = firebase.root.child(attrs.fpBind)
-              .on('value', loadOK, loadError);
-            } else {
-              firebase.root.child(attrs.fpBind)
-              .once('value', loadOK, loadError);
-            }
-  
+          scope.$error = err;
+          if (attrs.onError) {
+            scope.$evalAsync(attrs.onError);
           }
   
         };
   
   
-        // this function is a no-op if sync is set.
         scope.$revert = function() {
   
-          if (!attrs.sync && currentSnap) {
-            scope[attrs.as] = currentSnap.val();
+          if (scope.$attached) {
+            scope.$detach();
+            scope.$attached = false;
           }
+  
+          scope.$attach();
   
         };
   
@@ -544,120 +281,141 @@
           if (!scope.$syncing) {
   
             scope.$syncing = true;
-            delete scope.$fireproofError;
   
-            // if there's another location we're supposed to save to,
-            // save there also
-            var savePromises = [];
+            var value = scope[attrs.as || '$val'];
+            if (value === undefined) {
+              value = null;
+            }
   
-            savePromises.push(firebase.root.child(attrs.fpBind)
-            .set(scope[attrs.as]));
+            var priority = scope.$priority;
+            if (priority === undefined) {
+              priority = null;
+            }
   
-            if (attrs.linkTo) {
+            if (value !== snap.val() || priority !== snap.getPriority()) {
   
-              savePromises.push(
-                firebase.root.child(attrs.linkTo)
-                .set(scope[attrs.as]));
+              ref.setWithPriority(value, priority, function(err) {
+  
+                setTimeout(function() { scope.$apply(function() {
+  
+                  if (err) {
+                    setError(err);
+                  }
+  
+                }); }, 0);
+  
+              });
   
             }
   
-            return $q.all(savePromises)
-            .then(function() {
+          }
   
-              if (attrs.onSave) {
-                scope.$eval(attrs.onSave);
+        };
+  
+        scope.$detach = function() {
+  
+          if (listener) {
+            ref.off('value', listener);
+          }
+  
+          if (removeScopeListener) {
+            removeScopeListener();
+          }
+  
+          scope.$attached = false;
+  
+        };
+  
+  
+        scope.$attach = function() {
+  
+          listener = ref.on('value', function(newSnap) {
+  
+            setTimeout(function() { scope.$apply(function() {
+  
+              snap = newSnap;
+  
+              if (!scope.$attached) {
+                scope.$attached = true;
               }
   
-            })
-            .catch(function(err) {
-  
-              scope.$fireproofError = err;
-  
-              var code = err.code.toLowerCase().replace(/[^a-z]/g, '-');
-              var lookup = attrs.$attr['on-' + code];
-  
-              if (attrs[lookup]) {
-                scope.$eval(attrs[lookup], { '$error': err });
-              } else if (attrs.onError) {
-                scope.$eval(attrs.onError, { '$error': err });
+              if (removeScopeListener) {
+                removeScopeListener();
               }
   
-            })
-            .finally(function() {
-              scope.$syncing = false;
+              scope.$name = snap.name();
+              scope.$val = snap.val();
+              scope.$priority = snap.getPriority();
+  
+              if (attrs.as) {
+                scope[attrs.as] = snap.val();
+              }
+  
+              if (attrs.onLoad) {
+                scope.$evalAsync(attrs.onLoad);
+              }
+  
+              if (scope.$syncing) {
+                scope.$syncing = false;
+  
+                if (attrs.onSync) {
+                  scope.$evalAsync(attrs.onSync);
+                }
+  
+              }
+  
+              if (attrs.autosync) {
+  
+                var watchExpression = '{ ' +
+                  'value: ' + (attrs.as || '$val') + ',' +
+                  'priority: $priority' +
+                  ' }';
+  
+                removeScopeListener = scope.$watch(watchExpression, function() {
+                  scope.$sync();
+                }, true);
+  
+              }
+  
+            }); }, 0);
+  
+          }, function(err) {
+  
+            setTimeout(function() { scope.$apply(function() {
+  
+              scope.$detach();
+              setError(err);
+  
             });
   
-          }
+          }); }, 0);
   
         };
   
   
         attrs.$observe('fpBind', function(path) {
   
-          delete scope.$fireproofError;
+          path = path || '';
+          if (scope.$attached) {
+            scope.$detach();
+            scope.$attached = false;
+          }
   
-          if (path[path.length-1] === '/') {
-            // this is an incomplete eval. we're done.
+          // If any of the following four conditions arise in the path:
+          // 1. The path is the empty string
+          // 2. two slashes appear together
+          // 3. there's a trailing slash
+          // 4. there's a leading slash
+          // we assume there's an incomplete interpolation and don't attach
+          if (path.length === 0 ||
+            path.match(/\/\//) ||
+            path.charAt(0) === '/' ||
+            path.charAt(path.length-1) === '/') {
             return;
-          } else if (!attrs.as) {
-            throw new Error('Missing "as" attribute on fp-bind="' + attrs.fpBind + '"');
           }
   
-          // shut down everything.
-  
-          if (scopeWatchCancel) {
-            scopeWatchCancel();
-          }
-  
-          scope.$reload();
-  
-        });
-  
-        scope.$on('$destroy', function() {
-  
-          // if this scope object is destroyed, finalize the controller and
-          // cancel the Firebase watcher if one exists
-  
-          if (fpWatcher) {
-            firebase.root.child(attrs.fpBind).off('value', fpWatcher);
-          }
-  
-          if (scopeWatchCancel) {
-            scopeWatchCancel();
-          }
-  
-          // finalize as a favor to GC
-          fpWatcher = null;
-          scopeWatchCancel = null;
-          currentSnap = null;
-  
-        });
-  
-  
-        scope.$watch('$syncing', function(syncing) {
-  
-          if (syncing) {
-            el.addClass('syncing');
-          } else {
-            el.removeClass('syncing');
-          }
-  
-        });
-  
-  
-        scope.$watch('$fireproofError', function(error, oldError) {
-  
-          var code;
-  
-          if (oldError) {
-            code = oldError.code.toLowerCase().replace(/\W/g, '-');
-            el.removeClass('fireproof-error-' + code);
-          }
-  
-          if (error) {
-            code = error.code.toLowerCase().replace(/\W/g, '-');
-            el.addClass('fireproof-error-' + code);
-          }
+          ref = firebase.root.child(path);
+          scope.$attach();
   
         });
   
@@ -673,223 +431,125 @@
     'angular-fireproof.directives.firebase',
     'angular-fireproof.services.status'
   ])
-  .directive('fpPage', function($q) {
+  .directive('fpPage', function($q, Fireproof) {
   
     return {
   
       restrict: 'A',
       scope: true,
       require: '^firebase',
-      link: function(scope, el, attrs, fireproof) {
+      link: function(scope, el, attrs, firebase) {
   
-        var ref, pager, paging;
+        var ref, pager, direction;
   
-        function handleSnaps(snaps) {
+        var setPage = function(snaps) {
   
-          paging = false;
+          el.removeAttr('paging');
+          scope.$paging = false;
   
-          if (snaps.length > 0) {
-  
-            scope[attrs.as] = snaps.map(function(snap) {
-              return snap.val();
-            });
-  
-            scope[attrs.as].$keys = snaps.map(function(snap) {
-              return snap.name();
-            });
-  
-            scope[attrs.as].$priorities = snaps.map(function(snap) {
-              return snap.getPriority();
-            });
-  
-            scope[attrs.as].$next = function() {
-              scope.$next();
-            };
-  
-            scope[attrs.as].$previous = function() {
-              scope.$previous();
-            };
-  
-            scope[attrs.as].$reset = function() {
-              scope.$reset();
-            };
-  
-            if (attrs.onPage) {
-              scope.$eval(attrs.onPage, { '$snaps': snaps });
-            }
-  
+          if (direction === 'next') {
+            scope.$hasNext = snaps.length > 0;
+          } else if (direction === 'previous') {
+            scope.$hasPrevious = snaps.length > 0;
+          } else {
+            throw new Error('ASSERTION FAILED: Direction somehow wasn\'t set in setPage!');
           }
   
-          return snaps;
+          scope.$keys = snaps.map(function(snap) {
+            return snap.name();
+          });
   
-        }
+          scope.$values = snaps.map(function(snap) {
+            return snap.val();
+          });
   
+          scope.$priorities = snaps.map(function(snap) {
+            return snap.getPriority();
+          });
   
-        function handleError(err) {
-  
-          paging = false;
-  
-          var code = err.code.toLowerCase().replace(/[^a-z]/g, '-');
-          var lookup = attrs.$attr['on-' + code];
-  
-          if (attrs[lookup]) {
-            scope.$eval(attrs[lookup], { '$error': err });
-          } else if (attrs.onError) {
-            scope.$eval(attrs.onError, { '$error': err });
+          if (attrs.as) {
+            scope[attrs.as] = scope.$values;
           }
   
-        }
+          if (attrs.onPage) {
+            scope.$evalAsync(attrs.onPage);
+          }
   
+        };
+  
+        var handleError = function(err) {
+  
+          el.removeAttr('paging');
+          scope.$paging = false;
+  
+          scope.$error = err;
+          if (attrs.onError) {
+            scope.$evalAsync(attrs.onError);
+          }
+  
+        };
   
         scope.$next = function() {
   
-          if (scope.$hasNext && !paging) {
+          if (pager && !scope.$paging) {
   
-            paging = true;
+            el.attr('paging', '');
+            scope.$paging = true;
+            direction = 'next';
+            return pager.next(parseInt(attrs.limit) || 5)
+            .then(setPage, handleError);
   
-            var limit;
-            if (attrs.limit) {
-              limit = parseInt(scope.$eval(attrs.limit));
-            } else {
-              limit = 5;
-            }
-  
-            return pager.next(limit)
-            .then(handleSnaps, handleError)
-            .then(function(snaps) {
-  
-              scope.$hasPrevious = true;
-              scope.$hasNext = snaps.length > 0;
-  
-              return snaps;
-  
-            });
-  
-          } else if (paging) {
-            return $q.reject(new Error('cannot call $next from here, no more objects'));
-          } else {
-            return $q.reject(new Error('cannot call $next from here, no more objects'));
+          } else if (!scope.$paging) {
+            return $q.reject(new Error('Pager does not exist. Has fp-page been set yet?'));
           }
   
         };
-  
   
         scope.$previous = function() {
   
-          // set position to the first item in the current list
-          if (scope.$hasPrevious && !paging) {
+          if (pager && !scope.$paging) {
   
-            paging = true;
+            el.attr('paging', '');
+            scope.$paging = true;
+            direction = 'previous';
+            return pager.previous(parseInt(attrs.limit) || 5)
+            .then(setPage, handleError);
   
-            var limit;
-            if (attrs.limit) {
-              limit = parseInt(scope.$eval(attrs.limit));
-            } else {
-              limit = 5;
-            }
-  
-            return pager.previous(limit)
-            .then(handleSnaps, handleError)
-            .then(function(snaps) {
-  
-              scope.$hasNext = true;
-              scope.$hasPrevious = snaps.length > 0;
-              return snaps;
-  
-            });
-  
-          } else {
-            return $q.reject(new Error('cannot call $next from here, no more objects'));
+          } else if (!scope.$paging) {
+            return $q.reject(new Error('Pager does not exist. Has fp-page been set yet?'));
           }
   
-  
         };
-  
   
         scope.$reset = function() {
   
           scope.$hasNext = true;
-          scope.$hasPrevious = true;
+          scope.$hasPrevious = false;
   
-  
-          // create the pager.
-          var limit;
-          if (attrs.limit) {
-            limit = parseInt(scope.$eval(attrs.limit));
-          } else {
-            limit = 5;
-          }
-          pager = new Fireproof.Pager(ref, limit);
-  
-          if (attrs.startAtPriority && attrs.startAtName) {
-  
-            pager.setPosition(
-              scope.$eval(attrs.startAtPriority),
-              scope.$eval(attrs.startAtName));
-  
-          } else if (attrs.startAtPriority) {
-            pager.setPosition(scope.$eval(attrs.startAtPriority));
-          }
-  
-          // pull the first round of results out of the pager.
-          paging = true;
-          return pager.then(handleSnaps, handleError)
-          .then(function(snaps) {
-  
-            scope.$hasPrevious = false;
-            scope.$hasNext = true;
-  
-            return snaps;
-  
-          });
+          pager = new Fireproof.Pager(new Fireproof(ref));
+          return scope.$next();
   
         };
   
-  
         attrs.$observe('fpPage', function(path) {
   
-          if (path[path.length-1] === '/') {
-            // this is an incomplete eval. we're done.
+          path = path || '';
+  
+          // If any of the following four conditions arise in the path:
+          // 1. The path is the empty string
+          // 2. two slashes appear together
+          // 3. there's a trailing slash
+          // 4. there's a leading slash
+          // we assume there's an incomplete interpolation and don't attach
+          if (path.length === 0 ||
+            path.match(/\/\//) ||
+            path.charAt(0) === '/' ||
+            path.charAt(path.length-1) === '/') {
             return;
-          } else if (!attrs.as) {
-            throw new Error('Missing "as" attribute on fp-page="' + attrs.fpPage + '"');
           }
   
-          ref = fireproof.root.child(path);
-  
-          // shut down everything.
+          ref = firebase.root.child(path);
           scope.$reset();
-  
-        });
-  
-  
-        scope.$on('$destroy', function() {
-  
-          // if this scope object is destroyed, finalize the controller
-          ref = null;
-          pager = null;
-  
-        });
-  
-        scope.$watch('$syncing', function(syncing) {
-  
-          if (syncing) {
-            el.addClass('syncing');
-          } else {
-            el.removeClass('syncing');
-          }
-  
-        });
-  
-        scope.$watch('$fireproofError', function(error, oldError) {
-  
-          if (oldError) {
-            el.removeClass('fireproof-error-' + oldError.code);
-          }
-  
-          if (error) {
-            el.addClass('fireproof-error-' + error.code);
-          }
   
         });
   

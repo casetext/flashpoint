@@ -1,86 +1,172 @@
 
 describe('fpBind', function() {
 
-  var root;
-  var $scope;
+  var root = new Firebase(window.__env__.FIREBASE_TEST_URL);
 
-  beforeEach(function(done) {
+  beforeEach(function() {
 
     module('angular-fireproof.directives.firebase');
     module('angular-fireproof.directives.fpBind');
-    module('angular-firebase.mocks');
 
-    inject(function(Fireproof) {
-      root = new Fireproof(new Firebase(window.__env__.FIREBASE_TEST_URL));
+  });
+
+  it('evaluates on-error and sets $fireproofError in case of error', function(done) {
+
+    inject(function($rootScope, $compile) {
+
+      var element = angular.element('<div ' +
+        'firebase="' + window.__env__.FIREBASE_TEST_URL + '" ' +
+        'fp-bind="invalid/thing" as="object"' +
+        'on-load="done()" on-error="done($error)"></div>');
+
+      $rootScope.done = function($error) {
+
+        try {
+          expect($error).to.be.an('object');
+          expect($error).to.equal(element.scope().$error);
+          done();
+        } catch(e) { done(e); }
+
+      };
+
+      $compile(element)($rootScope);
+      $rootScope.$digest();
+
     });
 
-    return root.authWithCustomToken(window.__env__.FIREBASE_TEST_SECRET, function() {
+  });
 
-      inject(function($compile, $rootScope) {
 
-        var firstDone = false;
-        $rootScope.done = function(error) {
+  describe('given valid auth', function() {
 
-          if (!firstDone) {
-            firstDone = true;
-            done(error);
-          }
+    before(function(done) {
 
-        };
+      this.timeout(5000);
+
+      root.child('test/something').setWithPriority('cool', 5, function() {
+        root.unauth();
+        done();
+      });
+
+    });
+
+    it('sets the name, val, and priority of the reference on scope', function(done) {
+
+      inject(function($rootScope, $compile) {
+
         var element = angular.element('<div ' +
           'firebase="' + window.__env__.FIREBASE_TEST_URL + '" ' +
-          'fp-bind="things/something" as="object" watch="true" sync="true" ' +
-          'on-load="done()" on-error="done($error)" link-to="things/else"' +
-          '></div>');
+          'fp-bind="test/something" as="object" ' +
+          'on-load="done()" on-error="err($error)"></div>');
 
         $compile(element)($rootScope);
-        $scope = element.scope();
+        var $scope = element.scope();
+
+        $rootScope.err = done;
+        $rootScope.done = function() {
+
+          expect($scope.$error).to.be.undefined;
+          expect($scope.$val).to.equal('cool');
+          expect($scope.object).to.equal('cool');
+          expect($scope.$priority).to.equal(5);
+
+          $scope.$destroy();
+          done();
+
+        };
+
+        $rootScope.$digest();
 
       });
 
     });
 
-  });
+    it('watches the value for changes and updates it', function(done) {
 
-  it('assigns the value of the reference to the value in "as"', function() {
-    expect(angular.isDefined($scope.object)).to.be.true;
-  });
+      var element;
 
-  it('watches the value for changes and updates it', function(done) {
+      inject(function($rootScope, $compile) {
 
-    $scope.$watch('object', function(object) {
+        element = angular.element('<div ' +
+          'firebase="' + window.__env__.FIREBASE_TEST_URL + '" ' +
+          'fp-bind="test/something" as="object" ' +
+          'on-load="done()" on-error="err($error)"></div>');
 
-      if (object === 'foobar') {
-        done();
-      }
+        $compile(element)($rootScope);
+        var $scope = element.scope();
+
+        $rootScope.done = function() {
+
+          root.child('test/something')
+          .setWithPriority('foobar', 7, function() {
+
+            expect($scope.$error).to.be.undefined;
+            expect($scope.object).to.equal('foobar');
+            expect($scope.$val).to.equal('foobar');
+            expect($scope.$priority).to.equal(7);
+
+            $scope.$destroy();
+            done();
+
+          });
+
+        };
+
+        $rootScope.err = done;
+        $rootScope.$digest();
+
+      });
 
     });
 
-    root.child('things/something').set('foobar');
 
-  });
+    it('can sync changes to the object back to Firebase', function(done) {
 
-  it('can sync changes to the object back to Firebase', function(done) {
+      var element;
 
-    root.child('things/something')
-    .on('value', function(snap) {
+      inject(function($rootScope, $timeout, $compile) {
 
-      if (snap.val() === 'bazquux') {
-        root.child('things/something').off('value');
-        done();
-      }
+        element = angular.element('<div ' +
+          'firebase="' + window.__env__.FIREBASE_TEST_URL + '" ' +
+          'fp-bind="test/something" as="synctest"' +
+          'on-error="error($error)" on-load="loaded()" on-sync="synced()"></div>');
 
-    });
+        $compile(element)($rootScope);
+        var $scope = element.scope();
+        var firstRun;
 
-    $scope.object = 'bazquux';
+        $rootScope.loaded = function() {
 
-  });
+          if (!firstRun) {
 
-  it('can also save those changes elsewhere via link-to', function() {
+            $scope.synctest = 'bazquux';
+            $scope.$priority = 9;
 
-    return root.child('things/else')
-    .then(function(snap) {
-      expect(snap.val()).to.equal('bazquux');
+            firstRun = true;
+            $scope.$sync();
+
+          }
+
+        };
+
+        $rootScope.synced = function() {
+
+          setTimeout(function() {
+
+            root.child('test/something').once('value', function(snap) {
+              expect(snap.val()).to.equal('bazquux');
+              expect(snap.getPriority()).to.equal(9);
+              done();
+            });
+
+          }, 250);
+
+        };
+        $rootScope.error = done;
+        $rootScope.$digest();
+
+      });
+
     });
 
   });

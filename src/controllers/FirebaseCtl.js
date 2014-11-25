@@ -7,16 +7,14 @@ angular.module('angular-fireproof.controllers.FirebaseCtl', [
   $q,
   $scope,
   $attrs,
-  Firebase,
-  Fireproof
+  Firebase
 ) {
 
-  var self = this,
-    userRef,
-    userListener;
+  var self = this;
 
   var authErrorMessage = 'auth-handler is not set for this firebase. All ' +
     'authentication requests are therefore rejected.';
+
 
   self.login = function(options) {
 
@@ -28,94 +26,69 @@ angular.module('angular-fireproof.controllers.FirebaseCtl', [
 
   };
 
+  $scope.$login = self.login;
+
+
   function authHandler(authData) {
 
-    if (userListener) {
+    setTimeout(function() {
 
-      // detach any previous user listener.
-      userRef.off('value', userListener);
-      userRef = null;
-      userListener = null;
+      $scope.$apply(function() {
 
-    }
+        self.auth = authData;
+        $scope.$auth = authData;
+        if (authData && authData.uid) {
+          $scope.$userId = authData.uid;
+        }
 
-    self.auth = authData;
-
-    $scope.$broadcast('angular-fireproof:auth', self.auth);
-
-    // get the user's profile object, if one exists
-    if (self.auth && self.auth.provider !== 'anonymous' && self.auth.uid && $attrs.profilePath) {
-
-      userRef = self.root.child($attrs.profilePath).child(self.auth.uid);
-      userListener = userRef.on('value', function(snap) {
-
-        self.profile = snap.val();
-
-        $scope.$broadcast('angular-fireproof:profile', self.profile);
+        if ($attrs.onAuthChange) {
+          $scope.$evalAsync($attrs.onAuthChange);
+        }
 
       });
 
-    } else {
-
-      if (self.auth && self.auth.provider === 'custom' && self.auth.uid === null) {
-
-        // superuser!
-        self.profile = { super: true };
-
-      } else {
-
-        // nobody.
-        self.profile = null;
-
-      }
-
-      $scope.$broadcast('angular-fireproof:profile', self.profile);
-
-    }
+    }, 0);
 
   }
 
 
-  function attachFireproof() {
+  function cleanup() {
+
+    // detach any remaining listeners here.
+    self.root.offAuth(authHandler);
+
+    // detach all listeners to prevent leaks.
+    self.root.off();
+
+    // clear auth data
+    delete self.auth;
+    delete $scope.$auth;
+    delete $scope.$userId;
+
+  }
+
+  function attachFirebase() {
 
     if (self.root) {
-
-      // detach any remaining listeners here.
-      self.root.offAuth(authHandler);
-      self.root.off();
-
-      // clear the profile and auth
-      delete self.auth;
-      delete self.profile;
+      cleanup();
 
     }
 
-    self.root = new Fireproof(new Firebase($attrs.firebase));
+    $scope.$auth = null;
+    $scope.$userId = null;
+    self.root = new Firebase($attrs.firebase);
     self.root.onAuth(authHandler);
 
   }
 
 
-  $attrs.$observe('firebase', attachFireproof);
+  $attrs.$observe('firebase', attachFirebase);
 
   // always run attach at least once
   if ($attrs.firebase) {
-    attachFireproof();
+    attachFirebase();
   }
 
-
-  $scope.$on('$destroy', function() {
-
-    // detach onAuth listener.
-    self.root.offAuth(authHandler);
-
-    // detach all remaining listeners to prevent leaks.
-    self.root.off();
-
-    // help out GC.
-    userRef = null;
-    userListener = null;
-
-  });
+  $scope.$on('$destroy', cleanup);
 
 });

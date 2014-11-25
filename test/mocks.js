@@ -7,12 +7,7 @@ angular.module('angular-firebase.mocks', [
   Fireproof.setNextTick(function(fn) {
 
     setTimeout(function() {
-
-      $rootScope.$digest();
-      setTimeout(function() {
-        $rootScope.$apply(fn);
-      }, 0);
-
+      $rootScope.$apply(fn);
     }, 0);
 
   });

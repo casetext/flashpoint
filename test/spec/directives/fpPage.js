@@ -1,24 +1,21 @@
 
 describe('fpPage', function() {
 
-  var root = new Fireproof(new Firebase(window.__env__.FIREBASE_TEST_URL));
+  var root = new Firebase(window.__env__.FIREBASE_TEST_URL);
 
   var $scope;
 
   beforeEach(function(done) {
 
+    this.timeout(5000);
+
+    module('angular-firebase.mocks');
     module('angular-fireproof.directives.firebase');
     module('angular-fireproof.directives.fpPage');
-    module('angular-firebase.mocks');
 
-    inject(function(Fireproof) {
-      root = new Fireproof(new Firebase(window.__env__.FIREBASE_TEST_URL));
-    });
+    root.authWithCustomToken(window.__env__.FIREBASE_TEST_SECRET, function() {
 
-    root.authWithCustomToken(window.__env__.FIREBASE_TEST_SECRET)
-    .then(function() {
-
-      return root.child('angular-fireproof/things')
+      root.child('test/pager')
       .set({
         a: { '.value': 0, '.priority': null },
         b: { '.value': 1, '.priority': -1 },
@@ -30,10 +27,7 @@ describe('fpPage', function() {
         h: { '.value': 7, '.priority': 'b' },
         i: { '.value': 8, '.priority': 'c' },
         j: { '.value': 9, '.priority': 'd' },
-      });
-
-    })
-    .then(inject(function($compile, $rootScope) {
+      }, inject(function($compile, $rootScope) {
 
         var firstDone = false;
         $rootScope.done = function(err) {
@@ -44,28 +38,23 @@ describe('fpPage', function() {
         };
         var element = angular.element('<div ' +
           'firebase="' + window.__env__.FIREBASE_TEST_URL  + '" ' +
-          'fp-page="angular-fireproof/things" as="things" limit="3"' +
+          'fp-page="test/pager" as="things" limit="3"' +
           'on-page="done()" on-error="done($error)"' +
           '></div>');
 
         $compile(element)($rootScope);
         $scope = element.scope();
+        $rootScope.$digest();
 
-    }));
+      }));
 
-    // digest to set the promise going
-    inject(function($rootScope) {
-      $rootScope.$digest();
     });
 
   });
 
 
   it('has paging controls mounted directly on scope and on the object', function() {
-
-    expect($scope.things).to.contain.keys(['$next', '$previous', '$reset']);
     expect($scope).to.contain.keys(['$next', '$previous', '$reset']);
-
   });
 
   it('initially has the first page of results, ordered by priority', function() {
@@ -73,8 +62,8 @@ describe('fpPage', function() {
     expect(Array.isArray($scope.things)).to.be.true;
     expect($scope.things.length).to.equal(3);
     expect($scope.things).to.have.members([0, 1, 2]);
-    expect($scope.things.$priorities).to.deep.equal([null, -1, 0]);
-    expect($scope.things.$keys).to.deep.equal(['a', 'b', 'c']);
+    expect($scope.$priorities).to.deep.equal([null, -1, 0]);
+    expect($scope.$keys).to.deep.equal(['a', 'b', 'c']);
 
   });
 
@@ -84,8 +73,8 @@ describe('fpPage', function() {
     .then(function() {
 
       expect($scope.things).to.have.members([3, 4, 5]);
-      expect($scope.things.$priorities).to.deep.equal([1, 2, 3]);
-      expect($scope.things.$keys).to.deep.equal(['d', 'e', 'f']);
+      expect($scope.$priorities).to.deep.equal([1, 2, 3]);
+      expect($scope.$keys).to.deep.equal(['d', 'e', 'f']);
 
       return $scope.$next();
 
@@ -93,8 +82,8 @@ describe('fpPage', function() {
     .then(function() {
 
       expect($scope.things).to.have.members([6, 7, 8]);
-      expect($scope.things.$priorities).to.deep.equal(['a', 'b', 'c']);
-      expect($scope.things.$keys).to.deep.equal(['g', 'h', 'i']);
+      expect($scope.$priorities).to.deep.equal(['a', 'b', 'c']);
+      expect($scope.$keys).to.deep.equal(['g', 'h', 'i']);
 
       return $scope.$next();
 
@@ -102,8 +91,8 @@ describe('fpPage', function() {
     .then(function() {
 
       expect($scope.things).to.have.members([9]);
-      expect($scope.things.$priorities).to.deep.equal(['d']);
-      expect($scope.things.$keys).to.deep.equal(['j']);
+      expect($scope.$priorities).to.deep.equal(['d']);
+      expect($scope.$keys).to.deep.equal(['j']);
 
       return $scope.$next();
 
@@ -123,8 +112,8 @@ describe('fpPage', function() {
     .then(function() {
 
       expect($scope.things).to.have.members([0, 1, 2]);
-      expect($scope.things.$priorities).to.deep.equal([null, -1, 0]);
-      expect($scope.things.$keys).to.deep.equal(['a', 'b', 'c']);
+      expect($scope.$priorities).to.deep.equal([null, -1, 0]);
+      expect($scope.$keys).to.deep.equal(['a', 'b', 'c']);
 
       return $scope.$previous();
 
@@ -144,8 +133,8 @@ describe('fpPage', function() {
     .then(function() {
 
       expect($scope.things).to.have.members([0, 1, 2]);
-      expect($scope.things.$priorities).to.deep.equal([null, -1, 0]);
-      expect($scope.things.$keys).to.deep.equal(['a', 'b', 'c']);
+      expect($scope.$priorities).to.deep.equal([null, -1, 0]);
+      expect($scope.$keys).to.deep.equal(['a', 'b', 'c']);
 
     });
 

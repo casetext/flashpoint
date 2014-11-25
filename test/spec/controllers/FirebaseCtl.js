@@ -1,24 +1,68 @@
 
+
 describe('FirebaseCtl', function() {
 
-  var controller, $scope;
+  var controller, root, $scope;
 
-  beforeEach(function() {
+  before(function(done) {
 
-    module('angular-fireproof.controllers.FirebaseCtl');
+    this.timeout(10000);
+
+    root = new Firebase(window.__env__.FIREBASE_TEST_URL);
+
+    root.removeUser({
+      email: 'testy@testerson.com',
+      password: '12345'
+    }, function() {
+      root.createUser({
+        email: 'testy@testerson.com',
+        password: '12345'
+      }, function() {
+        done();
+      });
+    });
+
+
+  });
+
+  beforeEach(function(done) {
+
+    this.timeout(10000);
+
     module('angular-firebase.mocks');
+    module('angular-fireproof.controllers.FirebaseCtl');
 
     // generate the controller
-    inject(function($compile, $rootScope) {
+    inject(function($compile, $rootScope, $q) {
 
       var el = angular.element('<div ng-controller="FirebaseCtl" '+
         'firebase="' + window.__env__.FIREBASE_TEST_URL + '" ' +
+        'login-handler="handleLogin()" on-auth-change="done()"' +
         '></div>');
-      $scope = $rootScope.$new();
-      $compile(el)($scope);
-      $scope.$digest();
+
+      $rootScope.handleLogin = function() {
+
+        var deferred = $q.defer();
+
+        controller.root.authWithPassword({
+          email: 'testy@testerson.com',
+          password: '12345'
+        }, function(err) {
+          if (err) {
+            deferred.reject(err);
+          } else {
+            deferred.resolve();
+          }
+        });
+
+        return deferred.promise;
+
+      };
+
+      $rootScope.done = done;
+      $compile(el)($rootScope);
       controller = el.controller();
-      controller.root.unauth();
+      $scope = el.scope();
 
     });
 
@@ -28,47 +72,33 @@ describe('FirebaseCtl', function() {
     $scope.$destroy();
   });
 
-  it('has all the required properties and API endpoints', function() {
 
-    expect(controller).to.include.keys(['auth', 'profile', 'root']);
+  it('sets $auth, $userId, and $login on scope', function() {
 
-    ['onProfile', 'offProfile', 'login'].forEach(function(apiMethodName) {
-      expect(controller[apiMethodName]).to.be.a('function');
-    });
+    expect($scope.$userId).to.be.null;
+    expect($scope.$auth).to.be.null;
+    expect($scope.$login).to.be.a('function');
 
   });
 
-  describe('#onProfile and #offProfile', function() {
+  describe('if the user is logged in', function() {
 
-    beforeEach(function(done) {
-      controller.root.authWithCustomToken(window.__env__.FIREBASE_TEST_SECRET, done);
+    beforeEach(function() {
+      return controller.login();
     });
 
     afterEach(function() {
       controller.root.unauth();
     });
 
-    it('always calls once initially', function(done) {
+    it('eventually gets $auth and $uid set', function(done) {
 
-      controller.onProfile(function foo()  {
-        controller.offProfile(foo);
-        done();
-      });
-
-    });
-
-    it('calls again on any change in auth state', function(done) {
-
-      controller.onProfile(function bar(profile) {
-
-        if (profile && profile.super) {
-          controller.offProfile(bar);
-          done();
-        }
-
-      });
+      expect($scope.$auth).to.include.keys(['provider', 'uid']);
+      expect($scope.$userId).to.match(/^simplelogin:/);
+      done();
 
     });
+
 
   });
 

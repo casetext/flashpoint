@@ -3,223 +3,125 @@ angular.module('angular-fireproof.directives.fpPage', [
   'angular-fireproof.directives.firebase',
   'angular-fireproof.services.status'
 ])
-.directive('fpPage', function($q) {
+.directive('fpPage', function($q, Fireproof) {
 
   return {
 
     restrict: 'A',
     scope: true,
     require: '^firebase',
-    link: function(scope, el, attrs, fireproof) {
+    link: function(scope, el, attrs, firebase) {
 
-      var ref, pager, paging;
+      var ref, pager, direction;
 
-      function handleSnaps(snaps) {
+      var setPage = function(snaps) {
 
-        paging = false;
+        el.removeAttr('paging');
+        scope.$paging = false;
 
-        if (snaps.length > 0) {
-
-          scope[attrs.as] = snaps.map(function(snap) {
-            return snap.val();
-          });
-
-          scope[attrs.as].$keys = snaps.map(function(snap) {
-            return snap.name();
-          });
-
-          scope[attrs.as].$priorities = snaps.map(function(snap) {
-            return snap.getPriority();
-          });
-
-          scope[attrs.as].$next = function() {
-            scope.$next();
-          };
-
-          scope[attrs.as].$previous = function() {
-            scope.$previous();
-          };
-
-          scope[attrs.as].$reset = function() {
-            scope.$reset();
-          };
-
-          if (attrs.onPage) {
-            scope.$eval(attrs.onPage, { '$snaps': snaps });
-          }
-
+        if (direction === 'next') {
+          scope.$hasNext = snaps.length > 0;
+        } else if (direction === 'previous') {
+          scope.$hasPrevious = snaps.length > 0;
+        } else {
+          throw new Error('ASSERTION FAILED: Direction somehow wasn\'t set in setPage!');
         }
 
-        return snaps;
+        scope.$keys = snaps.map(function(snap) {
+          return snap.name();
+        });
 
-      }
+        scope.$values = snaps.map(function(snap) {
+          return snap.val();
+        });
 
+        scope.$priorities = snaps.map(function(snap) {
+          return snap.getPriority();
+        });
 
-      function handleError(err) {
-
-        paging = false;
-
-        var code = err.code.toLowerCase().replace(/[^a-z]/g, '-');
-        var lookup = attrs.$attr['on-' + code];
-
-        if (attrs[lookup]) {
-          scope.$eval(attrs[lookup], { '$error': err });
-        } else if (attrs.onError) {
-          scope.$eval(attrs.onError, { '$error': err });
+        if (attrs.as) {
+          scope[attrs.as] = scope.$values;
         }
 
-      }
+        if (attrs.onPage) {
+          scope.$evalAsync(attrs.onPage);
+        }
 
+      };
+
+      var handleError = function(err) {
+
+        el.removeAttr('paging');
+        scope.$paging = false;
+
+        scope.$error = err;
+        if (attrs.onError) {
+          scope.$evalAsync(attrs.onError);
+        }
+
+      };
 
       scope.$next = function() {
 
-        if (scope.$hasNext && !paging) {
+        if (pager && !scope.$paging) {
 
-          paging = true;
+          el.attr('paging', '');
+          scope.$paging = true;
+          direction = 'next';
+          return pager.next(parseInt(attrs.limit) || 5)
+          .then(setPage, handleError);
 
-          var limit;
-          if (attrs.limit) {
-            limit = parseInt(scope.$eval(attrs.limit));
-          } else {
-            limit = 5;
-          }
-
-          return pager.next(limit)
-          .then(handleSnaps, handleError)
-          .then(function(snaps) {
-
-            scope.$hasPrevious = true;
-            scope.$hasNext = snaps.length > 0;
-
-            return snaps;
-
-          });
-
-        } else if (paging) {
-          return $q.reject(new Error('cannot call $next from here, no more objects'));
-        } else {
-          return $q.reject(new Error('cannot call $next from here, no more objects'));
+        } else if (!scope.$paging) {
+          return $q.reject(new Error('Pager does not exist. Has fp-page been set yet?'));
         }
 
       };
-
 
       scope.$previous = function() {
 
-        // set position to the first item in the current list
-        if (scope.$hasPrevious && !paging) {
+        if (pager && !scope.$paging) {
 
-          paging = true;
+          el.attr('paging', '');
+          scope.$paging = true;
+          direction = 'previous';
+          return pager.previous(parseInt(attrs.limit) || 5)
+          .then(setPage, handleError);
 
-          var limit;
-          if (attrs.limit) {
-            limit = parseInt(scope.$eval(attrs.limit));
-          } else {
-            limit = 5;
-          }
-
-          return pager.previous(limit)
-          .then(handleSnaps, handleError)
-          .then(function(snaps) {
-
-            scope.$hasNext = true;
-            scope.$hasPrevious = snaps.length > 0;
-            return snaps;
-
-          });
-
-        } else {
-          return $q.reject(new Error('cannot call $next from here, no more objects'));
+        } else if (!scope.$paging) {
+          return $q.reject(new Error('Pager does not exist. Has fp-page been set yet?'));
         }
 
-
       };
-
 
       scope.$reset = function() {
 
         scope.$hasNext = true;
-        scope.$hasPrevious = true;
+        scope.$hasPrevious = false;
 
-
-        // create the pager.
-        var limit;
-        if (attrs.limit) {
-          limit = parseInt(scope.$eval(attrs.limit));
-        } else {
-          limit = 5;
-        }
-        pager = new Fireproof.Pager(ref, limit);
-
-        if (attrs.startAtPriority && attrs.startAtName) {
-
-          pager.setPosition(
-            scope.$eval(attrs.startAtPriority),
-            scope.$eval(attrs.startAtName));
-
-        } else if (attrs.startAtPriority) {
-          pager.setPosition(scope.$eval(attrs.startAtPriority));
-        }
-
-        // pull the first round of results out of the pager.
-        paging = true;
-        return pager.then(handleSnaps, handleError)
-        .then(function(snaps) {
-
-          scope.$hasPrevious = false;
-          scope.$hasNext = true;
-
-          return snaps;
-
-        });
+        pager = new Fireproof.Pager(new Fireproof(ref));
+        return scope.$next();
 
       };
 
-
       attrs.$observe('fpPage', function(path) {
 
-        if (path[path.length-1] === '/') {
-          // this is an incomplete eval. we're done.
+        path = path || '';
+
+        // If any of the following four conditions arise in the path:
+        // 1. The path is the empty string
+        // 2. two slashes appear together
+        // 3. there's a trailing slash
+        // 4. there's a leading slash
+        // we assume there's an incomplete interpolation and don't attach
+        if (path.length === 0 ||
+          path.match(/\/\//) ||
+          path.charAt(0) === '/' ||
+          path.charAt(path.length-1) === '/') {
           return;
-        } else if (!attrs.as) {
-          throw new Error('Missing "as" attribute on fp-page="' + attrs.fpPage + '"');
         }
 
-        ref = fireproof.root.child(path);
-
-        // shut down everything.
+        ref = firebase.root.child(path);
         scope.$reset();
-
-      });
-
-
-      scope.$on('$destroy', function() {
-
-        // if this scope object is destroyed, finalize the controller
-        ref = null;
-        pager = null;
-
-      });
-
-      scope.$watch('$syncing', function(syncing) {
-
-        if (syncing) {
-          el.addClass('syncing');
-        } else {
-          el.removeClass('syncing');
-        }
-
-      });
-
-      scope.$watch('$fireproofError', function(error, oldError) {
-
-        if (oldError) {
-          el.removeClass('fireproof-error-' + oldError.code);
-        }
-
-        if (error) {
-          el.addClass('fireproof-error-' + error.code);
-        }
 
       });
 
