@@ -13,23 +13,32 @@ angular.module('angular-fireproof.directives.firebase', [
     link: function(scope, el, attrs, firebase) {
 
       var watchers = {},
-        values = {},
-        arrayWatchers = {},
-        arrays = {};
+        values = {};
+
+
+      var validatePath = function(pathParts) {
+
+        // check the arguments
+        var path = pathParts.join('/');
+
+        if (pathParts.length === 0 || path === '' ||
+          pathParts.indexOf(null) !== -1 || pathParts.indexOf(undefined) !== -1) {
+
+          // if any one of them is null/undefined, this is not a valid path
+          return null;
+
+        } else {
+          return path;
+        }
+
+      };
 
 
       scope.$val = function() {
 
-        // check the arguments
-        var args = Array.prototype.slice(arguments, 0),
-          path = args.join('/');
-          console.log(path);
-        if (args.length === 0 || path === '' ||
-          args.indexOf(null) !== -1 || args.indexOf(undefined) !== -1) {
-
-          // if any one of them is null/undefined, this is not a valid path
+        var path = validatePath(Array.prototype.slice.call(arguments, 0));
+        if (!path) {
           return;
-
         }
 
         if (!watchers[path]) {
@@ -38,9 +47,19 @@ angular.module('angular-fireproof.directives.firebase', [
           watchers[path] = firebase.root.child(path)
           .on('value', function(snap) {
 
-            scope.$apply(function() {
-              values[path] = snap.val();
-            });
+            setTimeout(function() {
+
+              scope.$apply(function() {
+
+                values[path] = snap.val();
+
+                if (attrs.onChange) {
+                  scope.$eval(attrs.onChange, { $path: path });
+                }
+
+              });
+
+            }, 0);
 
           });
 
@@ -50,41 +69,80 @@ angular.module('angular-fireproof.directives.firebase', [
 
       };
 
-
-      scope.$array = function() {
+      scope.$set = function() {
 
         // check the arguments
-        var args = Array.prototype.slice(arguments, 0);
-        if (args.indexOf(null) !== -1 || args.indexOf(undefined) !== -1) {
+        var args = Array.prototype.slice.call(arguments, 0),
+          value = args.pop(),
+          path = validatePath(args);
 
-          // if any one of them is null/undefined, this is not a valid path
-          return;
+        var closure = function() {
 
-        }
+          if (!path) {
+            return;
+          }
 
-        var path = args.join('/');
+          return new Fireproof(firebase.root).child(path).set(value);
 
-        if (!arrayWatchers[path]) {
+        };
 
-          arrays[path] = [];
-          arrayWatchers[path] = firebase.root.child(path)
-          .on('value', function(snap) {
+        closure.now = function() {
+          return closure();
+        };
 
-            scope.$apply(function() {
+        return closure;
 
-              // iterate the children in priority order and push them on the array.
-              snap.forEach(function(child) {
-                arrays[path].push(child.val());
-              });
+      };
 
 
-            });
+      scope.$setWithPriority = function() {
 
-          });
+        // check the arguments
+        var args = Array.prototype.slice.call(arguments, 0),
+          priority = args.pop(),
+          value = args.pop(),
+          path = validatePath(args);
 
-        }
+        var closure = function() {
 
-        return arrays[path];
+          if (!path) {
+            return;
+          }
+
+          return new Fireproof(firebase.root).child(path)
+          .setWithPriority(value, priority);
+
+        };
+
+        closure.now = function() {
+          return closure();
+        };
+
+      };
+
+
+      scope.$update = function() {
+
+        // check the arguments
+        var args = Array.prototype.slice.call(arguments, 0),
+          value = args.pop(),
+          path = validatePath(args);
+
+        var closure = function() {
+
+          if (!path) {
+            return;
+          }
+
+          return new Fireproof(firebase.root).child(path).update(value);
+
+        };
+
+        closure.now = function() {
+          return closure();
+        };
+
+        return closure;
 
       };
 
@@ -93,10 +151,6 @@ angular.module('angular-fireproof.directives.firebase', [
 
         // remove all listeners
         angular.forEach(watchers, function(watcher, path) {
-          firebase.root.child(path).off('value', watcher);
-        });
-
-        angular.forEach(arrayWatchers, function(watcher, path) {
           firebase.root.child(path).off('value', watcher);
         });
 

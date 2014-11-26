@@ -73,32 +73,36 @@ describe('FirebaseCtl', function() {
   });
 
 
-  it('sets $auth, $userId, and $login on scope', function() {
+  describe('for user authentication', function() {
 
-    expect($scope.$userId).to.be.null;
-    expect($scope.$auth).to.be.null;
-    expect($scope.$login).to.be.a('function');
+    it('sets $auth, $userId, $login, and $logout on scope initially', function() {
 
-  });
-
-  describe('if the user is logged in', function() {
-
-    beforeEach(function() {
-      return controller.login();
-    });
-
-    afterEach(function() {
-      controller.root.unauth();
-    });
-
-    it('eventually gets $auth and $uid set', function(done) {
-
-      expect($scope.$auth).to.include.keys(['provider', 'uid']);
-      expect($scope.$userId).to.match(/^simplelogin:/);
-      done();
+      expect($scope.$userId).to.be.null;
+      expect($scope.$auth).to.be.null;
+      expect($scope.$login).to.be.a('function');
+      expect($scope.$logout).to.be.a('function');
 
     });
 
+    describe('if the user is logged in', function() {
+
+      beforeEach(function() {
+        return $scope.$login();
+      });
+
+      afterEach(function() {
+        return $scope.$logout();
+      });
+
+      it('sets $auth, $userId, and $login on scope with the right values', function(done) {
+
+        expect($scope.$auth).to.include.keys(['provider', 'uid']);
+        expect($scope.$userId).to.match(/^simplelogin:/);
+        done();
+
+      });
+
+    });
 
   });
 

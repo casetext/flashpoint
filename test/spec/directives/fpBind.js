@@ -41,7 +41,7 @@ describe('fpBind', function() {
 
     before(function(done) {
 
-      this.timeout(5000);
+      this.timeout(10000);
 
       root.child('test/something').setWithPriority('cool', 5, function() {
         root.unauth();

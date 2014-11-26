@@ -26,7 +26,19 @@ angular.module('angular-fireproof.controllers.FirebaseCtl', [
 
   };
 
+  self.logout = function(options) {
+
+    if ($attrs.logoutHandler) {
+      return $q.when($scope.$eval($attrs.logoutHandler, { $root: self.root, $options: options }));
+    } else {
+      self.root.unauth();
+      return $q.when();
+    }
+
+  };
+
   $scope.$login = self.login;
+  $scope.$logout = self.logout;
 
 
   function authHandler(authData) {
