@@ -7,7 +7,7 @@ describe('fpPage', function() {
 
   beforeEach(function(done) {
 
-    module('angular-firebase.mocks');
+    module('angular-fireproof.mocks');
     module('angular-fireproof.directives.firebase');
     module('angular-fireproof.directives.fpPage');
 

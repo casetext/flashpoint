@@ -29,7 +29,7 @@ describe('FirebaseCtl', function() {
 
     this.timeout(10000);
 
-    module('angular-firebase.mocks');
+    module('angular-fireproof.mocks');
     module('angular-fireproof.controllers.FirebaseCtl');
 
     // generate the controller
