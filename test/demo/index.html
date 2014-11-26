@@ -6,6 +6,7 @@
       body {
         font-family: 'Helvetica', sans-serif;
       }
+
     </style>
 
     <title>angular-fireproof demo</title>
@@ -31,7 +32,10 @@
   </head>
 
   <body firebase="https://angular-fireproof-demo.firebaseio-demo.com">
-    <h2>angular-fireproof demo: {{ $val('foo') }} </h2>
+    <h2>angular-fireproof demo</h2>
+    <h4>Value of foo: {{ $val('foo') }}</h4>
+    <h4>Value of bar: {{ $val('bar') }}</h4>
+    <h4>Value of check: {{ $val('check') }}</h4>
     <div scope-isolator>
       <div fp-page="dinosaurs" limit="3" as="dinosaurs">
         <h4>Page {{ $pageNumber }}</h4>
@@ -41,11 +45,19 @@
           </li>
         </ul>
 
-        <button ng-click="$previous()" ng-disabled="!$hasPrevious">Previous Page</button>
-        <button ng-click="$next()" ng-disabled="!$hasNext">Next Page</button>
+        <button ng-click="$previous()">Previous Page</button>
+        <button ng-click="$next()">Next Page</button>
       </div>
 
-      <input fp-bind="foo" as="foo" ng-model="foo" autosync="true">
+      <input fp-bind="foo" copy-to="bar" as="foo" ng-model="foo" autosync="true">
+      <input type="checkbox" fp-bind="check" as="check" ng-model="check" autosync="true">
+      <input
+        fp-bind="communities/{{ communityId }}/followers/{{ $auth.uid }}"
+        copy-to="users/{{ $auth.uid }}/followingCommunities/{{ communityId }}"
+        as="isFollowing"
+        ng-click="isFollowing = !isFollowing"
+      >
+
     </div>
   </body>
 

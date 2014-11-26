@@ -7,6 +7,13 @@ angular.module('angular-fireproof.directives.fpBind', [
   'angular-fireproof.services.status'
 ])
 /**
+ * @ngdoc value
+ * @service fpBindSyncTimeout
+ * @description The amount of time fpBind will wait before a scope value changing
+ * and writing the change (to prevent a write catastrophe). Defaults to 250 ms.
+ */
+.value('fpBindSyncTimeout', 250)
+/**
  * @ngdoc directive
  * @name angular-fireproof.directives.fpBind:fpBind
  * @description Binds the value of a location in Firebase to local scope,
@@ -32,6 +39,7 @@ angular.module('angular-fireproof.directives.fpBind', [
  * @scope
  * @param {expression} fpBind Path to the location in the Firebase, like
  * `favorites/{{ $auth.uid }}/aFew`. Interpolatable.
+ * @param {expression} copyTo Path to another Firebase location to write to. Optional.
  * @param {expression} as The name of a variable on scope to bind. So you could do
  * something like
  * `<example fp-bind="users/{{ $auth.uid }}/name" as="name">Your username is {{ name }}</example>`.
@@ -50,7 +58,7 @@ angular.module('angular-fireproof.directives.fpBind', [
  * **.fp-syncing** - when data is being sent to Firebase
  * **.fp-attached** - when the connection to Firebase is available
  */
-.directive('fpBind', function($animate) {
+.directive('fpBind', function($q, $animate, fpBindSyncTimeout) {
 
   return {
 
@@ -59,7 +67,7 @@ angular.module('angular-fireproof.directives.fpBind', [
     require: '^firebase',
     link: function(scope, el, attrs, firebase) {
 
-      var ref, snap, listener, removeScopeListener;
+      var ref, snap, listener, removeScopeListener, syncTimeout;
 
       scope.$attached = false;
       scope.$syncing = false;
@@ -100,24 +108,46 @@ angular.module('angular-fireproof.directives.fpBind', [
 
         if (!scope.$syncing) {
 
-          var value = scope[attrs.as || '$val'];
-          if (value === undefined) {
-            value = null;
+          if (syncTimeout) {
+            clearTimeout(syncTimeout);
           }
 
-          var priority = scope.$priority;
-          if (priority === undefined) {
-            priority = null;
-          }
+          syncTimeout = setTimeout(function() {
 
-          if (value !== snap.val() || priority !== snap.getPriority()) {
+            syncTimeout = null;
 
-            $animate.addClass(el, 'fp-syncing');
-            scope.$syncing = true;
+            var value = scope[attrs.as || '$val'];
+            if (value === undefined) {
+              value = null;
+            }
 
-            ref.setWithPriority(value, priority, function(err) {
+            var priority = scope.$priority;
+            if (priority === undefined) {
+              priority = null;
+            }
 
-              setTimeout(function() { scope.$apply(function() {
+            if (value !== snap.val() || priority !== snap.getPriority()) {
+
+              $animate.addClass(el, 'fp-syncing');
+              scope.$syncing = true;
+
+              var fpRef = new Fireproof(ref);
+
+              var promise;
+              if (attrs.copyTo) {
+
+                var copyToRef = new Fireproof(firebase.root.child(attrs.copyTo));
+                promise = $q.all([
+                  copyToRef.setWithPriority(value, priority),
+                  fpRef.setWithPriority(value, priority)
+                ]);
+
+              } else {
+                promise = fpRef.setWithPriority(value, priority);
+              }
+
+              promise
+              .then(function() {
 
                 scope.$syncing = false;
                 $animate.removeClass(el, 'fp-syncing');
@@ -126,15 +156,19 @@ angular.module('angular-fireproof.directives.fpBind', [
                   scope.$evalAsync(attrs.onSync);
                 }
 
-                if (err) {
-                  setError(err);
-                }
+              })
+              .catch(function(err) {
 
-              }); }, 0);
+                scope.$syncing = false;
+                $animate.removeClass(el, 'fp-syncing');
 
-            });
+                setError(err);
 
-          }
+              });
+
+            }
+
+          }, fpBindSyncTimeout);
 
         }
 
