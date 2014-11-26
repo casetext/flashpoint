@@ -5,6 +5,7 @@ describe('fpBind', function() {
 
   beforeEach(function() {
 
+    module('angular-firebase.mocks');
     module('angular-fireproof.directives.firebase');
     module('angular-fireproof.directives.fpBind');
 

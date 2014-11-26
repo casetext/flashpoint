@@ -6,6 +6,8 @@ describe('firebase', function() {
 
   before(function(done) {
 
+    this.timeout(10000);
+
     root.child('test/firebase').set({
       value: {
         kind: 'widget',
@@ -15,7 +17,22 @@ describe('firebase', function() {
           displayName: 'La Mer, as performed by Julio Iglesias'
         }
       },
-    }, done);
+    }, function() {
+
+      root.removeUser({
+        email: 'testy@testerson.com',
+        password: '12345'
+      }, function() {
+        root.createUser({
+          email: 'testy@testerson.com',
+          password: '12345'
+        }, function() {
+          done();
+        });
+
+      });
+
+    });
 
   });
 
@@ -24,14 +41,33 @@ describe('firebase', function() {
     module('angular-firebase.mocks');
     module('angular-fireproof.directives.firebase');
 
-    inject(function($rootScope, $compile) {
+    inject(function($rootScope, $compile, $q) {
 
       element = angular.element('<div ' +
         'firebase="' + window.__env__.FIREBASE_TEST_URL + '" ' +
-        'on-change="changed = true">' +
+        'on-change="changed = true"' +
+        'login-handler="handleLogin()">' +
         '<span>{{ $val("test/firebase/value/kind") }}</span>' +
         '</div>');
 
+      $rootScope.handleLogin = function() {
+
+        var deferred = $q.defer();
+
+        root.authWithPassword({
+          email: 'testy@testerson.com',
+          password: '12345'
+        }, function(err) {
+          if (err) {
+            deferred.reject(err);
+          } else {
+            deferred.resolve();
+          }
+        });
+
+        return deferred.promise;
+
+      };
       $compile(element)($rootScope);
       $rootScope.$digest();
       $scope = element.scope();
@@ -154,5 +190,37 @@ describe('firebase', function() {
 
   });
 
+
+  describe('for user authentication', function() {
+
+    it('sets $auth, $login, and $logout on scope initially', function() {
+
+      expect($scope.$auth).to.be.null;
+      expect($scope.$login).to.be.a('function');
+      expect($scope.$logout).to.be.a('function');
+
+    });
+
+    describe('if the user is logged in', function() {
+
+      beforeEach(function() {
+        return $scope.$login();
+      });
+
+      afterEach(function() {
+        return $scope.$logout();
+      });
+
+      it('sets $auth on scope with the authentication data', function(done) {
+
+        expect($scope.$auth).to.include.keys(['provider', 'uid']);
+        expect($scope.$auth.uid).to.match(/^simplelogin:/);
+        done();
+
+      });
+
+    });
+
+  });
 
 });

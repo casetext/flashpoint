@@ -29,72 +29,106 @@
   ]);
   
   
+  /**
+   * @ngdoc module:angular-fireproof.controllers.FirebaseCtl
+   */
   angular.module('angular-fireproof.controllers.FirebaseCtl', [
     'angular-fireproof.services.Fireproof',
     'angular-fireproof.services.status'
   ])
-  .controller('FirebaseCtl', function(
-    $q,
-    $scope,
-    $attrs,
-    Firebase
-  ) {
   
-    var self = this;
+  /**
+   * @ngdoc controller
+   * @name angular.fireproof.controllers.FirebaseCtl:FirebaseCtl
+   * @requires $q
+   * @requires Firebase
+   * @description FirebaseCtl is the core controller responsible for binding
+   * Firebase data into Angular. It instantiates a root Firebase object based on
+   * the value of the `firebase` property and attaches a core authentication
+   * handler.
+   * @property {Firebase} root The root of the instantiated Firebase store.
+   * @property {object} $auth Firebase authentication data, or `null`.
+   * @property {string} $userId Firebase unique user ID (like `simplelogin:1`), or `null`.
+   */
+  .controller('FirebaseCtl', function($q, Firebase) {
   
-    var authErrorMessage = 'auth-handler is not set for this firebase. All ' +
-      'authentication requests are therefore rejected.';
-  
-  
-    self.login = function(options) {
-  
-      if ($attrs.loginHandler) {
-        return $q.when($scope.$eval($attrs.loginHandler, { $root: self.root, $options: options }));
-      } else {
-        return $q.reject(new Error(authErrorMessage));
-      }
-  
-    };
-  
-    self.logout = function(options) {
-  
-      if ($attrs.logoutHandler) {
-        return $q.when($scope.$eval($attrs.logoutHandler, { $root: self.root, $options: options }));
-      } else {
+    var self = this,
+      _defaultLoginHandler = function() {
+        return $q.reject(new Error('No login handler is set for ' + self.root));
+      },
+      _defaultLogoutHandler = function() {
         self.root.unauth();
-        return $q.when();
-      }
-  
-    };
-  
-    $scope.$login = self.login;
-    $scope.$logout = self.logout;
-  
+      },
+      _loginHandler = _defaultLoginHandler,
+      _logoutHandler = _defaultLogoutHandler;
   
     function authHandler(authData) {
-  
-      setTimeout(function() {
-  
-        $scope.$apply(function() {
-  
-          self.auth = authData;
-          $scope.$auth = authData;
-          if (authData && authData.uid) {
-            $scope.$userId = authData.uid;
-          }
-  
-          if ($attrs.onAuthChange) {
-            $scope.$evalAsync($attrs.onAuthChange);
-          }
-  
-        });
-  
-      }, 0);
-  
+      self.auth = authData;
     }
   
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#login
+     * @description Requests that the login handler demand credentials from the
+     * user and return the result.
+     * If no login handler has been set, this method will automatically reject.
+     * @param {object=} options An arbitrary set of options which will be passed
+     * to the login handler for convenience.
+     * @return {Promise} A promise that resolves if the user successfully logs
+     * in and rejects if the user refuses or fails to log in.
+     */
+    self.login = function(options) {
+      return $q.when(_loginHandler(self.root, options));
+    };
   
-    function cleanup() {
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#setLoginHandler
+     * @description Sets the login handler method.
+     * @param {function=} fn The login handler. If none is supplied, resets to default.
+     */
+    self.setLoginHandler = function(fn) {
+      _loginHandler = (fn || _defaultLoginHandler);
+    };
+  
+  
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#logout
+     * @description Requests that the logout handler deauthorize the user and return
+     * the result. Also made available on the enclosing scope as `$logout`.
+     * If no `logout-handler` has been set, this method just calls `root.unauth()`.
+     * @param {object=} options An arbitrary set of options which will be passed
+     * to the logout handler for convenience.
+     * @return {Promise} A promise that resolves if the user successfully logs
+     * out and rejects if the user refuses or fails to log out.
+     */
+    self.logout = function(options) {
+      return $q.when(_logoutHandler(self.root, options));
+  
+    };
+  
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#setLogoutHandler
+     * @description Sets the logout handler method.
+     * @param {function=} fn The logout handler. If none is supplied, resets to default.
+     */
+    self.setLogoutHandler = function(fn) {
+      _logoutHandler = (fn || _defaultLogoutHandler);
+    };
+  
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#cleanup
+     * @description Removes and detaches all connections to Firebase used by
+     * this controller.
+     */
+    self.cleanup = function() {
+  
+      // reset the login and logout handlers to default.
+      _loginHandler = _defaultLoginHandler;
+      _logoutHandler = _defaultLogoutHandler;
   
       // detach any remaining listeners here.
       self.root.offAuth(authHandler);
@@ -102,88 +136,206 @@
       // detach all listeners to prevent leaks.
       self.root.off();
   
-      // clear auth data
+      // remove the actual root object itself, as it's now invalid.
+      delete self.root;
+  
+      // clear auth data.
       delete self.auth;
-      delete $scope.$auth;
-      delete $scope.$userId;
+      delete self.userId;
   
-    }
+    };
   
-    function attachFirebase() {
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#attachFirebase
+     * @description Connects to the specified Firebase.
+     * @param {string} url The full URL of the Firebase to connect to.
+     */
+    self.attachFirebase = function(url) {
   
+      // if we already have a root, make sure to clean it up first
       if (self.root) {
-        cleanup();
-  
+        self.cleanup();
       }
   
-      $scope.$auth = null;
-      $scope.$userId = null;
-      self.root = new Firebase($attrs.firebase);
+      self.root = new Firebase(url);
       self.root.onAuth(authHandler);
   
-    }
+    };
   
-  
-    $attrs.$observe('firebase', attachFirebase);
-  
-    // always run attach at least once
-    if ($attrs.firebase) {
-      attachFirebase();
-    }
-  
-    $scope.$on('$destroy', cleanup);
   
   });
   
-  
+  /**
+   * @ngdoc module:angular-fireproof.directives.firebase
+   */
   angular.module('angular-fireproof.directives.firebase', [
     'angular-fireproof.controllers.FirebaseCtl',
     'angular-fireproof.services.Fireproof'
   ])
+  /**
+   * @ngdoc directive
+   * @name angular-fireproof.directives.firebase:firebase
+   * @description Exposes the following variables on local scope:
+   *
+   * | Variable           | Type             | Details                                                   |
+   * |--------------------|------------------|-----------------------------------------------------------|
+   * | `$auth`            | {@type object}   | Auth data if the user is logged in, null if not.          |
+   * | `$login`           | {@type function} | Runs the login handler. Returns a {@type Promise}.        |
+   * | `$logout`          | {@type function} | Runs the logout handler. Returns a {@type Promise}.       |
+   * | `$val`             | {@type function} | Evaluates a Firebase value.                               |
+   * | `$set`             | {@type function} | Sets a Firebase location to a given value.                |
+   * | `$setPriority`     | {@type function} | Sets a Firebase location to a given priority.             |
+   * | `$setWithPriority` | {@type function} | Sets a Firebase location to a given value and priority.   |
+   * | `$update`          | {@type function} | Updates a Firebase location with a given object.          |
+   * | `$remove`          | {@type function} | Sets a Firebase location to null.                         |
+   *
+   * @example
+   * `$val` and all succeeding methods take a variable number of path components followed by their
+   * necessary arguments (for `$set` and `$update`, a value; for `$setPriority`, a priority; and for
+   * `$setWithPriority`, a value and a priority). So you could do the following:
+   * `Your assigned seat is {{ $val('seatAssignments', $auth.uid) }}`.
+   *
+   * `$set` and related methods all return a {@type function} so that you can
+   * easily pass them into a promise chain like so:
+   *
+   * <example firebase="https://my-firebase.firebaseio.com">
+   *   <button ng-click="login().then($set('signups', $auth.uid, true))">Sign up!</button>
+   * </example>
+   *
+   * If you wanted to run the action immediately, you can use `$set(...).now()`:
+   *
+   * <example firebase="https://my-firebase.firebaseio.com">
+   *   <button ng-click="$set('signups', $auth.uid, true).now()">Sign up!</button>
+   * </example>
+   *
+   * @restrict A
+   * @element ANY
+   * @scope
+   * @param {expression} firebase Full URL to the Firebase, like
+   * `https://my-firebase.firebaseio.com`. Interpolatable.
+   * @param {expression} loginHandler A method on local scope that challenges
+   * the user for login credentials and returns a {@type Promise} that resolves
+   * on login or rejects on failure. Required if you plan to use authentication.
+   * @param {expression} logoutHandler A method on local scope that handles logout
+   * procedures and returns a {@type Promise} that resolves on success or rejects
+   * on failure. By default this just calls `root.unauth()`.
+   * @param {expression} onChange An expression that gets evaluated when Firebase
+   * sends a new value that we happen to be listening to.
+   * @param {expression} onAuthChange An expression that gets evaluated when
+   * auth conditions change, because the user logs in or out.
+   */
   .directive('firebase', function() {
+  
+  
+    function validatePath(pathParts) {
+  
+      // check the arguments
+      var path = pathParts.join('/');
+  
+      if (pathParts.length === 0 || path === '' ||
+        pathParts.indexOf(null) !== -1 || pathParts.indexOf(undefined) !== -1) {
+  
+        // if any one of them is null/undefined, this is not a valid path
+        return null;
+  
+      } else {
+        return path;
+      }
+  
+    }
+  
+  
+    function makeClosure(fn) {
+  
+      var closure = function() {
+        return fn();
+      };
+  
+      closure.now = function() {
+        return closure();
+      };
+  
+      return closure;
+  
+    }
+  
   
     return {
   
       restrict: 'A',
       scope: true,
       controller: 'FirebaseCtl',
-      link: function(scope, el, attrs, firebase) {
+      link: { pre: function(scope, el, attrs, controller) {
   
         var watchers = {},
           values = {};
   
   
-        var validatePath = function(pathParts) {
+        var authHandler = function(authData) {
   
-          // check the arguments
-          var path = pathParts.join('/');
+          setTimeout(function() {
   
-          if (pathParts.length === 0 || path === '' ||
-            pathParts.indexOf(null) !== -1 || pathParts.indexOf(undefined) !== -1) {
+            scope.$apply(function() {
   
-            // if any one of them is null/undefined, this is not a valid path
-            return null;
+              scope.$auth = authData;
+  
+              if (attrs.onAuthChange) {
+                scope.$evalAsync(attrs.onAuthChange);
+              }
+  
+            });
+  
+          }, 0);
+  
+        };
+  
+  
+        var attachToController = function(url) {
+  
+          if (controller.root) {
+  
+            // detach old auth listener
+            controller.root.offAuth(authHandler);
+  
+          }
+  
+          controller.attachFirebase(url);
+  
+          // attach new auth listener
+          controller.root.onAuth(authHandler);
+  
+  
+          // attach handlers, possibly
+          if (attrs.loginHandler) {
+  
+            controller.setLoginHandler(function(root, options) {
+              return scope.$eval(attrs.loginHandler, { $root: root, $options: options });
+            });
   
           } else {
-            return path;
+            // reset to default handler.
+            controller.setLoginHandler();
+          }
+  
+  
+          if (attrs.logoutHandler) {
+  
+            controller.setLogoutHandler(function(root, options) {
+              return scope.$eval(attrs.logoutHandler, { $root: root, $options: options });
+            });
+  
+          } else {
+            // reset to default handler.
+            controller.setLogoutHandler();
           }
   
         };
   
-        var makeClosure = function(fn) {
-  
-          var closure = function() {
-            return fn();
-          };
-  
-          closure.now = function() {
-            return closure();
-          };
-  
-          return closure;
-  
-        };
-  
+        // attach authentication methods from controller to scope
+        scope.$auth = null;
+        scope.$login = controller.login;
+        scope.$logout = controller.logout;
   
         scope.$val = function() {
   
@@ -192,10 +344,13 @@
             return;
           }
   
+          if (!values.hasOwnProperty(path)) {
+            values[path] = null;
+          }
+  
           if (!watchers[path]) {
   
-            values[path] = null;
-            watchers[path] = firebase.root.child(path)
+            watchers[path] = controller.root.child(path)
             .on('value', function(snap) {
   
               setTimeout(function() {
@@ -220,6 +375,7 @@
   
         };
   
+  
         scope.$set = function() {
   
           // check the arguments
@@ -228,7 +384,7 @@
             path = validatePath(args);
   
           return makeClosure(function() {
-            return new Fireproof(firebase.root).child(path).set(value);
+            return new Fireproof(controller.root).child(path).set(value);
           });
   
         };
@@ -242,7 +398,7 @@
             path = validatePath(args);
   
           return makeClosure(function() {
-            return new Fireproof(firebase.root).child(path).setPriority(priority);
+            return new Fireproof(controller.root).child(path).setPriority(priority);
           });
   
         };
@@ -258,7 +414,7 @@
   
           return makeClosure(function() {
   
-            return new Fireproof(firebase.root).child(path)
+            return new Fireproof(controller.root).child(path)
             .setWithPriority(value, priority);
   
           });
@@ -274,7 +430,7 @@
             path = validatePath(args);
   
           return makeClosure(function() {
-            return new Fireproof(firebase.root).child(path).update(value);
+            return new Fireproof(controller.root).child(path).update(value);
           });
   
         };
@@ -287,22 +443,31 @@
             path = validatePath(args);
   
           return makeClosure(function() {
-            return new Fireproof(firebase.root).child(path).remove();
+            return new Fireproof(controller.root).child(path).remove();
           });
   
         };
+  
+  
+        if (attrs.firebase) {
+          attachToController(attrs.firebase);
+        }
+        attrs.$observe('firebase', attachToController);
   
   
         scope.$on('$destroy', function() {
   
           // remove all listeners
           angular.forEach(watchers, function(watcher, path) {
-            firebase.root.child(path).off('value', watcher);
+            controller.root.child(path).off('value', watcher);
           });
+  
+          // shut down controller
+          controller.cleanup();
   
         });
   
-      }
+      }}
   
     };
   
@@ -310,10 +475,52 @@
   
   
   
+  /**
+   * @ngdoc module:angular-fireproof.directives.fpBind
+   */
   angular.module('angular-fireproof.directives.fpBind', [
     'angular-fireproof.directives.firebase',
     'angular-fireproof.services.status'
   ])
+  /**
+   * @ngdoc directive
+   * @name angular-fireproof.directives.fpBind:fpBind
+   * @description Binds the value of a location in Firebase to local scope,
+   * updating it automatically as it changes.
+   *
+   * Exposes the following variables on local scope:
+   *
+   * | Variable    | Type             | Details                                                                        |
+   * |-------------|------------------|--------------------------------------------------------------------------------|
+   * | `$sync`     | {@type function} | Sets the value/priority in Firebase to the value on scope.                     |
+   * | `$revert`   | {@type function} | Sets the value/priority on scope to the most recent Firebase snapshot's value. |
+   * | `$attach`   | {@type function} | Starts listening to Firebase for changes. Happens by default initially.        |
+   * | `$detach`   | {@type function} | Stops listening to Firebase for changes.                                       |
+   * | `$name`     | {@type string}   | The last path component of the Firebase location.                              |
+   * | `$val`      | {@type *}        | The value in Firebase, or `null` if there isn't one.                           |
+   * | `$priority` | {@type *}        | The priority in Firebase, or `null` if there isn't one.                        |
+   * | `$attached` | {@type boolean}  | True if the directive is listening to Firebase, false otherwise.               |
+   * | `$syncing`  | {@type boolean}  | True if a Firebase operation is in progress, false otherwise.                  |
+   *
+   * @restrict A
+   * @element ANY
+   * @scope
+   * @param {expression} fpBind Path to the location in the Firebase, like
+   * `favorites/{{ $auth.uid }}/aFew`. Interpolatable.
+   * @param {expression} as The name of a variable on scope to bind. So you could do
+   * something like
+   * `<example fp-bind="users/{{ $auth.uid }}/name" as="name">Your username is {{ name }}</example>`.
+   * @param {expression} autosync If this value evaluates on local scope to `true`,
+   * the directive will sync to Firebase every time its value changes. When autosync
+   * is on, `$sync` is a no-op.
+   * @param {expression} onLoad An expression that gets evaluated every time new
+   * data comes from Firebase.
+   * @param {expression} onSync An expression that gets evaluated every time fpBind
+   * successfully sends data to Firebae.
+   * @param {expression} onError An expression that gets evaluated when Firebase
+   * reports an error (usually related to permissions). Gets the special variable
+   * $error with the specific error.
+   */
   .directive('fpBind', function() {
   
     return {
@@ -502,10 +709,52 @@
   
   
   
+  /**
+   * @ngdoc module:angular-fireproof.directives.fpPage
+   */
   angular.module('angular-fireproof.directives.fpPage', [
     'angular-fireproof.directives.firebase',
     'angular-fireproof.services.status'
   ])
+  /**
+   * @ngdoc directive
+   * @name angular-fireproof.directives.fpPage:fpPage
+   * @description Pages over the keys at a Firebase location.
+   *
+   * Exposes the following variables on local scope:
+   *
+   * | Variable       | Type                 | Details                                                    |
+   * |----------------|----------------------|------------------------------------------------------------|
+   * | `$next`        | {@type function}     | Fetches the next set of values into scope.                 |
+   * | `$previous`    | {@type function}     | Fetches the previous set of values into scope.             |
+   * | `$reset`       | {@type function}     | Starts again at the beginning.                             |
+   * | `$keys`        | {@type string|array} | The keys in the current page.                              |
+   * | `$values`      | {@type *|array}      | The valuees in the current page.                           |
+   * | `$priorities`  | {@type *|array}      | The priorities in the current page.                        |
+   * | `$hasNext`     | {@type boolean}      | True if there are more values to page over.                |
+   * | `$hasPrevious` | {@type boolean}      | True if there are previous values to page back over again. |
+   * | `$paging`      | {@type boolean}      | True if a paging operation is currently in progress.       |
+   * | `$pageNumber`  | {@type number}       | The current page number of results.                        |
+   *
+   *
+   * @restrict A
+   * @element ANY
+   * @scope
+   * @param {expression} fpPage Path to the location in the Firebase, like
+   * `favorites/{{ $auth.uid }}`. Interpolatable.
+   * @param {expression} as The name of a variable on scope to bind. So you could do
+   * something like
+   * `<example fp-page="users/{{ $auth.uid }}" as="users">
+   *   <ul>
+   *     <li ng-repeat="user in users"> {{ user.name }} </li>
+   *   </ul>
+   * </example>`
+   * @param {expression} onPage An expression that gets evaluated when a new page
+   * is available.
+   * @param {expression} onError An expression that gets evaluated when Firebase
+   * returns an error.
+   * @param {expression} limit The count of objects in each page.
+   */
   .directive('fpPage', function($q, Fireproof) {
   
     return {
@@ -518,6 +767,13 @@
         var ref, pager, direction;
   
         var setPage = function(snaps) {
+  
+          // set page number here
+          if (direction === 'next') {
+            scope.$pageNumber++;
+          } else {
+            scope.$pageNumber--;
+          }
   
           el.removeAttr('paging');
           scope.$paging = false;
@@ -598,6 +854,7 @@
   
         scope.$reset = function() {
   
+          scope.$pageNumber = 0;
           scope.$hasNext = true;
           scope.$hasPrevious = false;
   

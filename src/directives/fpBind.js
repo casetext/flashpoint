@@ -1,8 +1,50 @@
 
+/**
+ * @ngdoc module:angular-fireproof.directives.fpBind
+ */
 angular.module('angular-fireproof.directives.fpBind', [
   'angular-fireproof.directives.firebase',
   'angular-fireproof.services.status'
 ])
+/**
+ * @ngdoc directive
+ * @name angular-fireproof.directives.fpBind:fpBind
+ * @description Binds the value of a location in Firebase to local scope,
+ * updating it automatically as it changes.
+ *
+ * Exposes the following variables on local scope:
+ *
+ * | Variable    | Type             | Details                                                                        |
+ * |-------------|------------------|--------------------------------------------------------------------------------|
+ * | `$sync`     | {@type function} | Sets the value/priority in Firebase to the value on scope.                     |
+ * | `$revert`   | {@type function} | Sets the value/priority on scope to the most recent Firebase snapshot's value. |
+ * | `$attach`   | {@type function} | Starts listening to Firebase for changes. Happens by default initially.        |
+ * | `$detach`   | {@type function} | Stops listening to Firebase for changes.                                       |
+ * | `$name`     | {@type string}   | The last path component of the Firebase location.                              |
+ * | `$val`      | {@type *}        | The value in Firebase, or `null` if there isn't one.                           |
+ * | `$priority` | {@type *}        | The priority in Firebase, or `null` if there isn't one.                        |
+ * | `$attached` | {@type boolean}  | True if the directive is listening to Firebase, false otherwise.               |
+ * | `$syncing`  | {@type boolean}  | True if a Firebase operation is in progress, false otherwise.                  |
+ *
+ * @restrict A
+ * @element ANY
+ * @scope
+ * @param {expression} fpBind Path to the location in the Firebase, like
+ * `favorites/{{ $auth.uid }}/aFew`. Interpolatable.
+ * @param {expression} as The name of a variable on scope to bind. So you could do
+ * something like
+ * `<example fp-bind="users/{{ $auth.uid }}/name" as="name">Your username is {{ name }}</example>`.
+ * @param {expression} autosync If this value evaluates on local scope to `true`,
+ * the directive will sync to Firebase every time its value changes. When autosync
+ * is on, `$sync` is a no-op.
+ * @param {expression} onLoad An expression that gets evaluated every time new
+ * data comes from Firebase.
+ * @param {expression} onSync An expression that gets evaluated every time fpBind
+ * successfully sends data to Firebae.
+ * @param {expression} onError An expression that gets evaluated when Firebase
+ * reports an error (usually related to permissions). Gets the special variable
+ * $error with the specific error.
+ */
 .directive('fpBind', function() {
 
   return {

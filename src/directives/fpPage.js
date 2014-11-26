@@ -1,8 +1,50 @@
 
+/**
+ * @ngdoc module:angular-fireproof.directives.fpPage
+ */
 angular.module('angular-fireproof.directives.fpPage', [
   'angular-fireproof.directives.firebase',
   'angular-fireproof.services.status'
 ])
+/**
+ * @ngdoc directive
+ * @name angular-fireproof.directives.fpPage:fpPage
+ * @description Pages over the keys at a Firebase location.
+ *
+ * Exposes the following variables on local scope:
+ *
+ * | Variable       | Type                 | Details                                                    |
+ * |----------------|----------------------|------------------------------------------------------------|
+ * | `$next`        | {@type function}     | Fetches the next set of values into scope.                 |
+ * | `$previous`    | {@type function}     | Fetches the previous set of values into scope.             |
+ * | `$reset`       | {@type function}     | Starts again at the beginning.                             |
+ * | `$keys`        | {@type string|array} | The keys in the current page.                              |
+ * | `$values`      | {@type *|array}      | The valuees in the current page.                           |
+ * | `$priorities`  | {@type *|array}      | The priorities in the current page.                        |
+ * | `$hasNext`     | {@type boolean}      | True if there are more values to page over.                |
+ * | `$hasPrevious` | {@type boolean}      | True if there are previous values to page back over again. |
+ * | `$paging`      | {@type boolean}      | True if a paging operation is currently in progress.       |
+ * | `$pageNumber`  | {@type number}       | The current page number of results.                        |
+ *
+ *
+ * @restrict A
+ * @element ANY
+ * @scope
+ * @param {expression} fpPage Path to the location in the Firebase, like
+ * `favorites/{{ $auth.uid }}`. Interpolatable.
+ * @param {expression} as The name of a variable on scope to bind. So you could do
+ * something like
+ * `<example fp-page="users/{{ $auth.uid }}" as="users">
+ *   <ul>
+ *     <li ng-repeat="user in users"> {{ user.name }} </li>
+ *   </ul>
+ * </example>`
+ * @param {expression} onPage An expression that gets evaluated when a new page
+ * is available.
+ * @param {expression} onError An expression that gets evaluated when Firebase
+ * returns an error.
+ * @param {expression} limit The count of objects in each page.
+ */
 .directive('fpPage', function($q, Fireproof) {
 
   return {
@@ -15,6 +57,13 @@ angular.module('angular-fireproof.directives.fpPage', [
       var ref, pager, direction;
 
       var setPage = function(snaps) {
+
+        // set page number here
+        if (direction === 'next') {
+          scope.$pageNumber++;
+        } else {
+          scope.$pageNumber--;
+        }
 
         el.removeAttr('paging');
         scope.$paging = false;
@@ -95,6 +144,7 @@ angular.module('angular-fireproof.directives.fpPage', [
 
       scope.$reset = function() {
 
+        scope.$pageNumber = 0;
         scope.$hasNext = true;
         scope.$hasPrevious = false;
 

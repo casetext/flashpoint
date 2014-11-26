@@ -44,7 +44,7 @@ describe('FirebaseCtl', function() {
 
         var deferred = $q.defer();
 
-        controller.root.authWithPassword({
+        root.authWithPassword({
           email: 'testy@testerson.com',
           password: '12345'
         }, function(err) {
@@ -72,38 +72,5 @@ describe('FirebaseCtl', function() {
     $scope.$destroy();
   });
 
-
-  describe('for user authentication', function() {
-
-    it('sets $auth, $userId, $login, and $logout on scope initially', function() {
-
-      expect($scope.$userId).to.be.null;
-      expect($scope.$auth).to.be.null;
-      expect($scope.$login).to.be.a('function');
-      expect($scope.$logout).to.be.a('function');
-
-    });
-
-    describe('if the user is logged in', function() {
-
-      beforeEach(function() {
-        return $scope.$login();
-      });
-
-      afterEach(function() {
-        return $scope.$logout();
-      });
-
-      it('sets $auth, $userId, and $login on scope with the right values', function(done) {
-
-        expect($scope.$auth).to.include.keys(['provider', 'uid']);
-        expect($scope.$userId).to.match(/^simplelogin:/);
-        done();
-
-      });
-
-    });
-
-  });
 
 });
