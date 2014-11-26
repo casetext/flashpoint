@@ -16,6 +16,7 @@ module.exports = function(config) {
       'test/mocks.js',
       'test/spec/**/*.js'
     ],
+    browserNoActivityTimeout: 30000,
     preprocessors: {
       'test/spec/**/*.js': ['env']
     },

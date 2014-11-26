@@ -12,4 +12,9 @@ angular.module('angular-firebase.mocks', [
 
   });
 
+  // pump the root scope every 100 ms.
+  setInterval(function() {
+    $rootScope.$digest();
+  }, 100);
+
 });

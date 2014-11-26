@@ -33,6 +33,20 @@ angular.module('angular-fireproof.directives.firebase', [
 
       };
 
+      var makeClosure = function(fn) {
+
+        var closure = function() {
+          return fn();
+        };
+
+        closure.now = function() {
+          return closure();
+        };
+
+        return closure;
+
+      };
+
 
       scope.$val = function() {
 
@@ -76,21 +90,23 @@ angular.module('angular-fireproof.directives.firebase', [
           value = args.pop(),
           path = validatePath(args);
 
-        var closure = function() {
-
-          if (!path) {
-            return;
-          }
-
+        return makeClosure(function() {
           return new Fireproof(firebase.root).child(path).set(value);
+        });
 
-        };
+      };
 
-        closure.now = function() {
-          return closure();
-        };
 
-        return closure;
+      scope.$setPriority = function() {
+
+        // check the arguments
+        var args = Array.prototype.slice.call(arguments, 0),
+          priority = args.pop(),
+          path = validatePath(args);
+
+        return makeClosure(function() {
+          return new Fireproof(firebase.root).child(path).setPriority(priority);
+        });
 
       };
 
@@ -103,20 +119,12 @@ angular.module('angular-fireproof.directives.firebase', [
           value = args.pop(),
           path = validatePath(args);
 
-        var closure = function() {
-
-          if (!path) {
-            return;
-          }
+        return makeClosure(function() {
 
           return new Fireproof(firebase.root).child(path)
           .setWithPriority(value, priority);
 
-        };
-
-        closure.now = function() {
-          return closure();
-        };
+        });
 
       };
 
@@ -128,21 +136,22 @@ angular.module('angular-fireproof.directives.firebase', [
           value = args.pop(),
           path = validatePath(args);
 
-        var closure = function() {
-
-          if (!path) {
-            return;
-          }
-
+        return makeClosure(function() {
           return new Fireproof(firebase.root).child(path).update(value);
+        });
 
-        };
+      };
 
-        closure.now = function() {
-          return closure();
-        };
 
-        return closure;
+      scope.$remove = function() {
+
+        // check the arguments
+        var args = Array.prototype.slice.call(arguments, 0),
+          path = validatePath(args);
+
+        return makeClosure(function() {
+          return new Fireproof(firebase.root).child(path).remove();
+        });
 
       };
 

@@ -6,8 +6,6 @@ describe('firebase', function() {
 
   before(function(done) {
 
-    this.timeout(5000);
-
     root.child('test/firebase').set({
       value: {
         kind: 'widget',
@@ -17,43 +15,38 @@ describe('firebase', function() {
           displayName: 'La Mer, as performed by Julio Iglesias'
         }
       },
-      array: {
-        'a': true,
-        'b': true,
-        'c': true
-      }
     }, done);
 
   });
 
   beforeEach(function() {
+
+    module('angular-firebase.mocks');
     module('angular-fireproof.directives.firebase');
+
+    inject(function($rootScope, $compile) {
+
+      element = angular.element('<div ' +
+        'firebase="' + window.__env__.FIREBASE_TEST_URL + '" ' +
+        'on-change="changed = true">' +
+        '<span>{{ $val("test/firebase/value/kind") }}</span>' +
+        '</div>');
+
+      $compile(element)($rootScope);
+      $rootScope.$digest();
+      $scope = element.scope();
+
+    });
+
   });
 
+
+  afterEach(function() {
+    $scope.$destroy();
+  });
+
+
   describe('$val', function() {
-
-    beforeEach(function() {
-
-      inject(function($rootScope, $compile) {
-
-        element = angular.element('<div ' +
-          'firebase="' + window.__env__.FIREBASE_TEST_URL + '" ' +
-          'on-change="changed = true">' +
-          '<span>{{ $val("test/firebase/value/kind") }}</span>' +
-          '</div>');
-
-        $compile(element)($rootScope);
-        $rootScope.$digest();
-        $scope = element.scope();
-
-      });
-
-    });
-
-    afterEach(function() {
-      $scope.$destroy();
-    });
-
 
     it('is a method on scope to get Firebase values', function(done) {
 
@@ -73,5 +66,93 @@ describe('firebase', function() {
     });
 
   });
+
+
+  describe('$set', function() {
+
+    it('is a method to set Firebase values', function() {
+
+      return $scope.$set('test/firebase/set', true).now()
+      .then(function() {
+        return expect(new Fireproof(root.child('test/firebase/set'))).to.be.true;
+      });
+
+    });
+
+  });
+
+
+  describe('$setPriority', function() {
+
+    it('is a method to set Firebase priorities', function() {
+
+      return $scope.$setPriority('test/firebase/set', 7).now()
+      .then(function() {
+        return expect(new Fireproof(root.child('test/firebase/set')))
+        .to.have.priority(7);
+      });
+
+    });
+
+  });
+
+
+  describe('$setWithPriority', function() {
+
+    it('is a method to set Firebase values with priority', function() {
+
+      return $scope.$setWithPriority('test/firebase/set', 'baz', 9).now()
+      .then(function() {
+        return expect(new Fireproof(root.child('test/firebase/set')))
+        .to.equal('baz');
+      })
+      .then(function() {
+        return expect(new Fireproof(root.child('test/firebase/set')))
+        .to.have.priority(9);
+      });
+
+    });
+
+  });
+
+
+  describe('$update', function() {
+
+    it('is a method to update Firebase values', function() {
+
+      var updateVal = {
+        control: 'Smiley now'
+      };
+
+      return $scope.$update('test/firebase/value/properties', updateVal).now()
+      .then(function() {
+
+        return expect(new Fireproof(root.child('test/firebase/value/properties')))
+        .to.deep.equal({
+          control: 'Smiley now',
+          smiley: true,
+          displayName: 'La Mer, as performed by Julio Iglesias'
+        });
+
+      });
+
+    });
+
+  });
+
+
+  describe('$remove', function() {
+
+    it('is a method to remove Firebase values', function() {
+
+      return $scope.$remove('test/firebase/set').now()
+      .then(function() {
+        return expect(new Fireproof(root.child('test/firebase/set'))).to.be.null;
+      });
+
+    });
+
+  });
+
 
 });

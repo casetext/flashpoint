@@ -7,8 +7,6 @@ describe('fpPage', function() {
 
   beforeEach(function(done) {
 
-    this.timeout(5000);
-
     module('angular-firebase.mocks');
     module('angular-fireproof.directives.firebase');
     module('angular-fireproof.directives.fpPage');
