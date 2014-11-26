@@ -25,6 +25,7 @@ angular.module('angular-fireproof.directives.fpPage', [
  * | `$hasPrevious` | {@type boolean}      | True if there are previous values to page back over again. |
  * | `$paging`      | {@type boolean}      | True if a paging operation is currently in progress.       |
  * | `$pageNumber`  | {@type number}       | The current page number of results.                        |
+ * | `$error`       | {@type Error}        | The most recent error returned from Firebase or undefined. |
  *
  *
  * @restrict A
@@ -44,8 +45,11 @@ angular.module('angular-fireproof.directives.fpPage', [
  * @param {expression} onError An expression that gets evaluated when Firebase
  * returns an error.
  * @param {expression} limit The count of objects in each page.
+ * @animations
+ * **.fp-error** - when the directive is in an error condition
+ * **.fp-paging** - when a page of data is being retrieved from Firebase
  */
-.directive('fpPage', function($q, Fireproof) {
+.directive('fpPage', function($q, Fireproof, $animate) {
 
   return {
 
@@ -65,7 +69,7 @@ angular.module('angular-fireproof.directives.fpPage', [
           scope.$pageNumber--;
         }
 
-        el.removeAttr('paging');
+        $animate.removeClass(el, 'fp-paging');
         scope.$paging = false;
 
         if (direction === 'next') {
@@ -100,9 +104,10 @@ angular.module('angular-fireproof.directives.fpPage', [
 
       var handleError = function(err) {
 
-        el.removeAttr('paging');
+        $animate.removeClass(el, 'fp-paging');
         scope.$paging = false;
 
+        $animate.addClass(el, 'fp-error');
         scope.$error = err;
         if (attrs.onError) {
           scope.$evalAsync(attrs.onError);
@@ -114,7 +119,7 @@ angular.module('angular-fireproof.directives.fpPage', [
 
         if (pager && !scope.$paging) {
 
-          el.attr('paging', '');
+          $animate.addClass(el, 'fp-paging');
           scope.$paging = true;
           direction = 'next';
           return pager.next(parseInt(attrs.limit) || 5)
@@ -130,7 +135,7 @@ angular.module('angular-fireproof.directives.fpPage', [
 
         if (pager && !scope.$paging) {
 
-          el.attr('paging', '');
+          $animate.addClass(el, 'fp-paging');
           scope.$paging = true;
           direction = 'previous';
           return pager.previous(parseInt(attrs.limit) || 5)
@@ -144,9 +149,14 @@ angular.module('angular-fireproof.directives.fpPage', [
 
       scope.$reset = function() {
 
+        $animate.removeClass(el, 'fp-paging');
+        $animate.removeClass(el, 'fp-error');
+
+        delete scope.$error;
         scope.$pageNumber = 0;
         scope.$hasNext = true;
         scope.$hasPrevious = false;
+        scope.$paging = false;
 
         pager = new Fireproof.Pager(new Fireproof(ref));
         return scope.$next();

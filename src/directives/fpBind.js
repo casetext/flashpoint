@@ -25,6 +25,7 @@ angular.module('angular-fireproof.directives.fpBind', [
  * | `$priority` | {@type *}        | The priority in Firebase, or `null` if there isn't one.                        |
  * | `$attached` | {@type boolean}  | True if the directive is listening to Firebase, false otherwise.               |
  * | `$syncing`  | {@type boolean}  | True if a Firebase operation is in progress, false otherwise.                  |
+ * | `$error`    | {@type Error}    | The most recent error returned from Firebase, undefined in non-error cases.    |
  *
  * @restrict A
  * @element ANY
@@ -42,10 +43,14 @@ angular.module('angular-fireproof.directives.fpBind', [
  * @param {expression} onSync An expression that gets evaluated every time fpBind
  * successfully sends data to Firebae.
  * @param {expression} onError An expression that gets evaluated when Firebase
- * reports an error (usually related to permissions). Gets the special variable
- * $error with the specific error.
+ * reports an error (usually related to permissions). The error is available on
+ * scope as $error.
+ * @animations
+ * **.fp-error** - when the directive is in an error condition
+ * **.fp-syncing** - when data is being sent to Firebase
+ * **.fp-attached** - when the connection to Firebase is available
  */
-.directive('fpBind', function() {
+.directive('fpBind', function($animate) {
 
   return {
 
@@ -62,10 +67,19 @@ angular.module('angular-fireproof.directives.fpBind', [
 
       var setError = function(err) {
 
+        $animate.addClass(el, 'fp-error');
         scope.$error = err;
         if (attrs.onError) {
           scope.$evalAsync(attrs.onError);
         }
+
+      };
+
+
+      var clearError = function() {
+
+        $animate.removeClass(el, 'fp-error');
+        delete scope.$error;
 
       };
 
@@ -86,6 +100,7 @@ angular.module('angular-fireproof.directives.fpBind', [
 
         if (!scope.$syncing) {
 
+          $animate.addClass(el, 'fp-syncing');
           scope.$syncing = true;
 
           var value = scope[attrs.as || '$val'];
@@ -128,6 +143,8 @@ angular.module('angular-fireproof.directives.fpBind', [
           removeScopeListener();
         }
 
+        $animate.removeClass(el, 'fp-attached');
+        $animate.removeClass(el, 'fp-syncing');
         scope.$attached = false;
 
       };
@@ -135,7 +152,15 @@ angular.module('angular-fireproof.directives.fpBind', [
 
       scope.$attach = function() {
 
+        if (scope.$error) {
+          clearError();
+        }
+
         listener = ref.on('value', function(newSnap) {
+
+          if (scope.$error) {
+            clearError();
+          }
 
           setTimeout(function() { scope.$apply(function() {
 
@@ -143,6 +168,7 @@ angular.module('angular-fireproof.directives.fpBind', [
 
             if (!scope.$attached) {
               scope.$attached = true;
+              $animate.addClass(el, 'fp-attached');
             }
 
             if (removeScopeListener) {
@@ -162,6 +188,8 @@ angular.module('angular-fireproof.directives.fpBind', [
             }
 
             if (scope.$syncing) {
+
+              $animate.removeClass(el, 'fp-syncing');
               scope.$syncing = false;
 
               if (attrs.onSync) {
@@ -201,10 +229,13 @@ angular.module('angular-fireproof.directives.fpBind', [
 
       attrs.$observe('fpBind', function(path) {
 
+        if (scope.$error) {
+          clearError();
+        }
+
         path = path || '';
         if (scope.$attached) {
           scope.$detach();
-          scope.$attached = false;
         }
 
         // If any of the following four conditions arise in the path:

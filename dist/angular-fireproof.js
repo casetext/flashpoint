@@ -501,6 +501,7 @@
    * | `$priority` | {@type *}        | The priority in Firebase, or `null` if there isn't one.                        |
    * | `$attached` | {@type boolean}  | True if the directive is listening to Firebase, false otherwise.               |
    * | `$syncing`  | {@type boolean}  | True if a Firebase operation is in progress, false otherwise.                  |
+   * | `$error`    | {@type Error}    | The most recent error returned from Firebase, undefined in non-error cases.    |
    *
    * @restrict A
    * @element ANY
@@ -518,10 +519,14 @@
    * @param {expression} onSync An expression that gets evaluated every time fpBind
    * successfully sends data to Firebae.
    * @param {expression} onError An expression that gets evaluated when Firebase
-   * reports an error (usually related to permissions). Gets the special variable
-   * $error with the specific error.
+   * reports an error (usually related to permissions). The error is available on
+   * scope as $error.
+   * @animations
+   * **.fp-error** - when the directive is in an error condition
+   * **.fp-syncing** - when data is being sent to Firebase
+   * **.fp-attached** - when the connection to Firebase is available
    */
-  .directive('fpBind', function() {
+  .directive('fpBind', function($animate) {
   
     return {
   
@@ -538,10 +543,19 @@
   
         var setError = function(err) {
   
+          $animate.addClass(el, 'fp-error');
           scope.$error = err;
           if (attrs.onError) {
             scope.$evalAsync(attrs.onError);
           }
+  
+        };
+  
+  
+        var clearError = function() {
+  
+          $animate.removeClass(el, 'fp-error');
+          delete scope.$error;
   
         };
   
@@ -562,6 +576,7 @@
   
           if (!scope.$syncing) {
   
+            $animate.addClass(el, 'fp-syncing');
             scope.$syncing = true;
   
             var value = scope[attrs.as || '$val'];
@@ -604,6 +619,8 @@
             removeScopeListener();
           }
   
+          $animate.removeClass(el, 'fp-attached');
+          $animate.removeClass(el, 'fp-syncing');
           scope.$attached = false;
   
         };
@@ -611,7 +628,15 @@
   
         scope.$attach = function() {
   
+          if (scope.$error) {
+            clearError();
+          }
+  
           listener = ref.on('value', function(newSnap) {
+  
+            if (scope.$error) {
+              clearError();
+            }
   
             setTimeout(function() { scope.$apply(function() {
   
@@ -619,6 +644,7 @@
   
               if (!scope.$attached) {
                 scope.$attached = true;
+                $animate.addClass(el, 'fp-attached');
               }
   
               if (removeScopeListener) {
@@ -638,6 +664,8 @@
               }
   
               if (scope.$syncing) {
+  
+                $animate.removeClass(el, 'fp-syncing');
                 scope.$syncing = false;
   
                 if (attrs.onSync) {
@@ -677,10 +705,13 @@
   
         attrs.$observe('fpBind', function(path) {
   
+          if (scope.$error) {
+            clearError();
+          }
+  
           path = path || '';
           if (scope.$attached) {
             scope.$detach();
-            scope.$attached = false;
           }
   
           // If any of the following four conditions arise in the path:
@@ -735,6 +766,7 @@
    * | `$hasPrevious` | {@type boolean}      | True if there are previous values to page back over again. |
    * | `$paging`      | {@type boolean}      | True if a paging operation is currently in progress.       |
    * | `$pageNumber`  | {@type number}       | The current page number of results.                        |
+   * | `$error`       | {@type Error}        | The most recent error returned from Firebase or undefined. |
    *
    *
    * @restrict A
@@ -754,8 +786,11 @@
    * @param {expression} onError An expression that gets evaluated when Firebase
    * returns an error.
    * @param {expression} limit The count of objects in each page.
+   * @animations
+   * **.fp-error** - when the directive is in an error condition
+   * **.fp-paging** - when a page of data is being retrieved from Firebase
    */
-  .directive('fpPage', function($q, Fireproof) {
+  .directive('fpPage', function($q, Fireproof, $animate) {
   
     return {
   
@@ -775,7 +810,7 @@
             scope.$pageNumber--;
           }
   
-          el.removeAttr('paging');
+          $animate.removeClass(el, 'fp-paging');
           scope.$paging = false;
   
           if (direction === 'next') {
@@ -810,9 +845,10 @@
   
         var handleError = function(err) {
   
-          el.removeAttr('paging');
+          $animate.removeClass(el, 'fp-paging');
           scope.$paging = false;
   
+          $animate.addClass(el, 'fp-error');
           scope.$error = err;
           if (attrs.onError) {
             scope.$evalAsync(attrs.onError);
@@ -824,7 +860,7 @@
   
           if (pager && !scope.$paging) {
   
-            el.attr('paging', '');
+            $animate.addClass(el, 'fp-paging');
             scope.$paging = true;
             direction = 'next';
             return pager.next(parseInt(attrs.limit) || 5)
@@ -840,7 +876,7 @@
   
           if (pager && !scope.$paging) {
   
-            el.attr('paging', '');
+            $animate.addClass(el, 'fp-paging');
             scope.$paging = true;
             direction = 'previous';
             return pager.previous(parseInt(attrs.limit) || 5)
@@ -854,9 +890,14 @@
   
         scope.$reset = function() {
   
+          $animate.removeClass(el, 'fp-paging');
+          $animate.removeClass(el, 'fp-error');
+  
+          delete scope.$error;
           scope.$pageNumber = 0;
           scope.$hasNext = true;
           scope.$hasPrevious = false;
+          scope.$paging = false;
   
           pager = new Fireproof.Pager(new Fireproof(ref));
           return scope.$next();
