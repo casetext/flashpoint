@@ -57,6 +57,7 @@ describe('fpPage', function() {
 
   it('initially has the first page of results, ordered by priority', function() {
 
+    expect($scope.$pageNumber).to.equal(1);
     expect(Array.isArray($scope.things)).to.be.true;
     expect($scope.things.length).to.equal(3);
     expect($scope.things).to.have.members([0, 1, 2]);
@@ -70,6 +71,7 @@ describe('fpPage', function() {
     return $scope.$next()
     .then(function() {
 
+      expect($scope.$pageNumber).to.equal(2);
       expect($scope.things).to.have.members([3, 4, 5]);
       expect($scope.$priorities).to.deep.equal([1, 2, 3]);
       expect($scope.$keys).to.deep.equal(['d', 'e', 'f']);
@@ -79,6 +81,7 @@ describe('fpPage', function() {
     })
     .then(function() {
 
+      expect($scope.$pageNumber).to.equal(3);
       expect($scope.things).to.have.members([6, 7, 8]);
       expect($scope.$priorities).to.deep.equal(['a', 'b', 'c']);
       expect($scope.$keys).to.deep.equal(['g', 'h', 'i']);
@@ -88,6 +91,7 @@ describe('fpPage', function() {
     })
     .then(function() {
 
+      expect($scope.$pageNumber).to.equal(4);
       expect($scope.things).to.have.members([9]);
       expect($scope.$priorities).to.deep.equal(['d']);
       expect($scope.$keys).to.deep.equal(['j']);
@@ -109,6 +113,7 @@ describe('fpPage', function() {
     })
     .then(function() {
 
+      expect($scope.$pageNumber).to.equal(1);
       expect($scope.things).to.have.members([0, 1, 2]);
       expect($scope.$priorities).to.deep.equal([null, -1, 0]);
       expect($scope.$keys).to.deep.equal(['a', 'b', 'c']);
@@ -130,6 +135,7 @@ describe('fpPage', function() {
     })
     .then(function() {
 
+      expect($scope.$pageNumber).to.equal(1);
       expect($scope.things).to.have.members([0, 1, 2]);
       expect($scope.$priorities).to.deep.equal([null, -1, 0]);
       expect($scope.$keys).to.deep.equal(['a', 'b', 'c']);
