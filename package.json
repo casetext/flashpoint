@@ -16,8 +16,9 @@
   "author": "Harry Schmidt <casetext@goldibex.com>",
   "license": "MIT",
   "dependencies": {
+    "angular": "^1.2.26",
     "fireproof": "^1.15.3",
-    "firebase": "1.1.3"
+    "firebase": "^1.1.3"
   },
   "devDependencies": {
     "chai-fireproof": "^0.1.0",
