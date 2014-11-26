@@ -18,36 +18,34 @@
     </script>
     <script src="/node_modules/fireproof/dist/fireproof.js"></script>
 
-    <script src="/node_modules/angular/lib/angular.min.js"></script>
+    <script src="/bower_components/angular/angular.min.js"></script>
     <script src="/angular-fireproof.js"></script>
     <script>
     angular.module('demo', ['angular-fireproof'])
     .directive('scopeIsolator', function() {
       return {
-        scope: {},
-        link: function(scope) {
-          console.log(scope);
-        }
-      }
+        scope: {}
+      };
     });
     </script>
   </head>
 
   <body firebase="https://angular-fireproof-demo.firebaseio-demo.com">
-    <h2>angular-fireproof demo</h2>
+    <h2>angular-fireproof demo: {{ $val('foo') }} </h2>
     <div scope-isolator>
       <div fp-page="dinosaurs" limit="3" as="dinosaurs">
+        <h4>Page {{ $pageNumber }}</h4>
         <ul>
           <li ng-repeat="dinosaur in dinosaurs">
-          The {{ dinosaurs.$keys[$index] }} is {{ dinosaur.carnivorous ? "carnivorous, so watch out" : "not carnivorous" }}
+          The {{ $keys[$index] }} is {{ dinosaur.carnivorous ? "carnivorous, so watch out" : "not carnivorous" }}
           </li>
         </ul>
 
-        <button ng-click="dinosaurs.$previous()">Previous Page</button>
-        <button ng-click="dinosaurs.$next()">Next Page</button>
+        <button ng-click="$previous()" ng-disabled="!$hasPrevious">Previous Page</button>
+        <button ng-click="$next()" ng-disabled="!$hasNext">Next Page</button>
       </div>
 
-      <input fp-bind="foo" as="foo" ng-model="foo" watch="true" sync="true">
+      <input fp-bind="foo" as="foo" ng-model="foo" autosync="true">
     </div>
   </body>
 

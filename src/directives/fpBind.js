@@ -100,9 +100,6 @@ angular.module('angular-fireproof.directives.fpBind', [
 
         if (!scope.$syncing) {
 
-          $animate.addClass(el, 'fp-syncing');
-          scope.$syncing = true;
-
           var value = scope[attrs.as || '$val'];
           if (value === undefined) {
             value = null;
@@ -115,9 +112,19 @@ angular.module('angular-fireproof.directives.fpBind', [
 
           if (value !== snap.val() || priority !== snap.getPriority()) {
 
+            $animate.addClass(el, 'fp-syncing');
+            scope.$syncing = true;
+
             ref.setWithPriority(value, priority, function(err) {
 
               setTimeout(function() { scope.$apply(function() {
+
+                scope.$syncing = false;
+                $animate.removeClass(el, 'fp-syncing');
+
+                if (attrs.onSync) {
+                  scope.$evalAsync(attrs.onSync);
+                }
 
                 if (err) {
                   setError(err);
@@ -185,17 +192,6 @@ angular.module('angular-fireproof.directives.fpBind', [
 
             if (attrs.onLoad) {
               scope.$evalAsync(attrs.onLoad);
-            }
-
-            if (scope.$syncing) {
-
-              $animate.removeClass(el, 'fp-syncing');
-              scope.$syncing = false;
-
-              if (attrs.onSync) {
-                scope.$evalAsync(attrs.onSync);
-              }
-
             }
 
             if (attrs.autosync) {

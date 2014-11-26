@@ -58,27 +58,15 @@ angular.module('angular-fireproof.directives.fpPage', [
     require: '^firebase',
     link: function(scope, el, attrs, firebase) {
 
-      var ref, pager, direction;
+      var ref, pager;
 
       var setPage = function(snaps) {
-
-        // set page number here
-        if (direction === 'next') {
-          scope.$pageNumber++;
-        } else {
-          scope.$pageNumber--;
-        }
 
         $animate.removeClass(el, 'fp-paging');
         scope.$paging = false;
 
-        if (direction === 'next') {
-          scope.$hasNext = snaps.length > 0;
-        } else if (direction === 'previous') {
-          scope.$hasPrevious = snaps.length > 0;
-        } else {
-          throw new Error('ASSERTION FAILED: Direction somehow wasn\'t set in setPage!');
-        }
+        scope.$hasPrevious = scope.$pageNumber > 1;
+        scope.$hasNext = (snaps.length === parseInt(attrs.limit));
 
         scope.$keys = snaps.map(function(snap) {
           return snap.name();
@@ -117,15 +105,20 @@ angular.module('angular-fireproof.directives.fpPage', [
 
       scope.$next = function() {
 
-        if (pager && !scope.$paging) {
+        if (pager && !scope.$paging && scope.$hasNext) {
 
           $animate.addClass(el, 'fp-paging');
           scope.$paging = true;
-          direction = 'next';
           return pager.next(parseInt(attrs.limit) || 5)
+          .then(function(result) {
+
+            scope.$pageNumber++;
+            return result;
+
+          })
           .then(setPage, handleError);
 
-        } else if (!scope.$paging) {
+        } else if (!angular.isDefined(pager)) {
           return $q.reject(new Error('Pager does not exist. Has fp-page been set yet?'));
         }
 
@@ -133,15 +126,20 @@ angular.module('angular-fireproof.directives.fpPage', [
 
       scope.$previous = function() {
 
-        if (pager && !scope.$paging) {
+        if (pager && !scope.$paging && scope.$hasPrevious) {
 
           $animate.addClass(el, 'fp-paging');
           scope.$paging = true;
-          direction = 'previous';
           return pager.previous(parseInt(attrs.limit) || 5)
+          .then(function(result) {
+
+            scope.$pageNumber--;
+            return result;
+
+          })
           .then(setPage, handleError);
 
-        } else if (!scope.$paging) {
+        } else if (!angular.isDefined(pager)) {
           return $q.reject(new Error('Pager does not exist. Has fp-page been set yet?'));
         }
 
