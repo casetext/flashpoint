@@ -1,5 +1,5 @@
 
-angular.module('angular-fireproof.services.status', [])
+angular.module('angular-fireproof')
 .service('_fireproofStatus', function($timeout, $rootScope) {
 
   var service = this;

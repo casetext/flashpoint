@@ -1,6 +1,6 @@
 
 angular.module('angular-fireproof.mocks', [
-  'angular-fireproof.services.Fireproof'
+  'angular-fireproof'
 ])
 .run(function(Fireproof, $rootScope) {
 

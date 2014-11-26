@@ -7,7 +7,7 @@ var rmdir = require('rimraf'),
   concat = require('gulp-concat'),
   bump = require('gulp-bump'),
   wrap = require('gulp-wrap'),
-  jsdoc2md = require('gulp-jsdoc-to-markdown'),
+  Dgeni = require('dgeni'),
   filter = require('gulp-filter'),
   git = require('gulp-git'),
   tagVersion = require('gulp-tag-version'),
@@ -68,13 +68,8 @@ gulp.task('build', 'Builds the Javascript for distribution.', ['clean'], functio
 
 gulp.task('docs', 'Generates a new version of the docs.', ['build'], function() {
 
-  return gulp.src(['dist/angular-fireproof.js'])
-  .pipe(jsdoc2md())
-  .pipe(rename(function(path) {
-    path.basename = 'api';
-    path.extname = '.md';
-  }))
-  .pipe(gulp.dest('./'));
+  var dgeni = new Dgeni([require('./docs/dgeni-flashpoint')]);
+  return dgeni.generate();
 
 });
 

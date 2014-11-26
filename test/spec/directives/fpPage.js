@@ -8,8 +8,7 @@ describe('fpPage', function() {
   beforeEach(function(done) {
 
     module('angular-fireproof.mocks');
-    module('angular-fireproof.directives.firebase');
-    module('angular-fireproof.directives.fpPage');
+    module('angular-fireproof');
 
     root.authWithCustomToken(window.__env__.FIREBASE_TEST_SECRET, function() {
 

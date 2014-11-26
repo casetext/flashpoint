@@ -1,14 +1,12 @@
 
 /**
  * @ngdoc module:angular-fireproof.directives.fpBind
+ * @name fpBind
  */
-angular.module('angular-fireproof.directives.fpBind', [
-  'angular-fireproof.directives.firebase',
-  'angular-fireproof.services.status'
-])
+angular.module('angular-fireproof')
 /**
  * @ngdoc value
- * @service fpBindSyncTimeout
+ * @name fpBindSyncTimeout
  * @description The amount of time fpBind will wait before a scope value changing
  * and writing the change (to prevent a write catastrophe). Defaults to 250 ms.
  */

@@ -1,26 +1,24 @@
 
 /**
- * @ngdoc module:angular-fireproof.controllers.FirebaseCtl
+ * @ngdoc module
+ * @name flashpoint.controllers.FirebaseCtl
  */
-angular.module('angular-fireproof.controllers.FirebaseCtl', [
-  'angular-fireproof.services.Fireproof',
-  'angular-fireproof.services.status'
-])
-
-/**
- * @ngdoc controller
- * @name angular.fireproof.controllers.FirebaseCtl:FirebaseCtl
- * @requires $q
- * @requires Firebase
- * @description FirebaseCtl is the core controller responsible for binding
- * Firebase data into Angular. It instantiates a root Firebase object based on
- * the value of the `firebase` property and attaches a core authentication
- * handler.
- * @property {Firebase} root The root of the instantiated Firebase store.
- * @property {object} $auth Firebase authentication data, or `null`.
- * @property {string} $userId Firebase unique user ID (like `simplelogin:1`), or `null`.
- */
+angular.module('angular-fireproof')
 .controller('FirebaseCtl', function($q, Firebase) {
+
+  /**
+   * @ngdoc service
+   * @name FirebaseCtl
+   * @requires $q
+   * @requires Firebase
+   * @description FirebaseCtl is the core controller responsible for binding
+   * Firebase data into Angular. It instantiates a root Firebase object based on
+   * the value of the `firebase` property and attaches a core authentication
+   * handler.
+   * @property {Firebase} root The root of the instantiated Firebase store.
+   * @property {object} $auth Firebase authentication data, or `null`.
+   * @property {string} $userId Firebase unique user ID (like `simplelogin:1`), or `null`.
+   */
 
   var self = this,
     _defaultLoginHandler = function() {

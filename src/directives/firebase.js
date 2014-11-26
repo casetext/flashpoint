@@ -1,10 +1,5 @@
-/**
- * @ngdoc module:angular-fireproof.directives.firebase
- */
-angular.module('angular-fireproof.directives.firebase', [
-  'angular-fireproof.controllers.FirebaseCtl',
-  'angular-fireproof.services.Fireproof'
-])
+
+angular.module('angular-fireproof')
 /**
  * @ngdoc directive
  * @name angular-fireproof.directives.firebase:firebase

@@ -18,37 +18,29 @@
 
   'use strict';
     
-  angular.module('angular-fireproof', [
-    'angular-fireproof.services.Fireproof',
-    'angular-fireproof.services.status',
-    'angular-fireproof.directives.firebase',
-    'angular-fireproof.directives.fpBind',
-    'angular-fireproof.directives.fpPage',
-  ]);
+  angular.module('angular-fireproof', []);
   
   
   /**
-   * @ngdoc module:angular-fireproof.controllers.FirebaseCtl
+   * @ngdoc module
+   * @name flashpoint.controllers.FirebaseCtl
    */
-  angular.module('angular-fireproof.controllers.FirebaseCtl', [
-    'angular-fireproof.services.Fireproof',
-    'angular-fireproof.services.status'
-  ])
-  
-  /**
-   * @ngdoc controller
-   * @name angular.fireproof.controllers.FirebaseCtl:FirebaseCtl
-   * @requires $q
-   * @requires Firebase
-   * @description FirebaseCtl is the core controller responsible for binding
-   * Firebase data into Angular. It instantiates a root Firebase object based on
-   * the value of the `firebase` property and attaches a core authentication
-   * handler.
-   * @property {Firebase} root The root of the instantiated Firebase store.
-   * @property {object} $auth Firebase authentication data, or `null`.
-   * @property {string} $userId Firebase unique user ID (like `simplelogin:1`), or `null`.
-   */
+  angular.module('angular-fireproof')
   .controller('FirebaseCtl', function($q, Firebase) {
+  
+    /**
+     * @ngdoc service
+     * @name FirebaseCtl
+     * @requires $q
+     * @requires Firebase
+     * @description FirebaseCtl is the core controller responsible for binding
+     * Firebase data into Angular. It instantiates a root Firebase object based on
+     * the value of the `firebase` property and attaches a core authentication
+     * handler.
+     * @property {Firebase} root The root of the instantiated Firebase store.
+     * @property {object} $auth Firebase authentication data, or `null`.
+     * @property {string} $userId Firebase unique user ID (like `simplelogin:1`), or `null`.
+     */
   
     var self = this,
       _defaultLoginHandler = function() {
@@ -164,13 +156,8 @@
   
   });
   
-  /**
-   * @ngdoc module:angular-fireproof.directives.firebase
-   */
-  angular.module('angular-fireproof.directives.firebase', [
-    'angular-fireproof.controllers.FirebaseCtl',
-    'angular-fireproof.services.Fireproof'
-  ])
+  
+  angular.module('angular-fireproof')
   /**
    * @ngdoc directive
    * @name angular-fireproof.directives.firebase:firebase
@@ -475,14 +462,12 @@
   
   /**
    * @ngdoc module:angular-fireproof.directives.fpBind
+   * @name fpBind
    */
-  angular.module('angular-fireproof.directives.fpBind', [
-    'angular-fireproof.directives.firebase',
-    'angular-fireproof.services.status'
-  ])
+  angular.module('angular-fireproof')
   /**
    * @ngdoc value
-   * @service fpBindSyncTimeout
+   * @name fpBindSyncTimeout
    * @description The amount of time fpBind will wait before a scope value changing
    * and writing the change (to prevent a write catastrophe). Defaults to 250 ms.
    */
@@ -770,11 +755,9 @@
   
   /**
    * @ngdoc module:angular-fireproof.directives.fpPage
+   * @name fpPage
    */
-  angular.module('angular-fireproof.directives.fpPage', [
-    'angular-fireproof.directives.firebase',
-    'angular-fireproof.services.status'
-  ])
+  angular.module('angular-fireproof')
   /**
    * @ngdoc directive
    * @name angular-fireproof.directives.fpPage:fpPage
@@ -960,7 +943,7 @@
   
   
   
-  angular.module('angular-fireproof.services.Fireproof', [])
+  angular.module('angular-fireproof')
   .factory('Firebase', function() {
     return Firebase;
   })
@@ -977,7 +960,7 @@
   });
   
   
-  angular.module('angular-fireproof.services.status', [])
+  angular.module('angular-fireproof')
   .service('_fireproofStatus', function($timeout, $rootScope) {
   
     var service = this;

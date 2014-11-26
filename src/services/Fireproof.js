@@ -1,5 +1,5 @@
 
-angular.module('angular-fireproof.services.Fireproof', [])
+angular.module('angular-fireproof')
 .factory('Firebase', function() {
   return Firebase;
 })

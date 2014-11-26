@@ -1,11 +1,9 @@
 
 /**
  * @ngdoc module:angular-fireproof.directives.fpPage
+ * @name fpPage
  */
-angular.module('angular-fireproof.directives.fpPage', [
-  'angular-fireproof.directives.firebase',
-  'angular-fireproof.services.status'
-])
+angular.module('angular-fireproof')
 /**
  * @ngdoc directive
  * @name angular-fireproof.directives.fpPage:fpPage

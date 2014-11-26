@@ -39,7 +39,7 @@ describe('firebase', function() {
   beforeEach(function() {
 
     module('angular-fireproof.mocks');
-    module('angular-fireproof.directives.firebase');
+    module('angular-fireproof');
 
     inject(function($rootScope, $compile, $q) {
 
