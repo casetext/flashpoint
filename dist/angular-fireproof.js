@@ -18,20 +18,12 @@
 
   'use strict';
     
-  /**
-   * @ngdoc module
-   * @name angular-fireproof
-   */
-  angular.module('angular-fireproof', []);
-  
-  
   angular.module('angular-fireproof')
   .controller('FirebaseCtl', function($q, Firebase) {
   
     /**
      * @ngdoc type
      * @name FirebaseCtl
-     * @module angular-fireproof
      * @description FirebaseCtl is the core controller responsible for binding
      * Firebase data into Angular. It instantiates a root Firebase object based on
      * the value of the `firebase` property and attaches a core authentication
@@ -156,13 +148,19 @@
   });
   
   
+  /**
+   * @ngdoc module
+   * @name angular-fireproof
+   */
+  angular.module('angular-fireproof', []);
+  
+  
   angular.module('angular-fireproof')
   .directive('firebase', function() {
   
     /**
      * @ngdoc directive
      * @name firebase
-     * @module angular-fireproof
      * @description Exposes the following variables on local scope:
      *
      * | Variable           | Type             | Details                                                   |
@@ -464,7 +462,6 @@
   angular.module('angular-fireproof')
   /**
    * @ngdoc service
-   * @module angular-fireproof
    * @name fpBindSyncTimeout
    * @description The amount of time fpBind will wait before a scope value changing
    * and writing the change (to prevent a write catastrophe). Defaults to 250 ms.
@@ -474,7 +471,6 @@
   
     /**
      * @ngdoc directive
-     * @module angular-fireproof
      * @name fpBind
      * @description Binds the value of a location in Firebase to local scope,
      * updating it automatically as it changes.
@@ -754,7 +750,6 @@
   
     /**
      * @ngdoc directive
-     * @module angular-fireproof
      * @name fpPage
      * @description Pages over the keys at a Firebase location.
      *

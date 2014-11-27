@@ -5,7 +5,6 @@ angular.module('angular-fireproof')
   /**
    * @ngdoc type
    * @name FirebaseCtl
-   * @module angular-fireproof
    * @description FirebaseCtl is the core controller responsible for binding
    * Firebase data into Angular. It instantiates a root Firebase object based on
    * the value of the `firebase` property and attaches a core authentication

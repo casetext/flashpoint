@@ -4,7 +4,6 @@ angular.module('angular-fireproof')
 
   /**
    * @ngdoc directive
-   * @module angular-fireproof
    * @name fpPage
    * @description Pages over the keys at a Firebase location.
    *

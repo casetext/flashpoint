@@ -2,7 +2,6 @@
 angular.module('angular-fireproof')
 /**
  * @ngdoc service
- * @module angular-fireproof
  * @name fpBindSyncTimeout
  * @description The amount of time fpBind will wait before a scope value changing
  * and writing the change (to prevent a write catastrophe). Defaults to 250 ms.
@@ -12,7 +11,6 @@ angular.module('angular-fireproof')
 
   /**
    * @ngdoc directive
-   * @module angular-fireproof
    * @name fpBind
    * @description Binds the value of a location in Firebase to local scope,
    * updating it automatically as it changes.

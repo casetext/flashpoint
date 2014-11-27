@@ -5,7 +5,6 @@ angular.module('angular-fireproof')
   /**
    * @ngdoc directive
    * @name firebase
-   * @module angular-fireproof
    * @description Exposes the following variables on local scope:
    *
    * | Variable           | Type             | Details                                                   |
