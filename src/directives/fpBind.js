@@ -1,11 +1,7 @@
 
-/**
- * @ngdoc module:angular-fireproof.directives.fpBind
- * @name fpBind
- */
 angular.module('angular-fireproof')
 /**
- * @ngdoc value
+ * @ngdoc service
  * @name fpBindSyncTimeout
  * @description The amount of time fpBind will wait before a scope value changing
  * and writing the change (to prevent a write catastrophe). Defaults to 250 ms.
@@ -13,7 +9,7 @@ angular.module('angular-fireproof')
 .value('fpBindSyncTimeout', 250)
 /**
  * @ngdoc directive
- * @name angular-fireproof.directives.fpBind:fpBind
+ * @name fpBind
  * @description Binds the value of a location in Firebase to local scope,
  * updating it automatically as it changes.
  *
@@ -51,10 +47,6 @@ angular.module('angular-fireproof')
  * @param {expression} onError An expression that gets evaluated when Firebase
  * reports an error (usually related to permissions). The error is available on
  * scope as $error.
- * @animations
- * **.fp-error** - when the directive is in an error condition
- * **.fp-syncing** - when data is being sent to Firebase
- * **.fp-attached** - when the connection to Firebase is available
  */
 .directive('fpBind', function($q, $animate, fpBindSyncTimeout) {
 

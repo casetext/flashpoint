@@ -18,21 +18,19 @@
 
   'use strict';
     
+  /**
+   * @ngdoc module
+   * @name angular-fireproof
+   */
   angular.module('angular-fireproof', []);
   
   
-  /**
-   * @ngdoc module
-   * @name flashpoint.controllers.FirebaseCtl
-   */
   angular.module('angular-fireproof')
   .controller('FirebaseCtl', function($q, Firebase) {
   
     /**
      * @ngdoc service
      * @name FirebaseCtl
-     * @requires $q
-     * @requires Firebase
      * @description FirebaseCtl is the core controller responsible for binding
      * Firebase data into Angular. It instantiates a root Firebase object based on
      * the value of the `firebase` property and attaches a core authentication
@@ -160,7 +158,7 @@
   angular.module('angular-fireproof')
   /**
    * @ngdoc directive
-   * @name angular-fireproof.directives.firebase:firebase
+   * @name firebase
    * @description Exposes the following variables on local scope:
    *
    * | Variable           | Type             | Details                                                   |
@@ -460,13 +458,9 @@
   
   
   
-  /**
-   * @ngdoc module:angular-fireproof.directives.fpBind
-   * @name fpBind
-   */
   angular.module('angular-fireproof')
   /**
-   * @ngdoc value
+   * @ngdoc service
    * @name fpBindSyncTimeout
    * @description The amount of time fpBind will wait before a scope value changing
    * and writing the change (to prevent a write catastrophe). Defaults to 250 ms.
@@ -474,7 +468,7 @@
   .value('fpBindSyncTimeout', 250)
   /**
    * @ngdoc directive
-   * @name angular-fireproof.directives.fpBind:fpBind
+   * @name fpBind
    * @description Binds the value of a location in Firebase to local scope,
    * updating it automatically as it changes.
    *
@@ -512,10 +506,6 @@
    * @param {expression} onError An expression that gets evaluated when Firebase
    * reports an error (usually related to permissions). The error is available on
    * scope as $error.
-   * @animations
-   * **.fp-error** - when the directive is in an error condition
-   * **.fp-syncing** - when data is being sent to Firebase
-   * **.fp-attached** - when the connection to Firebase is available
    */
   .directive('fpBind', function($q, $animate, fpBindSyncTimeout) {
   
@@ -753,14 +743,10 @@
   
   
   
-  /**
-   * @ngdoc module:angular-fireproof.directives.fpPage
-   * @name fpPage
-   */
   angular.module('angular-fireproof')
   /**
    * @ngdoc directive
-   * @name angular-fireproof.directives.fpPage:fpPage
+   * @name fpPage
    * @description Pages over the keys at a Firebase location.
    *
    * Exposes the following variables on local scope:
@@ -797,9 +783,6 @@
    * @param {expression} onError An expression that gets evaluated when Firebase
    * returns an error.
    * @param {expression} limit The count of objects in each page.
-   * @animations
-   * **.fp-error** - when the directive is in an error condition
-   * **.fp-paging** - when a page of data is being retrieved from Firebase
    */
   .directive('fpPage', function($q, Fireproof, $animate) {
   
@@ -944,12 +927,24 @@
   
   
   angular.module('angular-fireproof')
+  /**
+   * @ngdoc service
+   * @name Firebase
+   */
   .factory('Firebase', function() {
     return Firebase;
   })
+  /**
+   * @ngdoc service
+   * @name ServerValue
+   */
   .factory('ServerValue', function(Firebase) {
     return Firebase.ServerValue;
   })
+  /**
+   * @ngdoc service
+   * @name Fireproof
+   */
   .factory('Fireproof', function($timeout, $q) {
   
     Fireproof.setNextTick($timeout);

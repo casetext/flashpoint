@@ -1,12 +1,8 @@
 
-/**
- * @ngdoc module:angular-fireproof.directives.fpPage
- * @name fpPage
- */
 angular.module('angular-fireproof')
 /**
  * @ngdoc directive
- * @name angular-fireproof.directives.fpPage:fpPage
+ * @name fpPage
  * @description Pages over the keys at a Firebase location.
  *
  * Exposes the following variables on local scope:
@@ -43,9 +39,6 @@ angular.module('angular-fireproof')
  * @param {expression} onError An expression that gets evaluated when Firebase
  * returns an error.
  * @param {expression} limit The count of objects in each page.
- * @animations
- * **.fp-error** - when the directive is in an error condition
- * **.fp-paging** - when a page of data is being retrieved from Firebase
  */
 .directive('fpPage', function($q, Fireproof, $animate) {
 

@@ -1,16 +1,10 @@
 
-/**
- * @ngdoc module
- * @name flashpoint.controllers.FirebaseCtl
- */
 angular.module('angular-fireproof')
 .controller('FirebaseCtl', function($q, Firebase) {
 
   /**
    * @ngdoc service
    * @name FirebaseCtl
-   * @requires $q
-   * @requires Firebase
    * @description FirebaseCtl is the core controller responsible for binding
    * Firebase data into Angular. It instantiates a root Firebase object based on
    * the value of the `firebase` property and attaches a core authentication
