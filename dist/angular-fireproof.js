@@ -29,8 +29,9 @@
   .controller('FirebaseCtl', function($q, Firebase) {
   
     /**
-     * @ngdoc service
+     * @ngdoc type
      * @name FirebaseCtl
+     * @module angular-fireproof
      * @description FirebaseCtl is the core controller responsible for binding
      * Firebase data into Angular. It instantiates a root Firebase object based on
      * the value of the `firebase` property and attaches a core authentication
@@ -156,59 +157,61 @@
   
   
   angular.module('angular-fireproof')
-  /**
-   * @ngdoc directive
-   * @name firebase
-   * @description Exposes the following variables on local scope:
-   *
-   * | Variable           | Type             | Details                                                   |
-   * |--------------------|------------------|-----------------------------------------------------------|
-   * | `$auth`            | {@type object}   | Auth data if the user is logged in, null if not.          |
-   * | `$login`           | {@type function} | Runs the login handler. Returns a {@type Promise}.        |
-   * | `$logout`          | {@type function} | Runs the logout handler. Returns a {@type Promise}.       |
-   * | `$val`             | {@type function} | Evaluates a Firebase value.                               |
-   * | `$set`             | {@type function} | Sets a Firebase location to a given value.                |
-   * | `$setPriority`     | {@type function} | Sets a Firebase location to a given priority.             |
-   * | `$setWithPriority` | {@type function} | Sets a Firebase location to a given value and priority.   |
-   * | `$update`          | {@type function} | Updates a Firebase location with a given object.          |
-   * | `$remove`          | {@type function} | Sets a Firebase location to null.                         |
-   *
-   * @example
-   * `$val` and all succeeding methods take a variable number of path components followed by their
-   * necessary arguments (for `$set` and `$update`, a value; for `$setPriority`, a priority; and for
-   * `$setWithPriority`, a value and a priority). So you could do the following:
-   * `Your assigned seat is {{ $val('seatAssignments', $auth.uid) }}`.
-   *
-   * `$set` and related methods all return a {@type function} so that you can
-   * easily pass them into a promise chain like so:
-   *
-   * <example firebase="https://my-firebase.firebaseio.com">
-   *   <button ng-click="login().then($set('signups', $auth.uid, true))">Sign up!</button>
-   * </example>
-   *
-   * If you wanted to run the action immediately, you can use `$set(...).now()`:
-   *
-   * <example firebase="https://my-firebase.firebaseio.com">
-   *   <button ng-click="$set('signups', $auth.uid, true).now()">Sign up!</button>
-   * </example>
-   *
-   * @restrict A
-   * @element ANY
-   * @scope
-   * @param {expression} firebase Full URL to the Firebase, like
-   * `https://my-firebase.firebaseio.com`. Interpolatable.
-   * @param {expression} loginHandler A method on local scope that challenges
-   * the user for login credentials and returns a {@type Promise} that resolves
-   * on login or rejects on failure. Required if you plan to use authentication.
-   * @param {expression} logoutHandler A method on local scope that handles logout
-   * procedures and returns a {@type Promise} that resolves on success or rejects
-   * on failure. By default this just calls `root.unauth()`.
-   * @param {expression} onChange An expression that gets evaluated when Firebase
-   * sends a new value that we happen to be listening to.
-   * @param {expression} onAuthChange An expression that gets evaluated when
-   * auth conditions change, because the user logs in or out.
-   */
   .directive('firebase', function() {
+  
+    /**
+     * @ngdoc directive
+     * @name firebase
+     * @module angular-fireproof
+     * @description Exposes the following variables on local scope:
+     *
+     * | Variable           | Type             | Details                                                   |
+     * |--------------------|------------------|-----------------------------------------------------------|
+     * | `$auth`            | {@type object}   | Auth data if the user is logged in, null if not.          |
+     * | `$login`           | {@type function} | Runs the login handler. Returns a {@type Promise}.        |
+     * | `$logout`          | {@type function} | Runs the logout handler. Returns a {@type Promise}.       |
+     * | `$val`             | {@type function} | Evaluates a Firebase value.                               |
+     * | `$set`             | {@type function} | Sets a Firebase location to a given value.                |
+     * | `$setPriority`     | {@type function} | Sets a Firebase location to a given priority.             |
+     * | `$setWithPriority` | {@type function} | Sets a Firebase location to a given value and priority.   |
+     * | `$update`          | {@type function} | Updates a Firebase location with a given object.          |
+     * | `$remove`          | {@type function} | Sets a Firebase location to null.                         |
+     *
+     * @example
+     * `$val` and all succeeding methods take a variable number of path components followed by their
+     * necessary arguments (for `$set` and `$update`, a value; for `$setPriority`, a priority; and for
+     * `$setWithPriority`, a value and a priority). So you could do the following:
+     * `Your assigned seat is {{ $val('seatAssignments', $auth.uid) }}`.
+     *
+     * `$set` and related methods all return a {@type function} so that you can
+     * easily pass them into a promise chain like so:
+     *
+     * <example firebase="https://my-firebase.firebaseio.com">
+     *   <button ng-click="login().then($set('signups', $auth.uid, true))">Sign up!</button>
+     * </example>
+     *
+     * If you wanted to run the action immediately, you can use `$set(...).now()`:
+     *
+     * <example firebase="https://my-firebase.firebaseio.com">
+     *   <button ng-click="$set('signups', $auth.uid, true).now()">Sign up!</button>
+     * </example>
+     *
+     * @restrict A
+     * @element ANY
+     * @scope
+     * @param {expression} firebase Full URL to the Firebase, like
+     * `https://my-firebase.firebaseio.com`. Interpolatable.
+     * @param {expression} loginHandler A method on local scope that challenges
+     * the user for login credentials and returns a {@type Promise} that resolves
+     * on login or rejects on failure. Required if you plan to use authentication.
+     * @param {expression} logoutHandler A method on local scope that handles logout
+     * procedures and returns a {@type Promise} that resolves on success or rejects
+     * on failure. By default this just calls `root.unauth()`.
+     * @param {expression} onChange An expression that gets evaluated when Firebase
+     * sends a new value that we happen to be listening to.
+     * @param {expression} onAuthChange An expression that gets evaluated when
+     * auth conditions change, because the user logs in or out.
+     */
   
   
     function validatePath(pathParts) {
@@ -461,53 +464,56 @@
   angular.module('angular-fireproof')
   /**
    * @ngdoc service
+   * @module angular-fireproof
    * @name fpBindSyncTimeout
    * @description The amount of time fpBind will wait before a scope value changing
    * and writing the change (to prevent a write catastrophe). Defaults to 250 ms.
    */
   .value('fpBindSyncTimeout', 250)
-  /**
-   * @ngdoc directive
-   * @name fpBind
-   * @description Binds the value of a location in Firebase to local scope,
-   * updating it automatically as it changes.
-   *
-   * Exposes the following variables on local scope:
-   *
-   * | Variable    | Type             | Details                                                                        |
-   * |-------------|------------------|--------------------------------------------------------------------------------|
-   * | `$sync`     | {@type function} | Sets the value/priority in Firebase to the value on scope.                     |
-   * | `$revert`   | {@type function} | Sets the value/priority on scope to the most recent Firebase snapshot's value. |
-   * | `$attach`   | {@type function} | Starts listening to Firebase for changes. Happens by default initially.        |
-   * | `$detach`   | {@type function} | Stops listening to Firebase for changes.                                       |
-   * | `$name`     | {@type string}   | The last path component of the Firebase location.                              |
-   * | `$val`      | {@type *}        | The value in Firebase, or `null` if there isn't one.                           |
-   * | `$priority` | {@type *}        | The priority in Firebase, or `null` if there isn't one.                        |
-   * | `$attached` | {@type boolean}  | True if the directive is listening to Firebase, false otherwise.               |
-   * | `$syncing`  | {@type boolean}  | True if a Firebase operation is in progress, false otherwise.                  |
-   * | `$error`    | {@type Error}    | The most recent error returned from Firebase, undefined in non-error cases.    |
-   *
-   * @restrict A
-   * @element ANY
-   * @scope
-   * @param {expression} fpBind Path to the location in the Firebase, like
-   * `favorites/{{ $auth.uid }}/aFew`. Interpolatable.
-   * @param {expression} copyTo Path to another Firebase location to write to. Optional.
-   * @param {expression} as The name of a variable on scope to bind. So you could do
-   * something like
-   * `<example fp-bind="users/{{ $auth.uid }}/name" as="name">Your username is {{ name }}</example>`.
-   * @param {expression} autosync If this value evaluates on local scope to `true`,
-   * the directive will sync to Firebase every time its value changes. When autosync
-   * is on, `$sync` is a no-op.
-   * @param {expression} onLoad An expression that gets evaluated every time new
-   * data comes from Firebase.
-   * @param {expression} onSync An expression that gets evaluated every time fpBind
-   * successfully sends data to Firebae.
-   * @param {expression} onError An expression that gets evaluated when Firebase
-   * reports an error (usually related to permissions). The error is available on
-   * scope as $error.
-   */
   .directive('fpBind', function($q, $animate, fpBindSyncTimeout) {
+  
+    /**
+     * @ngdoc directive
+     * @module angular-fireproof
+     * @name fpBind
+     * @description Binds the value of a location in Firebase to local scope,
+     * updating it automatically as it changes.
+     *
+     * Exposes the following variables on local scope:
+     *
+     * | Variable    | Type             | Details                                                                        |
+     * |-------------|------------------|--------------------------------------------------------------------------------|
+     * | `$sync`     | {@type function} | Sets the value/priority in Firebase to the value on scope.                     |
+     * | `$revert`   | {@type function} | Sets the value/priority on scope to the most recent Firebase snapshot's value. |
+     * | `$attach`   | {@type function} | Starts listening to Firebase for changes. Happens by default initially.        |
+     * | `$detach`   | {@type function} | Stops listening to Firebase for changes.                                       |
+     * | `$name`     | {@type string}   | The last path component of the Firebase location.                              |
+     * | `$val`      | {@type *}        | The value in Firebase, or `null` if there isn't one.                           |
+     * | `$priority` | {@type *}        | The priority in Firebase, or `null` if there isn't one.                        |
+     * | `$attached` | {@type boolean}  | True if the directive is listening to Firebase, false otherwise.               |
+     * | `$syncing`  | {@type boolean}  | True if a Firebase operation is in progress, false otherwise.                  |
+     * | `$error`    | {@type Error}    | The most recent error returned from Firebase, undefined in non-error cases.    |
+     *
+     * @restrict A
+     * @element ANY
+     * @scope
+     * @param {expression} fpBind Path to the location in the Firebase, like
+     * `favorites/{{ $auth.uid }}/aFew`. Interpolatable.
+     * @param {expression} copyTo Path to another Firebase location to write to. Optional.
+     * @param {expression} as The name of a variable on scope to bind. So you could do
+     * something like
+     * `<example fp-bind="users/{{ $auth.uid }}/name" as="name">Your username is {{ name }}</example>`.
+     * @param {expression} autosync If this value evaluates on local scope to `true`,
+     * the directive will sync to Firebase every time its value changes. When autosync
+     * is on, `$sync` is a no-op.
+     * @param {expression} onLoad An expression that gets evaluated every time new
+     * data comes from Firebase.
+     * @param {expression} onSync An expression that gets evaluated every time fpBind
+     * successfully sends data to Firebae.
+     * @param {expression} onError An expression that gets evaluated when Firebase
+     * reports an error (usually related to permissions). The error is available on
+     * scope as $error.
+     */
   
     return {
   
@@ -744,47 +750,49 @@
   
   
   angular.module('angular-fireproof')
-  /**
-   * @ngdoc directive
-   * @name fpPage
-   * @description Pages over the keys at a Firebase location.
-   *
-   * Exposes the following variables on local scope:
-   *
-   * | Variable       | Type                 | Details                                                    |
-   * |----------------|----------------------|------------------------------------------------------------|
-   * | `$next`        | {@type function}     | Fetches the next set of values into scope.                 |
-   * | `$previous`    | {@type function}     | Fetches the previous set of values into scope.             |
-   * | `$reset`       | {@type function}     | Starts again at the beginning.                             |
-   * | `$keys`        | {@type string|array} | The keys in the current page.                              |
-   * | `$values`      | {@type *|array}      | The valuees in the current page.                           |
-   * | `$priorities`  | {@type *|array}      | The priorities in the current page.                        |
-   * | `$hasNext`     | {@type boolean}      | True if there are more values to page over.                |
-   * | `$hasPrevious` | {@type boolean}      | True if there are previous values to page back over again. |
-   * | `$paging`      | {@type boolean}      | True if a paging operation is currently in progress.       |
-   * | `$pageNumber`  | {@type number}       | The current page number of results.                        |
-   * | `$error`       | {@type Error}        | The most recent error returned from Firebase or undefined. |
-   *
-   *
-   * @restrict A
-   * @element ANY
-   * @scope
-   * @param {expression} fpPage Path to the location in the Firebase, like
-   * `favorites/{{ $auth.uid }}`. Interpolatable.
-   * @param {expression} as The name of a variable on scope to bind. So you could do
-   * something like
-   * `<example fp-page="users/{{ $auth.uid }}" as="users">
-   *   <ul>
-   *     <li ng-repeat="user in users"> {{ user.name }} </li>
-   *   </ul>
-   * </example>`
-   * @param {expression} onPage An expression that gets evaluated when a new page
-   * is available.
-   * @param {expression} onError An expression that gets evaluated when Firebase
-   * returns an error.
-   * @param {expression} limit The count of objects in each page.
-   */
   .directive('fpPage', function($q, Fireproof, $animate) {
+  
+    /**
+     * @ngdoc directive
+     * @module angular-fireproof
+     * @name fpPage
+     * @description Pages over the keys at a Firebase location.
+     *
+     * Exposes the following variables on local scope:
+     *
+     * | Variable       | Type                 | Details                                                    |
+     * |----------------|----------------------|------------------------------------------------------------|
+     * | `$next`        | {@type function}     | Fetches the next set of values into scope.                 |
+     * | `$previous`    | {@type function}     | Fetches the previous set of values into scope.             |
+     * | `$reset`       | {@type function}     | Starts again at the beginning.                             |
+     * | `$keys`        | {@type string|array} | The keys in the current page.                              |
+     * | `$values`      | {@type *|array}      | The valuees in the current page.                           |
+     * | `$priorities`  | {@type *|array}      | The priorities in the current page.                        |
+     * | `$hasNext`     | {@type boolean}      | True if there are more values to page over.                |
+     * | `$hasPrevious` | {@type boolean}      | True if there are previous values to page back over again. |
+     * | `$paging`      | {@type boolean}      | True if a paging operation is currently in progress.       |
+     * | `$pageNumber`  | {@type number}       | The current page number of results.                        |
+     * | `$error`       | {@type Error}        | The most recent error returned from Firebase or undefined. |
+     *
+     *
+     * @restrict A
+     * @element ANY
+     * @scope
+     * @param {expression} fpPage Path to the location in the Firebase, like
+     * `favorites/{{ $auth.uid }}`. Interpolatable.
+     * @param {expression} as The name of a variable on scope to bind. So you could do
+     * something like
+     * `<example fp-page="users/{{ $auth.uid }}" as="users">
+     *   <ul>
+     *     <li ng-repeat="user in users"> {{ user.name }} </li>
+     *   </ul>
+     * </example>`
+     * @param {expression} onPage An expression that gets evaluated when a new page
+     * is available.
+     * @param {expression} onError An expression that gets evaluated when Firebase
+     * returns an error.
+     * @param {expression} limit The count of objects in each page.
+     */
   
     return {
   

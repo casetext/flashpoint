@@ -1,58 +1,60 @@
 
 angular.module('angular-fireproof')
-/**
- * @ngdoc directive
- * @name firebase
- * @description Exposes the following variables on local scope:
- *
- * | Variable           | Type             | Details                                                   |
- * |--------------------|------------------|-----------------------------------------------------------|
- * | `$auth`            | {@type object}   | Auth data if the user is logged in, null if not.          |
- * | `$login`           | {@type function} | Runs the login handler. Returns a {@type Promise}.        |
- * | `$logout`          | {@type function} | Runs the logout handler. Returns a {@type Promise}.       |
- * | `$val`             | {@type function} | Evaluates a Firebase value.                               |
- * | `$set`             | {@type function} | Sets a Firebase location to a given value.                |
- * | `$setPriority`     | {@type function} | Sets a Firebase location to a given priority.             |
- * | `$setWithPriority` | {@type function} | Sets a Firebase location to a given value and priority.   |
- * | `$update`          | {@type function} | Updates a Firebase location with a given object.          |
- * | `$remove`          | {@type function} | Sets a Firebase location to null.                         |
- *
- * @example
- * `$val` and all succeeding methods take a variable number of path components followed by their
- * necessary arguments (for `$set` and `$update`, a value; for `$setPriority`, a priority; and for
- * `$setWithPriority`, a value and a priority). So you could do the following:
- * `Your assigned seat is {{ $val('seatAssignments', $auth.uid) }}`.
- *
- * `$set` and related methods all return a {@type function} so that you can
- * easily pass them into a promise chain like so:
- *
- * <example firebase="https://my-firebase.firebaseio.com">
- *   <button ng-click="login().then($set('signups', $auth.uid, true))">Sign up!</button>
- * </example>
- *
- * If you wanted to run the action immediately, you can use `$set(...).now()`:
- *
- * <example firebase="https://my-firebase.firebaseio.com">
- *   <button ng-click="$set('signups', $auth.uid, true).now()">Sign up!</button>
- * </example>
- *
- * @restrict A
- * @element ANY
- * @scope
- * @param {expression} firebase Full URL to the Firebase, like
- * `https://my-firebase.firebaseio.com`. Interpolatable.
- * @param {expression} loginHandler A method on local scope that challenges
- * the user for login credentials and returns a {@type Promise} that resolves
- * on login or rejects on failure. Required if you plan to use authentication.
- * @param {expression} logoutHandler A method on local scope that handles logout
- * procedures and returns a {@type Promise} that resolves on success or rejects
- * on failure. By default this just calls `root.unauth()`.
- * @param {expression} onChange An expression that gets evaluated when Firebase
- * sends a new value that we happen to be listening to.
- * @param {expression} onAuthChange An expression that gets evaluated when
- * auth conditions change, because the user logs in or out.
- */
 .directive('firebase', function() {
+
+  /**
+   * @ngdoc directive
+   * @name firebase
+   * @module angular-fireproof
+   * @description Exposes the following variables on local scope:
+   *
+   * | Variable           | Type             | Details                                                   |
+   * |--------------------|------------------|-----------------------------------------------------------|
+   * | `$auth`            | {@type object}   | Auth data if the user is logged in, null if not.          |
+   * | `$login`           | {@type function} | Runs the login handler. Returns a {@type Promise}.        |
+   * | `$logout`          | {@type function} | Runs the logout handler. Returns a {@type Promise}.       |
+   * | `$val`             | {@type function} | Evaluates a Firebase value.                               |
+   * | `$set`             | {@type function} | Sets a Firebase location to a given value.                |
+   * | `$setPriority`     | {@type function} | Sets a Firebase location to a given priority.             |
+   * | `$setWithPriority` | {@type function} | Sets a Firebase location to a given value and priority.   |
+   * | `$update`          | {@type function} | Updates a Firebase location with a given object.          |
+   * | `$remove`          | {@type function} | Sets a Firebase location to null.                         |
+   *
+   * @example
+   * `$val` and all succeeding methods take a variable number of path components followed by their
+   * necessary arguments (for `$set` and `$update`, a value; for `$setPriority`, a priority; and for
+   * `$setWithPriority`, a value and a priority). So you could do the following:
+   * `Your assigned seat is {{ $val('seatAssignments', $auth.uid) }}`.
+   *
+   * `$set` and related methods all return a {@type function} so that you can
+   * easily pass them into a promise chain like so:
+   *
+   * <example firebase="https://my-firebase.firebaseio.com">
+   *   <button ng-click="login().then($set('signups', $auth.uid, true))">Sign up!</button>
+   * </example>
+   *
+   * If you wanted to run the action immediately, you can use `$set(...).now()`:
+   *
+   * <example firebase="https://my-firebase.firebaseio.com">
+   *   <button ng-click="$set('signups', $auth.uid, true).now()">Sign up!</button>
+   * </example>
+   *
+   * @restrict A
+   * @element ANY
+   * @scope
+   * @param {expression} firebase Full URL to the Firebase, like
+   * `https://my-firebase.firebaseio.com`. Interpolatable.
+   * @param {expression} loginHandler A method on local scope that challenges
+   * the user for login credentials and returns a {@type Promise} that resolves
+   * on login or rejects on failure. Required if you plan to use authentication.
+   * @param {expression} logoutHandler A method on local scope that handles logout
+   * procedures and returns a {@type Promise} that resolves on success or rejects
+   * on failure. By default this just calls `root.unauth()`.
+   * @param {expression} onChange An expression that gets evaluated when Firebase
+   * sends a new value that we happen to be listening to.
+   * @param {expression} onAuthChange An expression that gets evaluated when
+   * auth conditions change, because the user logs in or out.
+   */
 
 
   function validatePath(pathParts) {

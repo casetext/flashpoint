@@ -69,7 +69,14 @@ gulp.task('build', 'Builds the Javascript for distribution.', ['clean'], functio
 gulp.task('docs', 'Generates a new version of the docs.', ['build'], function() {
 
   var dgeni = new Dgeni([require('./docs/dgeni-flashpoint')]);
-  return dgeni.generate();
+  try {
+  return dgeni.generate()
+  .catch(function(e) {
+    console.log(e.stack);
+  });
+  } catch(e) {
+    console.log(e.stack);
+  }
 
 });
 

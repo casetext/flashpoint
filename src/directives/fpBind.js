@@ -2,53 +2,56 @@
 angular.module('angular-fireproof')
 /**
  * @ngdoc service
+ * @module angular-fireproof
  * @name fpBindSyncTimeout
  * @description The amount of time fpBind will wait before a scope value changing
  * and writing the change (to prevent a write catastrophe). Defaults to 250 ms.
  */
 .value('fpBindSyncTimeout', 250)
-/**
- * @ngdoc directive
- * @name fpBind
- * @description Binds the value of a location in Firebase to local scope,
- * updating it automatically as it changes.
- *
- * Exposes the following variables on local scope:
- *
- * | Variable    | Type             | Details                                                                        |
- * |-------------|------------------|--------------------------------------------------------------------------------|
- * | `$sync`     | {@type function} | Sets the value/priority in Firebase to the value on scope.                     |
- * | `$revert`   | {@type function} | Sets the value/priority on scope to the most recent Firebase snapshot's value. |
- * | `$attach`   | {@type function} | Starts listening to Firebase for changes. Happens by default initially.        |
- * | `$detach`   | {@type function} | Stops listening to Firebase for changes.                                       |
- * | `$name`     | {@type string}   | The last path component of the Firebase location.                              |
- * | `$val`      | {@type *}        | The value in Firebase, or `null` if there isn't one.                           |
- * | `$priority` | {@type *}        | The priority in Firebase, or `null` if there isn't one.                        |
- * | `$attached` | {@type boolean}  | True if the directive is listening to Firebase, false otherwise.               |
- * | `$syncing`  | {@type boolean}  | True if a Firebase operation is in progress, false otherwise.                  |
- * | `$error`    | {@type Error}    | The most recent error returned from Firebase, undefined in non-error cases.    |
- *
- * @restrict A
- * @element ANY
- * @scope
- * @param {expression} fpBind Path to the location in the Firebase, like
- * `favorites/{{ $auth.uid }}/aFew`. Interpolatable.
- * @param {expression} copyTo Path to another Firebase location to write to. Optional.
- * @param {expression} as The name of a variable on scope to bind. So you could do
- * something like
- * `<example fp-bind="users/{{ $auth.uid }}/name" as="name">Your username is {{ name }}</example>`.
- * @param {expression} autosync If this value evaluates on local scope to `true`,
- * the directive will sync to Firebase every time its value changes. When autosync
- * is on, `$sync` is a no-op.
- * @param {expression} onLoad An expression that gets evaluated every time new
- * data comes from Firebase.
- * @param {expression} onSync An expression that gets evaluated every time fpBind
- * successfully sends data to Firebae.
- * @param {expression} onError An expression that gets evaluated when Firebase
- * reports an error (usually related to permissions). The error is available on
- * scope as $error.
- */
 .directive('fpBind', function($q, $animate, fpBindSyncTimeout) {
+
+  /**
+   * @ngdoc directive
+   * @module angular-fireproof
+   * @name fpBind
+   * @description Binds the value of a location in Firebase to local scope,
+   * updating it automatically as it changes.
+   *
+   * Exposes the following variables on local scope:
+   *
+   * | Variable    | Type             | Details                                                                        |
+   * |-------------|------------------|--------------------------------------------------------------------------------|
+   * | `$sync`     | {@type function} | Sets the value/priority in Firebase to the value on scope.                     |
+   * | `$revert`   | {@type function} | Sets the value/priority on scope to the most recent Firebase snapshot's value. |
+   * | `$attach`   | {@type function} | Starts listening to Firebase for changes. Happens by default initially.        |
+   * | `$detach`   | {@type function} | Stops listening to Firebase for changes.                                       |
+   * | `$name`     | {@type string}   | The last path component of the Firebase location.                              |
+   * | `$val`      | {@type *}        | The value in Firebase, or `null` if there isn't one.                           |
+   * | `$priority` | {@type *}        | The priority in Firebase, or `null` if there isn't one.                        |
+   * | `$attached` | {@type boolean}  | True if the directive is listening to Firebase, false otherwise.               |
+   * | `$syncing`  | {@type boolean}  | True if a Firebase operation is in progress, false otherwise.                  |
+   * | `$error`    | {@type Error}    | The most recent error returned from Firebase, undefined in non-error cases.    |
+   *
+   * @restrict A
+   * @element ANY
+   * @scope
+   * @param {expression} fpBind Path to the location in the Firebase, like
+   * `favorites/{{ $auth.uid }}/aFew`. Interpolatable.
+   * @param {expression} copyTo Path to another Firebase location to write to. Optional.
+   * @param {expression} as The name of a variable on scope to bind. So you could do
+   * something like
+   * `<example fp-bind="users/{{ $auth.uid }}/name" as="name">Your username is {{ name }}</example>`.
+   * @param {expression} autosync If this value evaluates on local scope to `true`,
+   * the directive will sync to Firebase every time its value changes. When autosync
+   * is on, `$sync` is a no-op.
+   * @param {expression} onLoad An expression that gets evaluated every time new
+   * data comes from Firebase.
+   * @param {expression} onSync An expression that gets evaluated every time fpBind
+   * successfully sends data to Firebae.
+   * @param {expression} onError An expression that gets evaluated when Firebase
+   * reports an error (usually related to permissions). The error is available on
+   * scope as $error.
+   */
 
   return {
 
