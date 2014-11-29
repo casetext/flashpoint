@@ -1,7 +1,7 @@
 
 describe('firebase', function() {
 
-  var $scope, element;
+  var $scope, $q, element;
   var root = new Firebase(window.__env__.FIREBASE_TEST_URL);
 
   before(function(done) {
@@ -41,7 +41,9 @@ describe('firebase', function() {
     module('angular-fireproof.mocks');
     module('angular-fireproof');
 
-    inject(function($rootScope, $compile, $q) {
+    inject(function($rootScope, $compile, _$q_) {
+
+      $q = _$q_;
 
       element = angular.element('<div ' +
         'firebase="' + window.__env__.FIREBASE_TEST_URL + '" ' +
@@ -185,6 +187,80 @@ describe('firebase', function() {
       .then(function() {
         return expect(new Fireproof(root.child('test/firebase/set'))).to.be.null;
       });
+
+    });
+
+  });
+
+
+  describe('$increment', function() {
+
+    beforeEach(function() {
+
+      return $q.all([
+        $scope.$set('test/firebase/counter/numeric', 6).now(),
+        $scope.$set('test/firebase/counter/error', 'wut').now()
+      ]);
+
+    });
+
+    it('atomically increments Firebase values', function() {
+
+      return $q.all([
+        $scope.$increment('test/firebase/counter/numeric').now(),
+        $scope.$increment('test/firebase/counter/numeric').now(),
+        $scope.$increment('test/firebase/counter/numeric').now()
+      ])
+      .then(function() {
+        return expect(new Fireproof(root.child('test/firebase/counter/numeric')))
+        .to.equal(9);
+      });
+
+    });
+
+    it('blows up if the location is non-numeric and non-null', function() {
+
+      return $scope.$increment('test/firebase/counter/error').now()
+      .then(function() {
+        throw new Error('Expected an error, but the operation passed');
+      }, function() {});
+
+    });
+
+  });
+
+
+  describe('$decrement', function() {
+
+    beforeEach(function() {
+
+      return $q.all([
+        $scope.$set('test/firebase/counter/numeric', 6).now(),
+        $scope.$set('test/firebase/counter/error', 'wut').now()
+      ]);
+
+    });
+
+    it('atomically decrements Firebase values', function() {
+
+      return $q.all([
+        $scope.$decrement('test/firebase/counter/numeric').now(),
+        $scope.$decrement('test/firebase/counter/numeric').now(),
+        $scope.$decrement('test/firebase/counter/numeric').now()
+      ])
+      .then(function() {
+        return expect(new Fireproof(root.child('test/firebase/counter/numeric')))
+        .to.equal(3);
+      });
+
+    });
+
+    it('blows up if the location is non-numeric and non-null', function() {
+
+      return $scope.$decrement('test/firebase/counter/error').now()
+      .then(function() {
+        throw new Error('Expected an error, but the operation passed');
+      }, function() {});
 
     });
 

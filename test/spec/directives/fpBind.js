@@ -10,7 +10,7 @@ describe('fpBind', function() {
 
   });
 
-  it('evaluates on-error and sets $fireproofError in case of error', function(done) {
+  it('evaluates on-error and sets $error in case of error', function(done) {
 
     inject(function($rootScope, $compile) {
 

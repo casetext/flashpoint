@@ -1,58 +1,108 @@
 
 angular.module('angular-fireproof')
-.service('_fireproofStatus', function($timeout, $rootScope) {
+.service('_firebaseStatus', function(
+  $timeout,
+  $document,
+  $animate,
+  $rootScope,
+  $log
+) {
 
   var service = this;
 
   function reset() {
 
-    service.loaded = false;
-    service.running = {};
-    service.finished = {};
+    service.operationCount = 0;
+    service.operations = {
+      'read': {},
+      'transaction': {},
+      'set': {},
+      'setWithPriority': {},
+      'setPriority': {},
+      'update': {},
+      'remove': {},
+      'increment': {},
+      'decrement': {}
+    };
+    service.operationLog = {};
+
 
   }
 
   reset();
 
-  service.start = function(path) {
+  service.start = function(ref, event) {
 
-    if (service.running[path]) {
-      service.running[path]++;
+    var path = ref.toString();
+
+    var id = Math.random().toString(36).slice(2);
+
+    if (service.operations[event][path]) {
+      service.operations[event][path]++;
     } else {
-      service.running[path] = 1;
+      service.operations[event][path] = 1;
     }
+
+    service.operationCount++;
+    service.operationLog[id] = {
+      type: event,
+      path: path,
+      start: Date.now()
+    };
+
+    return id;
 
   };
 
-  service.finish = function(path) {
+  service.finish = function(id, err) {
 
-    if (!angular.isDefined(service.running[path])) {
-      throw new Error('Path ' + path + ' is not actually running right now -- race condition?');
+    service.operationCount--;
+
+    var logEvent = service.operationLog[id];
+    logEvent.end = Date.now();
+    logEvent.duration = logEvent.end - logEvent.start;
+    if (err) {
+      logEvent.error = err;
     }
 
-    service.running[path]--;
-    if (service.running[path] === 0) {
+    $log.debug('fp: completed', id, 'in', logEvent.duration);
+    if (err) {
+      $log.debug('fp: ' + logEvent.type + ' on path "' +
+        logEvent.path + '" failed with error: "' +
+        err.message + '"');
+    }
 
-      delete service.running[path];
-      service.finished[path] = true;
+    if (service.operationCount === 0) {
 
-      $timeout(function() {
+      if (service.timeout) {
+        $timeout.cancel(service.timeout);
+      }
 
-        // how many operations are left?
-        var done = true;
-        angular.forEach(service.running, function() {
-          done = false;
-        });
+      // wait 75 ms, then assume we're all done loading
+      service.timeout = $timeout(function() {
 
-        if (done && !service.loaded) {
+        if (service.operationCount === 0) {
 
-          service.loaded = true;
-          // signal loaded
-          $rootScope.$broadcast('angular-fireproof:loaded', service);
+          var operationList = Object.keys(service.operationLog)
+          .reduce(function(list, id) {
+            return list.concat(service.operationLog[id]);
+          }, [])
+          .sort(function(a, b) {
+            return (a.start - b.start) || (a.end - b.end);
+          });
+
+          // set the "fp-loaded" attribute on the body
+          $animate.addClass($document, 'fp-loaded');
+
+          // broadcast the "angular-fireproof:loaded event" with load data
+          $rootScope.$broadcast(
+            'angular-fireproof:loaded',
+            service.operations,
+            operationList);
 
         }
 
-      }, 10);
+      }, 75);
 
     }
 

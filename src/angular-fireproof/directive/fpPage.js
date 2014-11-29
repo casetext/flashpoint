@@ -14,9 +14,9 @@ angular.module('angular-fireproof')
    * | `$next`        | {@type function}     | Fetches the next set of values into scope.                 |
    * | `$previous`    | {@type function}     | Fetches the previous set of values into scope.             |
    * | `$reset`       | {@type function}     | Starts again at the beginning.                             |
-   * | `$keys`        | {@type string|array} | The keys in the current page.                              |
-   * | `$values`      | {@type *|array}      | The valuees in the current page.                           |
-   * | `$priorities`  | {@type *|array}      | The priorities in the current page.                        |
+   * | `$keys`        | {@type Array.string} | The keys in the current page.                              |
+   * | `$values`      | {@type Array.*}      | The values in the current page.                           |
+   * | `$priorities`  | {@type Array.*}      | The priorities in the current page.                        |
    * | `$hasNext`     | {@type boolean}      | True if there are more values to page over.                |
    * | `$hasPrevious` | {@type boolean}      | True if there are previous values to page back over again. |
    * | `$paging`      | {@type boolean}      | True if a paging operation is currently in progress.       |
