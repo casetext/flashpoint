@@ -1,10 +1,10 @@
 {
-  "name": "angular-fireproof",
-  "version": "0.5.0",
+  "name": "flashpoint",
+  "version": "1.2.0",
   "authors": [
     "Harry Schmidt <goldibex@casetext.com>"
   ],
-  "main": "dist/angular-fireproof.js",
+  "main": "dist/flashpoint.js",
   "moduleType": [
     "amd",
     "globals",

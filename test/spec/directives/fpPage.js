@@ -7,8 +7,8 @@ describe('fpPage', function() {
 
   beforeEach(function(done) {
 
-    module('angular-fireproof.mocks');
-    module('angular-fireproof');
+    module('flashpoint.mocks');
+    module('flashpoint');
 
     root.authWithCustomToken(window.__env__.FIREBASE_TEST_SECRET, function() {
 

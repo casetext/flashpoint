@@ -1,6 +1,6 @@
 
-angular.module('angular-fireproof.mocks', [
-  'angular-fireproof'
+angular.module('flashpoint.mocks', [
+  'flashpoint'
 ])
 .run(function(Fireproof, $rootScope) {
 

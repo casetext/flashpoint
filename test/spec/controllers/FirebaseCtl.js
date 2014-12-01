@@ -29,8 +29,8 @@ describe('FirebaseCtl', function() {
 
     this.timeout(10000);
 
-    module('angular-fireproof.mocks');
-    module('angular-fireproof');
+    module('flashpoint.mocks');
+    module('flashpoint');
 
     // generate the controller
     inject(function($compile, $rootScope, $q) {

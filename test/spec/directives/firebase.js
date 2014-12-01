@@ -38,8 +38,8 @@ describe('firebase', function() {
 
   beforeEach(function() {
 
-    module('angular-fireproof.mocks');
-    module('angular-fireproof');
+    module('flashpoint.mocks');
+    module('flashpoint');
 
     inject(function($rootScope, $compile, _$q_) {
 

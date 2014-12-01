@@ -3,8 +3,8 @@ describe('in the Fireproof services,', function() {
 
   beforeEach(function() {
 
-    module('angular-fireproof');
-    module('angular-fireproof.mocks');
+    module('flashpoint');
+    module('flashpoint.mocks');
 
   });
 

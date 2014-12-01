@@ -1,5 +1,5 @@
 
-angular.module('angular-fireproof')
+angular.module('flashpoint')
 /**
  * @ngdoc service
  * @name fpBindSyncTimeout
@@ -15,7 +15,7 @@ angular.module('angular-fireproof')
    * @description Binds the value of a location in Firebase to local scope,
    * updating it automatically as it changes.
    *
-   * Exposes the following variables on local scope:
+   * fpBind exposes the following methods variables on local scope:
    *
    * | Variable    | Type             | Details                                                                        |
    * |-------------|------------------|--------------------------------------------------------------------------------|

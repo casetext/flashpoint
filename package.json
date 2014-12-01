@@ -1,9 +1,9 @@
 {
-  "name": "angular-fireproof",
+  "name": "flashpoint",
   "version": "1.2.0",
   "description": "Angular bindings for Fireproof. Replaces AngularFire.",
-  "repository": "https://github.com/casetext/angular-fireproof",
-  "main": "dist/angular-fireproof.js",
+  "repository": "https://github.com/casetext/flashpoint",
+  "main": "dist/flashpoint.js",
   "scripts": {
     "test": "./node_modules/karma/bin/karma start --single-run --browsers Firefox test/karma.conf.js"
   },
@@ -48,6 +48,7 @@
     "karma-growl-reporter": "^0.1.1",
     "karma-mocha": "^0.1.9",
     "karma-sinon-chai": "^0.2.0",
+    "lodash": "^2.4.1",
     "mocha": "^2.0.1",
     "node-html-encoder": "0.0.2",
     "rimraf": "^2.2.8"

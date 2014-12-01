@@ -1,5 +1,5 @@
 
-angular.module('angular-fireproof')
+angular.module('flashpoint')
 .directive('fpPage', function($q, Fireproof, $animate) {
 
   /**
@@ -7,7 +7,7 @@ angular.module('angular-fireproof')
    * @name fpPage
    * @description Pages over the keys at a Firebase location.
    *
-   * Exposes the following variables on local scope:
+   * fpPage exposes the following methods and variables on local scope:
    *
    * | Variable       | Type                 | Details                                                    |
    * |----------------|----------------------|------------------------------------------------------------|

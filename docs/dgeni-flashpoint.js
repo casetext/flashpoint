@@ -4,65 +4,27 @@ var path = require('path');
 var Package = require('dgeni').Package,
   pkg = require('../package.json');
 
-var encoder = new require('node-html-encoder').Encoder();
-
-var builtinAPIUrl =
-  'https://developer.mozilla.org/en-US/docs/Web/JavaScript' +
-  '/Reference/Global_Objects/';
-
-var builtinTypes = [
-  'Array',
-  'ArrayBuffer',
-  'Boolean',
-  'DataView',
-  'Date',
-  'Error',
-  'EvalError',
-  'Float32Array',
-  'Float64Array',
-  'Function',
-  'Generator',
-  'Infinity',
-  'Int8Array',
-  'Int16Array',
-  'Int32Array',
-  'InternalError',
-  'Intl',
-  'Intl.Collator',
-  'Intl.DateTimeFormat',
-  'Intl.NumberFormat',
-  'Iterator',
-  'JSON',
-  'Map',
-  'Math',
-  'NaN',
-  'Number',
-  'Object',
-  'ParallelArray',
-  'Promise',
-  'Proxy',
-  'RangeError',
-  'ReferenceError',
-  'RegExp',
-  'Set',
-  'String',
-  'Symbol',
-  'SyntaxError',
-  'TypeError',
-  'TypedArray',
-  'URIError',
-  'Uint8Array',
-  'Uint8ClampedArray',
-  'Uint16Array',
-  'Uint32Array',
-  'WeakMap',
-  'WeakSet'
-];
-
 module.exports = new Package('dgeni-flashpoint', [
-  require('dgeni-packages/ngdoc')
+  require('dgeni-packages/jsdoc'),
 ])
-/*
+
+.factory(require('dgeni-packages/ngdoc/file-readers/ngdoc'))
+.factory(require('dgeni-packages/ngdoc/services/getAliases'))
+.factory(require('dgeni-packages/ngdoc/services/getDocFromAlias'))
+.factory(require('dgeni-packages/ngdoc/services/getLinkInfo'))
+.factory(require('dgeni-packages/ngdoc/services/getTypeClass'))
+.factory(require('dgeni-packages/ngdoc/services/moduleMap'))
+.config(function(readFilesProcessor, ngdocFileReader) {
+  readFilesProcessor.fileReaders.push(ngdocFileReader);
+})
+.factory(require('./inline-tag-defs/link'))
+.factory(require('./inline-tag-defs/type'))
+.config(function(inlineTagProcessor, typeInlineTagDef, linkInlineTagDef) {
+  typeInlineTagDef.library = pkg;
+  inlineTagProcessor.inlineTagDefinitions.push(typeInlineTagDef);
+  inlineTagProcessor.inlineTagDefinitions.push(linkInlineTagDef);
+})
+.processor(require('./processors/render-docs'))
 .processor(function writeFilesProcessor() {
 
   // this special writeFilesProcessor sends the docs to Firebase.
@@ -70,7 +32,9 @@ module.exports = new Package('dgeni-flashpoint', [
   return {
 
     $process: function(docs) {
-      console.log('HA HA!');
+      docs.forEach(function(doc) {
+        console.log(doc.renderedContent);
+      });
       return docs;
     },
     $runAfter: ['writing-files'],
@@ -79,43 +43,13 @@ module.exports = new Package('dgeni-flashpoint', [
   };
 
 })
-*/
-.factory(function typeInlineTagDef(getTypeClass) {
-  return {
-    name: 'type',
-    handler: function(doc, tagName, tagDescription) {
-
-      tagDescription = tagDescription
-      .replace(/^Array\./, '')
-      .replace(/^\*$/, 'any');
-
-      var href, target;
-
-      // is this a builtin type?
-      var capitalizedType = tagDescription[0].toUpperCase() + tagDescription.slice(1);
-      if (builtinTypes.indexOf(capitalizedType) !== -1) {
-        // if so, its href is the Mozilla URL
-        href = builtinAPIUrl + capitalizedType;
-        target = '_blank';
-      } else {
-        href = '/api/' + pkg.name + '/type/' + tagDescription;
-        target = '_self';
-      }
-
-      return '<a href="' + href + '" ' +
-      'target="' + target + '" ' +
-      'class="' + getTypeClass(tagDescription) +
-      '" >' + encoder.htmlEncode(tagDescription) + '</a>';
-
-    }
-  };
+.config(function(parseTagsProcessor, getInjectables) {
+  parseTagsProcessor.tagDefinitions =
+      parseTagsProcessor.tagDefinitions.concat(getInjectables(require('dgeni-packages/ngdoc/tag-defs')));
 })
-.config(function(inlineTagProcessor, typeInlineTagDef) {
-  inlineTagProcessor.inlineTagDefinitions.push(typeInlineTagDef);
-})
+
 .config(function(log, readFilesProcessor, writeFilesProcessor, templateFinder, renderDocsProcessor) {
 
-  templateFinder.templateFolders.unshift(__dirname + '/templates');
   // Set logging level
   log.level = 'info';
 
@@ -136,22 +70,48 @@ module.exports = new Package('dgeni-flashpoint', [
 //  sendToFirebaseProcessor.firebaseUrl = 'https://test99999.firebaseio-demo.com';
 
 })
+.config(function(computeIdsProcessor, createDocMessage, getAliases) {
+
+  computeIdsProcessor.idTemplates.unshift({
+    docTypes: ['module' ],
+    idTemplate: 'module:${name}',
+    getAliases: getAliases
+  });
+
+  computeIdsProcessor.idTemplates.unshift({
+    docTypes: ['method', 'property', 'event'],
+    getId: function(doc) {
+      var parts = doc.name.split('#');
+      var name = parts.pop();
+      parts.push(doc.docType + ':' + name);
+      return parts.join('#');
+    },
+    getAliases: function(doc) {
+      var aliases = getAliases(doc);
+      aliases.push(doc.name);
+      return aliases;
+    }
+  });
+
+  computeIdsProcessor.idTemplates.unshift({
+    docTypes: ['provider', 'service', 'directive', 'input', 'object', 'function', 'filter', 'type' ],
+    idTemplate: 'module:${module}.${docType}:${name}',
+    getAliases: getAliases
+  });
+
+
+})
 .config(function(computePathsProcessor) {
 
   computePathsProcessor.pathTemplates.push({
-    docTypes: ['provider', 'service', 'directive', 'input', 'object', 'function', 'filter', 'type' ],
+    docTypes: ['provider', 'service', 'directive', 'input', 'object', 'function', 'filter', 'type', 'method', 'property', 'event' ],
     pathTemplate: '/${area}/${module}/${docType}/${name}',
-    outputPathTemplate: '${area}/${module}/${docType}/${name}.html'
+    outputPathTemplate: '${area}/${module}/${docType}/${name}'
   });
   computePathsProcessor.pathTemplates.push({
-    docTypes: ['module' ],
-    pathTemplate: '/${area}/${name}',
-    outputPathTemplate: '${area}/${name}/index.html'
-  });
-  computePathsProcessor.pathTemplates.push({
-    docTypes: ['componentGroup' ],
-    pathTemplate: '/${area}/${moduleName}/${groupType}',
-    outputPathTemplate: '${area}/${moduleName}/${groupType}/index.html'
+    docTypes: ['module'],
+    pathTemplate: '/${area}/modules/${name}',
+    outputPathTemplate: '${area}/modules/${name}'
   });
 
 });

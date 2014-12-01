@@ -9,7 +9,7 @@
 
     </style>
 
-    <title>angular-fireproof demo</title>
+    <title>flashpoint demo</title>
     <script>
       window.module = {};
     </script>
@@ -20,9 +20,9 @@
     <script src="/node_modules/fireproof/dist/fireproof.js"></script>
 
     <script src="/bower_components/angular/angular.min.js"></script>
-    <script src="/angular-fireproof.js"></script>
+    <script src="/flashpoint.js"></script>
     <script>
-    angular.module('demo', ['angular-fireproof'])
+    angular.module('demo', ['flashpoint'])
     .directive('scopeIsolator', function() {
       return {
         scope: {}
@@ -31,8 +31,8 @@
     </script>
   </head>
 
-  <body firebase="https://angular-fireproof-demo.firebaseio-demo.com">
-    <h2>angular-fireproof demo</h2>
+  <body firebase="https://flashpoint-demo.firebaseio-demo.com">
+    <h2>flashpoint demo</h2>
     <h4>Value of foo: {{ $val('foo') }}</h4>
     <h4>Value of bar: {{ $val('bar') }}</h4>
     <h4>Value of check: {{ $val('check') }}</h4>

@@ -1,17 +1,18 @@
 
-angular.module('angular-fireproof')
-.controller('FirebaseCtl', function($q, Firebase) {
+function FirebaseCtl($q, Firebase) {
 
   /**
    * @ngdoc type
    * @name FirebaseCtl
-   * @description FirebaseCtl is the core controller responsible for binding
-   * Firebase data into Angular. It instantiates a root Firebase object based on
+   * @module flashpoint
+   * @description The core controller responsible for binding
+   * Firebase data into Angular.
+   *
+   * Firebase instantiates a root Firebase object based on
    * the value of the `firebase` property and attaches a core authentication
    * handler.
    * @property {Firebase} root The root of the instantiated Firebase store.
    * @property {object} $auth Firebase authentication data, or `null`.
-   * @property {string} $userId Firebase unique user ID (like `simplelogin:1`), or `null`.
    */
 
   var self = this,
@@ -126,4 +127,7 @@ angular.module('angular-fireproof')
   };
 
 
-});
+}
+
+angular.module('flashpoint')
+.controller('FirebaseCtl', FirebaseCtl);

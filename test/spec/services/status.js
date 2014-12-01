@@ -7,8 +7,8 @@ describe('in the Fireproof services,', function() {
 
     root = new Fireproof(new Firebase(window.__env__.FIREBASE_TEST_URL));
 
-    module('angular-fireproof');
-    module('angular-fireproof.mocks');
+    module('flashpoint');
+    module('flashpoint.mocks');
 
   });
 
@@ -23,7 +23,7 @@ describe('in the Fireproof services,', function() {
       _firebaseStatus.finish(id);
 
       $timeout.flush();
-      expect($rootScope.$broadcast).to.have.been.calledWith('angular-fireproof:loaded');
+      expect($rootScope.$broadcast).to.have.been.calledWith('flashpoint:loaded');
 
     }));
 

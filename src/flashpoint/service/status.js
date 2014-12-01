@@ -1,5 +1,5 @@
 
-angular.module('angular-fireproof')
+angular.module('flashpoint')
 .service('_firebaseStatus', function(
   $timeout,
   $document,
@@ -94,9 +94,9 @@ angular.module('angular-fireproof')
           // set the "fp-loaded" attribute on the body
           $animate.addClass($document, 'fp-loaded');
 
-          // broadcast the "angular-fireproof:loaded event" with load data
+          // broadcast the "flashpoint:loaded event" with load data
           $rootScope.$broadcast(
-            'angular-fireproof:loaded',
+            'flashpoint:loaded',
             service.operations,
             operationList);
 

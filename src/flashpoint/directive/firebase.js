@@ -1,11 +1,13 @@
 
-angular.module('angular-fireproof')
+angular.module('flashpoint')
 .directive('firebase', function($q, _firebaseStatus) {
 
   /**
    * @ngdoc directive
    * @name firebase
-   * @description Exposes the following variables on local scope:
+   * @description Wires Firebase into an Angular application.
+   *
+   * `firebase` exposes the following methods and variables on local scope:
    *
    * | Variable           | Type             | Details                                                                         |
    * |--------------------|------------------|---------------------------------------------------------------------------------|

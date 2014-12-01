@@ -50,6 +50,10 @@ function inc(importance, done) {
 
 }
 
+gulp.on('err', function(e) {
+  console.log(e.err.stack);
+});
+
 
 gulp.task('clean', 'Remove all build files', function(done) {
   rmdir('./dist', done);
@@ -59,7 +63,7 @@ gulp.task('clean', 'Remove all build files', function(done) {
 gulp.task('build', 'Builds the Javascript for distribution.', ['clean'], function() {
 
   return gulp.src('src/**/*.js')
-  .pipe(concat('angular-fireproof.js'))
+  .pipe(concat('flashpoint.js'))
   .pipe(wrap({ src: 'umd.template' }, { version: version }))
   .pipe(gulp.dest('./dist'));
 
@@ -134,8 +138,8 @@ gulp.task('demo', 'Run a demo server forever.', function(done) {
   app.use('/bower_components', express.static(__dirname + '/bower_components'));
   app.use('/node_modules', express.static(__dirname + '/node_modules'));
   app.use('/demo', express.static(__dirname + '/test/demo'));
-  app.get('/angular-fireproof.js', function(req, res) {
-    res.sendFile(__dirname + '/dist/angular-fireproof.js');
+  app.get('/flashpoint.js', function(req, res) {
+    res.sendFile(__dirname + '/dist/flashpoint.js');
   });
   app.get('/', function(req, res) {
     res.sendFile(__dirname + '/test/demo/index.html');

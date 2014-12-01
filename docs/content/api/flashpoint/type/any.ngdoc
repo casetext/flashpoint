@@ -1,6 +1,6 @@
 
 @ngdoc type
 @name any
-@module angular-fireproof
+@module flashpoint
 @description
 Any Javascript object that isn't "undefined."

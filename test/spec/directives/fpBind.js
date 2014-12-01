@@ -5,8 +5,8 @@ describe('fpBind', function() {
 
   beforeEach(function() {
 
-    module('angular-fireproof.mocks');
-    module('angular-fireproof');
+    module('flashpoint.mocks');
+    module('flashpoint');
 
   });
 
