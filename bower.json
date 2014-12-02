@@ -1,8 +1,15 @@
 {
   "name": "flashpoint",
-  "version": "1.2.0",
+  "version": "1.2.2",
   "authors": [
     "Harry Schmidt <goldibex@casetext.com>"
+  ],
+  "keywords": [
+    "AngularFire",
+    "Fireproof",
+    "Firebase",
+    "Angular",
+    "Angular.js"
   ],
   "main": "dist/flashpoint.js",
   "moduleType": [
@@ -18,8 +25,12 @@
     "test",
     "tests"
   ],
+  dependencies: {
+    "angular": "~1.2.26",
+    "fireproof": "~1.15.3",
+    "firebase": "~1.1.3"
+  }
   "devDependencies": {
-    "angular": "1.2.26",
     "angular-mocks": "1.2.26"
   }
 }
