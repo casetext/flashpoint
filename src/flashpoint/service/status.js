@@ -1,11 +1,14 @@
 
 angular.module('flashpoint')
-.service('_firebaseStatus', function(
+.value('fpLoadedTimeout', 20000)
+.service('firebaseStatus', function(
+  $interval,
   $timeout,
   $document,
   $animate,
   $rootScope,
-  $log
+  $log,
+  fpLoadedTimeout
 ) {
 
   var service = this;
@@ -31,7 +34,52 @@ angular.module('flashpoint')
 
   reset();
 
-  service.start = function(ref, event) {
+  $rootScope.$on('$routeChangeStart', function() {
+    reset();
+  });
+
+  $rootScope.$on('$viewContentLoaded', function() {
+
+    $rootScope.$broadcast('flashpointLoading');
+    $animate.addClass($document, 'fp-loading');
+
+    // after 20 seconds, assume something's gone wrong and signal timeout.
+    var deadHand = $timeout(function() {
+
+      $interval.cancel(intervalId);
+      $rootScope.$broadcast('flashpointTimeout');
+
+    }, fpLoadedTimeout);
+
+    // keep checking back to see if all Angular loading is done yet.
+    var intervalId = $interval(function() {
+
+      if (service.operationCount === 0) {
+
+        $timeout.cancel(deadHand);
+        $interval.cancel(intervalId);
+
+        var operationList = Object.keys(service.operationLog)
+        .reduce(function(list, id) {
+          return list.concat(service.operationLog[id]);
+        }, [])
+        .sort(function(a, b) {
+          return (a.start - b.start) || (a.end - b.end);
+        });
+
+        // set the "fp-loaded" attribute on the body
+        $animate.setClass($document, 'fp-loaded', 'fp-loading');
+
+        // broadcast the "flashpoint:loaded event" with load data
+        $rootScope.$broadcast('flashpointLoaded', operationList);
+
+      }
+
+    }, 100);
+
+  });
+
+  service.start = function(event, ref) {
 
     var path = ref.toString();
 
@@ -56,53 +104,50 @@ angular.module('flashpoint')
 
   service.finish = function(id, err) {
 
-    service.operationCount--;
-
     var logEvent = service.operationLog[id];
-    logEvent.end = Date.now();
-    logEvent.duration = logEvent.end - logEvent.start;
-    if (err) {
-      logEvent.error = err;
+
+    if (!logEvent) {
+      throw new Error('fp: reference to unknown log event', id);
     }
 
-    $log.debug('fp: completed', id, 'in', logEvent.duration);
-    if (err) {
-      $log.debug('fp: ' + logEvent.type + ' on path "' +
-        logEvent.path + '" failed with error: "' +
-        err.message + '"');
-    }
+    if (!logEvent.end) {
 
-    if (service.operationCount === 0) {
+      service.operationCount--;
 
-      if (service.timeout) {
-        $timeout.cancel(service.timeout);
+      logEvent.count = 1;
+      logEvent.end = Date.now();
+      logEvent.duration = logEvent.end - logEvent.start;
+      if (err) {
+        logEvent.error = err;
       }
 
-      // wait 75 ms, then assume we're all done loading
-      service.timeout = $timeout(function() {
+      $log.debug('fp: completed', logEvent.type, 'of',
+        logEvent.path, 'in', logEvent.duration, 'ms');
 
-        if (service.operationCount === 0) {
+      if (err) {
+        $log.debug('fp: ' + logEvent.type + ' on path "' +
+          logEvent.path + '" failed with error: "' +
+          err.message + '"');
+      }
 
-          var operationList = Object.keys(service.operationLog)
-          .reduce(function(list, id) {
-            return list.concat(service.operationLog[id]);
-          }, [])
-          .sort(function(a, b) {
-            return (a.start - b.start) || (a.end - b.end);
-          });
+    } else if (logEvent.type === 'read') {
 
-          // set the "fp-loaded" attribute on the body
-          $animate.addClass($document, 'fp-loaded');
+      // reads can happen multiple times (i.e., because of an "on")
+      if (err) {
 
-          // broadcast the "flashpoint:loaded event" with load data
-          $rootScope.$broadcast(
-            'flashpoint:loaded',
-            service.operations,
-            operationList);
+        logEvent.errorAt = Date.now();
+        logEvent.error = err;
+        $log.debug('fp: read listener on path "' +
+          logEvent.path + '" was terminated with error: "' +
+          err.message + '"');
 
-        }
+      } else {
 
-      }, 75);
+        logEvent.count++;
+        $log.debug('fp: read listener on', logEvent.path, 'has now gotten',
+          logEvent.count, 'responses');
+
+      }
 
     }
 

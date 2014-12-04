@@ -1,13 +1,18 @@
 
 angular.module('flashpoint')
-/**
- * @ngdoc service
- * @name fpBindSyncTimeout
- * @description The amount of time fpBind will wait before a scope value changing
- * and writing the change (to prevent a write catastrophe). Defaults to 250 ms.
- */
-.value('fpBindSyncTimeout', 250)
-.directive('fpBind', function($q, $animate, fpBindSyncTimeout) {
+.factory('fpBindSyncTimeout', function() {
+
+  /**
+   * @ngdoc service
+   * @name fpBindSyncTimeout
+   * @description The amount of time fpBind will wait before a scope value changing
+   * and writing the change (to prevent a write catastrophe). Defaults to 250 ms.
+   */
+
+  return 250;
+
+})
+.directive('fpBind', function($q, $animate, fpBindSyncTimeout, firebaseStatus, __findFirebaseOrDie) {
 
   /**
    * @ngdoc directive
@@ -45,7 +50,7 @@ angular.module('flashpoint')
    * @param {expression} onLoad An expression that gets evaluated every time new
    * data comes from Firebase.
    * @param {expression} onSync An expression that gets evaluated every time fpBind
-   * successfully sends data to Firebae.
+   * successfully sends data to Firebase.
    * @param {expression} onError An expression that gets evaluated when Firebase
    * reports an error (usually related to permissions). The error is available on
    * scope as $error.
@@ -55,8 +60,9 @@ angular.module('flashpoint')
 
     restrict: 'A',
     scope: true,
-    require: '^firebase',
-    link: function(scope, el, attrs, firebase) {
+    link: function(scope, el, attrs) {
+
+      var firebase = __findFirebaseOrDie(el);
 
       var ref, snap, listener, removeScopeListener, syncTimeout;
 
@@ -122,12 +128,19 @@ angular.module('flashpoint')
               $animate.addClass(el, 'fp-syncing');
               scope.$syncing = true;
 
-              var fpRef = new Fireproof(ref);
+              var fpRef = new Fireproof(ref),
+                setId,
+                copyToRef,
+                copyId,
+                promise;
 
-              var promise;
+              setId = firebaseStatus.start('set', fpRef);
+
               if (attrs.copyTo) {
 
-                var copyToRef = new Fireproof(firebase.root.child(attrs.copyTo));
+                copyToRef = new Fireproof(firebase.root.child(attrs.copyTo));
+                copyId = firebaseStatus.start('set', copyToRef);
+
                 promise = $q.all([
                   copyToRef.setWithPriority(value, priority),
                   fpRef.setWithPriority(value, priority)
@@ -143,6 +156,11 @@ angular.module('flashpoint')
                 scope.$syncing = false;
                 $animate.removeClass(el, 'fp-syncing');
 
+                firebaseStatus.finish(setId);
+                if (copyToRef) {
+                  firebaseStatus.finish(copyId);
+                }
+
                 if (attrs.onSync) {
                   scope.$evalAsync(attrs.onSync);
                 }
@@ -152,6 +170,11 @@ angular.module('flashpoint')
 
                 scope.$syncing = false;
                 $animate.removeClass(el, 'fp-syncing');
+
+                firebaseStatus.finish(setId, err);
+                if (copyToRef) {
+                  firebaseStatus.finish(copyId, err);
+                }
 
                 setError(err);
 
@@ -188,6 +211,7 @@ angular.module('flashpoint')
           clearError();
         }
 
+        var readId = firebaseStatus.start('read', ref);
         listener = ref.on('value', function(newSnap) {
 
           if (scope.$error) {
@@ -195,6 +219,8 @@ angular.module('flashpoint')
           }
 
           setTimeout(function() { scope.$apply(function() {
+
+            firebaseStatus.finish(readId);
 
             snap = newSnap;
 
@@ -237,6 +263,8 @@ angular.module('flashpoint')
         }, function(err) {
 
           setTimeout(function() { scope.$apply(function() {
+
+            firebaseStatus.finish(readId, err);
 
             scope.$detach();
             setError(err);

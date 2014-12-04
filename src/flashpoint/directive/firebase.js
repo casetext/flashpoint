@@ -1,6 +1,6 @@
 
 angular.module('flashpoint')
-.directive('firebase', function($q, _firebaseStatus) {
+.directive('firebase', function() {
 
   /**
    * @ngdoc directive
@@ -61,42 +61,8 @@ angular.module('flashpoint')
 
   var attached, attachedUrl;
 
-  function validatePath(pathParts) {
-
-    // check the arguments
-    var path = pathParts.join('/');
-
-    if (pathParts.length === 0 || path === '' ||
-      pathParts.indexOf(null) !== -1 || pathParts.indexOf(undefined) !== -1) {
-
-      // if any one of them is null/undefined, this is not a valid path
-      return null;
-
-    } else {
-      return path;
-    }
-
-  }
-
-
-  function makeClosure(fn) {
-
-    var closure = function() {
-      return fn();
-    };
-
-    closure.now = function() {
-      return closure();
-    };
-
-    return closure;
-
-  }
 
   var preLink = function(scope, el, attrs, controller) {
-
-    var watchers = {},
-      values = {};
 
 
     var authHandler = function(authData) {
@@ -167,256 +133,12 @@ angular.module('flashpoint')
 
     };
 
-    // attach authentication methods from controller to scope
-    scope.$auth = null;
-    scope.$login = controller.login;
-    scope.$logout = controller.logout;
-
-    scope.$val = function() {
-
-      var path = validatePath(Array.prototype.slice.call(arguments, 0));
-      if (!path) {
-        return;
-      }
-
-      if (!values.hasOwnProperty(path)) {
-        values[path] = null;
-      }
-
-      if (!watchers[path]) {
-
-        var id = _firebaseStatus.start(controller.root.child(path), 'read');
-
-        watchers[path] = controller.root.child(path)
-        .on('value', function(snap) {
-
-          setTimeout(function() {
-
-            scope.$apply(function() {
-
-              if (id) {
-                _firebaseStatus.finish(id);
-                id = null;
-              }
-
-              values[path] = snap.val();
-
-              if (attrs.onChange) {
-                scope.$eval(attrs.onChange, { $path: path });
-              }
-
-            });
-
-          }, 0);
-
-        }, function(err) {
-
-          if (id) {
-            _firebaseStatus.finish(id, err);
-            id = null;
-          }
-
-        });
-
-      }
-
-      return values[path];
-
-    };
-
-
-    scope.$set = function() {
-
-      // check the arguments
-      var args = Array.prototype.slice.call(arguments, 0),
-        value = args.pop(),
-        path = validatePath(args);
-
-      return makeClosure(function() {
-
-        var id = _firebaseStatus.start(controller.root.child(path), 'set');
-        return new Fireproof(controller.root).child(path).set(value)
-        .finally(function(err) {
-          _firebaseStatus.finish(id, err);
-        });
-
-      });
-
-    };
-
-
-    scope.$setPriority = function() {
-
-      // check the arguments
-      var args = Array.prototype.slice.call(arguments, 0),
-        priority = args.pop(),
-        path = validatePath(args);
-
-      return makeClosure(function() {
-
-        var id = _firebaseStatus.start(controller.root.child(path), 'setPriority');
-        return new Fireproof(controller.root).child(path).setPriority(priority)
-        .finally(function(err) {
-          _firebaseStatus.finish(id, err);
-        });
-
-      });
-
-    };
-
-
-    scope.$setWithPriority = function() {
-
-      // check the arguments
-      var args = Array.prototype.slice.call(arguments, 0),
-        priority = args.pop(),
-        value = args.pop(),
-        path = validatePath(args);
-
-      return makeClosure(function() {
-
-        var id = _firebaseStatus.start(controller.root.child(path), 'setWithPriority');
-        return new Fireproof(controller.root).child(path)
-        .setWithPriority(value, priority)
-        .finally(function(err) {
-          _firebaseStatus.finish(id, err);
-        });
-
-      });
-
-    };
-
-
-    scope.$update = function() {
-
-      // check the arguments
-      var args = Array.prototype.slice.call(arguments, 0),
-        value = args.pop(),
-        path = validatePath(args);
-
-      return makeClosure(function() {
-
-        var id = _firebaseStatus.start(controller.root.child(path), 'update');
-        return new Fireproof(controller.root).child(path).update(value)
-        .finally(function(err) {
-          _firebaseStatus.finish(id, err);
-        });
-
-      });
-
-    };
-
-
-    scope.$remove = function() {
-
-      // check the arguments
-      var args = Array.prototype.slice.call(arguments, 0),
-        path = validatePath(args);
-
-      return makeClosure(function() {
-
-        var id = _firebaseStatus.start(controller.root.child(path), 'remove');
-        return new Fireproof(controller.root).child(path).remove()
-        .finally(function(err) {
-          _firebaseStatus.finish(id, err);
-        });
-
-      });
-
-    };
-
-
-    scope.$increment = function() {
-
-      // check the arguments
-      var args = Array.prototype.slice.call(arguments, 0),
-        path = validatePath(args);
-
-      return makeClosure(function() {
-
-        var id = _firebaseStatus.start(controller.root.child(path), 'increment');
-        return new Fireproof(controller.root).child(path)
-        .transaction(function(val) {
-
-          if (angular.isNumber(val)) {
-            return val + 1;
-          } else if (val === null) {
-            return 1;
-          } else {
-            return; // abort transaction
-          }
-
-        })
-        .then(function(result) {
-
-          if (!result.committed) {
-            return $q.reject(new Error('Cannot increment the object at ' + path));
-          }
-
-        })
-        .finally(function(err) {
-          _firebaseStatus.finish(id, err);
-        });
-
-      });
-
-    };
-
-
-    scope.$decrement = function() {
-
-      // check the arguments
-      var args = Array.prototype.slice.call(arguments, 0),
-        path = validatePath(args);
-
-      return makeClosure(function() {
-
-        var id = _firebaseStatus.start(controller.root.child(path), 'decrement');
-        return new Fireproof(controller.root).child(path)
-        .transaction(function(val) {
-
-          if (angular.isNumber(val)) {
-            return val - 1;
-          } else if (val === null) {
-            return 0;
-          } else {
-            return; // abort transaction
-          }
-
-        })
-        .then(function(result) {
-
-          if (!result.committed) {
-            return $q.reject(new Error('Cannot decrement the object at ' + path));
-          }
-
-        })
-        .finally(function(err) {
-          _firebaseStatus.finish(id, err);
-        });
-
-      });
-
-    };
-
 
     if (attrs.firebase) {
       attachToController(attrs.firebase);
     }
+
     attrs.$observe('firebase', attachToController);
-
-
-    scope.$on('$destroy', function() {
-
-      // remove all listeners
-      angular.forEach(watchers, function(watcher, path) {
-        controller.root.child(path).off('value', watcher);
-      });
-
-      // shut down controller
-      controller.cleanup();
-
-    });
 
   };
 
@@ -426,6 +148,7 @@ angular.module('flashpoint')
     restrict: 'A',
     scope: true,
     controller: 'FirebaseCtl',
+    priority: 1000,
     link: {
       pre: preLink
     }

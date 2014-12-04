@@ -2,7 +2,7 @@
 angular.module('flashpoint.mocks', [
   'flashpoint'
 ])
-.run(function(Fireproof, $rootScope) {
+.run(function(Fireproof, $rootScope, $interval) {
 
   Fireproof.setNextTick(function(fn) {
 
@@ -12,9 +12,10 @@ angular.module('flashpoint.mocks', [
 
   });
 
-  // pump the root scope every 100 ms.
+  // pump the root scope and flush intervals every 100 ms.
   setInterval(function() {
     $rootScope.$digest();
+    $interval.flush(100);
   }, 100);
 
 });

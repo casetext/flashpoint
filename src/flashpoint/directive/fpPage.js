@@ -1,6 +1,6 @@
 
 angular.module('flashpoint')
-.directive('fpPage', function($q, Fireproof, $animate) {
+.directive('fpPage', function($q, Fireproof, $animate, __findFirebaseOrDie) {
 
   /**
    * @ngdoc directive
@@ -47,8 +47,9 @@ angular.module('flashpoint')
 
     restrict: 'A',
     scope: true,
-    require: '^firebase',
-    link: function(scope, el, attrs, firebase) {
+    link: function(scope, el, attrs) {
+
+      var firebase = __findFirebaseOrDie(el);
 
       var ref, pager;
 

@@ -1,5 +1,5 @@
 
-describe('in the Fireproof services,', function() {
+describe('flashpoint service', function() {
 
   var root;
 
@@ -12,20 +12,31 @@ describe('in the Fireproof services,', function() {
 
   });
 
+  describe('firebaseStatus', function() {
 
-  describe('_firebaseStatus', function() {
+    it('records operations and triggers the flashpointLoaded event', function(done) {
 
-    it('records operations and triggers the loaded event', inject(function($rootScope, $timeout, _firebaseStatus) {
+      inject(function($rootScope, $compile) {
 
-      sinon.spy($rootScope, '$broadcast');
+        $rootScope.$on('flashpointLoaded', function(e, opsList) {
+          expect(opsList.length).to.equal(1);
+          expect(opsList[0]).to.have.keys(['type', 'path', 'start', 'end', 'count', 'duration']);
+          done();
+        });
 
-      var id = _firebaseStatus.start(root, 'set');
-      _firebaseStatus.finish(id);
+        var element;
+        sinon.spy($rootScope, '$broadcast');
 
-      $timeout.flush();
-      expect($rootScope.$broadcast).to.have.been.calledWith('flashpoint:loaded');
+        element = angular.element('<span ' +
+          'firebase="' + window.__env__.FIREBASE_TEST_URL + '"' +
+          'fp-bind="test/foo" as="thing">{{ thing }}</span>');
+        $compile(element)($rootScope);
 
-    }));
+        $rootScope.$broadcast('$viewContentLoaded');
+
+      });
+
+    });
 
   });
 

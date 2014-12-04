@@ -26,7 +26,7 @@
   
   
   angular.module('flashpoint')
-  .directive('firebase', function($q, _firebaseStatus) {
+  .directive('firebase', function() {
   
     /**
      * @ngdoc directive
@@ -87,42 +87,8 @@
   
     var attached, attachedUrl;
   
-    function validatePath(pathParts) {
-  
-      // check the arguments
-      var path = pathParts.join('/');
-  
-      if (pathParts.length === 0 || path === '' ||
-        pathParts.indexOf(null) !== -1 || pathParts.indexOf(undefined) !== -1) {
-  
-        // if any one of them is null/undefined, this is not a valid path
-        return null;
-  
-      } else {
-        return path;
-      }
-  
-    }
-  
-  
-    function makeClosure(fn) {
-  
-      var closure = function() {
-        return fn();
-      };
-  
-      closure.now = function() {
-        return closure();
-      };
-  
-      return closure;
-  
-    }
   
     var preLink = function(scope, el, attrs, controller) {
-  
-      var watchers = {},
-        values = {};
   
   
       var authHandler = function(authData) {
@@ -193,256 +159,12 @@
   
       };
   
-      // attach authentication methods from controller to scope
-      scope.$auth = null;
-      scope.$login = controller.login;
-      scope.$logout = controller.logout;
-  
-      scope.$val = function() {
-  
-        var path = validatePath(Array.prototype.slice.call(arguments, 0));
-        if (!path) {
-          return;
-        }
-  
-        if (!values.hasOwnProperty(path)) {
-          values[path] = null;
-        }
-  
-        if (!watchers[path]) {
-  
-          var id = _firebaseStatus.start(controller.root.child(path), 'read');
-  
-          watchers[path] = controller.root.child(path)
-          .on('value', function(snap) {
-  
-            setTimeout(function() {
-  
-              scope.$apply(function() {
-  
-                if (id) {
-                  _firebaseStatus.finish(id);
-                  id = null;
-                }
-  
-                values[path] = snap.val();
-  
-                if (attrs.onChange) {
-                  scope.$eval(attrs.onChange, { $path: path });
-                }
-  
-              });
-  
-            }, 0);
-  
-          }, function(err) {
-  
-            if (id) {
-              _firebaseStatus.finish(id, err);
-              id = null;
-            }
-  
-          });
-  
-        }
-  
-        return values[path];
-  
-      };
-  
-  
-      scope.$set = function() {
-  
-        // check the arguments
-        var args = Array.prototype.slice.call(arguments, 0),
-          value = args.pop(),
-          path = validatePath(args);
-  
-        return makeClosure(function() {
-  
-          var id = _firebaseStatus.start(controller.root.child(path), 'set');
-          return new Fireproof(controller.root).child(path).set(value)
-          .finally(function(err) {
-            _firebaseStatus.finish(id, err);
-          });
-  
-        });
-  
-      };
-  
-  
-      scope.$setPriority = function() {
-  
-        // check the arguments
-        var args = Array.prototype.slice.call(arguments, 0),
-          priority = args.pop(),
-          path = validatePath(args);
-  
-        return makeClosure(function() {
-  
-          var id = _firebaseStatus.start(controller.root.child(path), 'setPriority');
-          return new Fireproof(controller.root).child(path).setPriority(priority)
-          .finally(function(err) {
-            _firebaseStatus.finish(id, err);
-          });
-  
-        });
-  
-      };
-  
-  
-      scope.$setWithPriority = function() {
-  
-        // check the arguments
-        var args = Array.prototype.slice.call(arguments, 0),
-          priority = args.pop(),
-          value = args.pop(),
-          path = validatePath(args);
-  
-        return makeClosure(function() {
-  
-          var id = _firebaseStatus.start(controller.root.child(path), 'setWithPriority');
-          return new Fireproof(controller.root).child(path)
-          .setWithPriority(value, priority)
-          .finally(function(err) {
-            _firebaseStatus.finish(id, err);
-          });
-  
-        });
-  
-      };
-  
-  
-      scope.$update = function() {
-  
-        // check the arguments
-        var args = Array.prototype.slice.call(arguments, 0),
-          value = args.pop(),
-          path = validatePath(args);
-  
-        return makeClosure(function() {
-  
-          var id = _firebaseStatus.start(controller.root.child(path), 'update');
-          return new Fireproof(controller.root).child(path).update(value)
-          .finally(function(err) {
-            _firebaseStatus.finish(id, err);
-          });
-  
-        });
-  
-      };
-  
-  
-      scope.$remove = function() {
-  
-        // check the arguments
-        var args = Array.prototype.slice.call(arguments, 0),
-          path = validatePath(args);
-  
-        return makeClosure(function() {
-  
-          var id = _firebaseStatus.start(controller.root.child(path), 'remove');
-          return new Fireproof(controller.root).child(path).remove()
-          .finally(function(err) {
-            _firebaseStatus.finish(id, err);
-          });
-  
-        });
-  
-      };
-  
-  
-      scope.$increment = function() {
-  
-        // check the arguments
-        var args = Array.prototype.slice.call(arguments, 0),
-          path = validatePath(args);
-  
-        return makeClosure(function() {
-  
-          var id = _firebaseStatus.start(controller.root.child(path), 'increment');
-          return new Fireproof(controller.root).child(path)
-          .transaction(function(val) {
-  
-            if (angular.isNumber(val)) {
-              return val + 1;
-            } else if (val === null) {
-              return 1;
-            } else {
-              return; // abort transaction
-            }
-  
-          })
-          .then(function(result) {
-  
-            if (!result.committed) {
-              return $q.reject(new Error('Cannot increment the object at ' + path));
-            }
-  
-          })
-          .finally(function(err) {
-            _firebaseStatus.finish(id, err);
-          });
-  
-        });
-  
-      };
-  
-  
-      scope.$decrement = function() {
-  
-        // check the arguments
-        var args = Array.prototype.slice.call(arguments, 0),
-          path = validatePath(args);
-  
-        return makeClosure(function() {
-  
-          var id = _firebaseStatus.start(controller.root.child(path), 'decrement');
-          return new Fireproof(controller.root).child(path)
-          .transaction(function(val) {
-  
-            if (angular.isNumber(val)) {
-              return val - 1;
-            } else if (val === null) {
-              return 0;
-            } else {
-              return; // abort transaction
-            }
-  
-          })
-          .then(function(result) {
-  
-            if (!result.committed) {
-              return $q.reject(new Error('Cannot decrement the object at ' + path));
-            }
-  
-          })
-          .finally(function(err) {
-            _firebaseStatus.finish(id, err);
-          });
-  
-        });
-  
-      };
-  
   
       if (attrs.firebase) {
         attachToController(attrs.firebase);
       }
+  
       attrs.$observe('firebase', attachToController);
-  
-  
-      scope.$on('$destroy', function() {
-  
-        // remove all listeners
-        angular.forEach(watchers, function(watcher, path) {
-          controller.root.child(path).off('value', watcher);
-        });
-  
-        // shut down controller
-        controller.cleanup();
-  
-      });
   
     };
   
@@ -452,6 +174,7 @@
       restrict: 'A',
       scope: true,
       controller: 'FirebaseCtl',
+      priority: 1000,
       link: {
         pre: preLink
       }
@@ -463,14 +186,19 @@
   
   
   angular.module('flashpoint')
-  /**
-   * @ngdoc service
-   * @name fpBindSyncTimeout
-   * @description The amount of time fpBind will wait before a scope value changing
-   * and writing the change (to prevent a write catastrophe). Defaults to 250 ms.
-   */
-  .value('fpBindSyncTimeout', 250)
-  .directive('fpBind', function($q, $animate, fpBindSyncTimeout) {
+  .factory('fpBindSyncTimeout', function() {
+  
+    /**
+     * @ngdoc service
+     * @name fpBindSyncTimeout
+     * @description The amount of time fpBind will wait before a scope value changing
+     * and writing the change (to prevent a write catastrophe). Defaults to 250 ms.
+     */
+  
+    return 250;
+  
+  })
+  .directive('fpBind', function($q, $animate, fpBindSyncTimeout, firebaseStatus, __findFirebaseOrDie) {
   
     /**
      * @ngdoc directive
@@ -508,7 +236,7 @@
      * @param {expression} onLoad An expression that gets evaluated every time new
      * data comes from Firebase.
      * @param {expression} onSync An expression that gets evaluated every time fpBind
-     * successfully sends data to Firebae.
+     * successfully sends data to Firebase.
      * @param {expression} onError An expression that gets evaluated when Firebase
      * reports an error (usually related to permissions). The error is available on
      * scope as $error.
@@ -518,8 +246,9 @@
   
       restrict: 'A',
       scope: true,
-      require: '^firebase',
-      link: function(scope, el, attrs, firebase) {
+      link: function(scope, el, attrs) {
+  
+        var firebase = __findFirebaseOrDie(el);
   
         var ref, snap, listener, removeScopeListener, syncTimeout;
   
@@ -585,12 +314,19 @@
                 $animate.addClass(el, 'fp-syncing');
                 scope.$syncing = true;
   
-                var fpRef = new Fireproof(ref);
+                var fpRef = new Fireproof(ref),
+                  setId,
+                  copyToRef,
+                  copyId,
+                  promise;
   
-                var promise;
+                setId = firebaseStatus.start('set', fpRef);
+  
                 if (attrs.copyTo) {
   
-                  var copyToRef = new Fireproof(firebase.root.child(attrs.copyTo));
+                  copyToRef = new Fireproof(firebase.root.child(attrs.copyTo));
+                  copyId = firebaseStatus.start('set', copyToRef);
+  
                   promise = $q.all([
                     copyToRef.setWithPriority(value, priority),
                     fpRef.setWithPriority(value, priority)
@@ -606,6 +342,11 @@
                   scope.$syncing = false;
                   $animate.removeClass(el, 'fp-syncing');
   
+                  firebaseStatus.finish(setId);
+                  if (copyToRef) {
+                    firebaseStatus.finish(copyId);
+                  }
+  
                   if (attrs.onSync) {
                     scope.$evalAsync(attrs.onSync);
                   }
@@ -615,6 +356,11 @@
   
                   scope.$syncing = false;
                   $animate.removeClass(el, 'fp-syncing');
+  
+                  firebaseStatus.finish(setId, err);
+                  if (copyToRef) {
+                    firebaseStatus.finish(copyId, err);
+                  }
   
                   setError(err);
   
@@ -651,6 +397,7 @@
             clearError();
           }
   
+          var readId = firebaseStatus.start('read', ref);
           listener = ref.on('value', function(newSnap) {
   
             if (scope.$error) {
@@ -658,6 +405,8 @@
             }
   
             setTimeout(function() { scope.$apply(function() {
+  
+              firebaseStatus.finish(readId);
   
               snap = newSnap;
   
@@ -700,6 +449,8 @@
           }, function(err) {
   
             setTimeout(function() { scope.$apply(function() {
+  
+              firebaseStatus.finish(readId, err);
   
               scope.$detach();
               setError(err);
@@ -749,7 +500,7 @@
   
   
   angular.module('flashpoint')
-  .directive('fpPage', function($q, Fireproof, $animate) {
+  .directive('fpPage', function($q, Fireproof, $animate, __findFirebaseOrDie) {
   
     /**
      * @ngdoc directive
@@ -796,8 +547,9 @@
   
       restrict: 'A',
       scope: true,
-      require: '^firebase',
-      link: function(scope, el, attrs, firebase) {
+      link: function(scope, el, attrs) {
+  
+        var firebase = __findFirebaseOrDie(el);
   
         var ref, pager;
   
@@ -979,7 +731,7 @@
      *
      * NB: You should not use this service yourself! Instead, use the firebase
      * directive and write your own directives to require it, then access its
-     * `root` Firebase reference. See {}.
+     * `root` Firebase reference.
      */
   
     Fireproof.setNextTick($timeout);
@@ -991,12 +743,73 @@
   
   
   angular.module('flashpoint')
-  .service('_firebaseStatus', function(
+  .constant('_fpFirebaseUrl', null)
+  .constant('fpRoute', function(routeDefinitionObject) {
+  
+    routeDefinitionObject.controller = 'FirebaseCtl';
+  
+    if (routeDefinitionObject.challenge || routeDefinitionObject.authorize) {
+  
+      routeDefinitionObject.resolve = routeDefinitionObject.resolve || {};
+      routeDefinitionObject.resolve._fpFirebaseUrl = function($q, $route, $injector, Firebase, Fireproof) {
+  
+        var firebaseUrl;
+        if (routeDefinitionObject.firebase) {
+          firebaseUrl = routeDefinitionObject.firebase;
+        } else if ($route.current.params.firebase) {
+          firebaseUrl = 'https://' + $route.current.params.firebase + 'firebaseio.com';
+        } else {
+          return $q.reject(new Error('No Firebase URL available. Set "firebase" ' +
+            'in your route definition or make sure a "firebaseName" parameter is in your route params.'));
+        }
+  
+        var root = new Fireproof(new Firebase());
+  
+        return $q.when()
+        .then(function() {
+  
+          if (routeDefinitionObject.challenge) {
+            // inject this
+            return $injector.invoke(routeDefinitionObject.challenge, null, {
+              root: root
+            });
+          }
+  
+        })
+        .then(function() {
+  
+          if (routeDefinitionObject.authorize) {
+            return $injector.invoke(routeDefinitionObject.authorize, null, {
+              root: root,
+              auth: root.getAuth()
+            });
+          }
+  
+        })
+        .then(function() {
+          return routeDefinitionObject.firebase;
+        });
+  
+      };
+  
+      routeDefinitionObject.resolve.$inject = ['$q', '$injector', 'Firebase', 'Fireproof'];
+  
+    }
+  
+  
+  });
+  
+  
+  angular.module('flashpoint')
+  .value('fpLoadedTimeout', 20000)
+  .service('firebaseStatus', function(
+    $interval,
     $timeout,
     $document,
     $animate,
     $rootScope,
-    $log
+    $log,
+    fpLoadedTimeout
   ) {
   
     var service = this;
@@ -1022,7 +835,52 @@
   
     reset();
   
-    service.start = function(ref, event) {
+    $rootScope.$on('$routeChangeStart', function() {
+      reset();
+    });
+  
+    $rootScope.$on('$viewContentLoaded', function() {
+  
+      $rootScope.$broadcast('flashpointLoading');
+      $animate.addClass($document, 'fp-loading');
+  
+      // after 20 seconds, assume something's gone wrong and signal timeout.
+      var deadHand = $timeout(function() {
+  
+        $interval.cancel(intervalId);
+        $rootScope.$broadcast('flashpointTimeout');
+  
+      }, fpLoadedTimeout);
+  
+      // keep checking back to see if all Angular loading is done yet.
+      var intervalId = $interval(function() {
+  
+        if (service.operationCount === 0) {
+  
+          $timeout.cancel(deadHand);
+          $interval.cancel(intervalId);
+  
+          var operationList = Object.keys(service.operationLog)
+          .reduce(function(list, id) {
+            return list.concat(service.operationLog[id]);
+          }, [])
+          .sort(function(a, b) {
+            return (a.start - b.start) || (a.end - b.end);
+          });
+  
+          // set the "fp-loaded" attribute on the body
+          $animate.setClass($document, 'fp-loaded', 'fp-loading');
+  
+          // broadcast the "flashpoint:loaded event" with load data
+          $rootScope.$broadcast('flashpointLoaded', operationList);
+  
+        }
+  
+      }, 100);
+  
+    });
+  
+    service.start = function(event, ref) {
   
       var path = ref.toString();
   
@@ -1047,53 +905,50 @@
   
     service.finish = function(id, err) {
   
-      service.operationCount--;
-  
       var logEvent = service.operationLog[id];
-      logEvent.end = Date.now();
-      logEvent.duration = logEvent.end - logEvent.start;
-      if (err) {
-        logEvent.error = err;
+  
+      if (!logEvent) {
+        throw new Error('fp: reference to unknown log event', id);
       }
   
-      $log.debug('fp: completed', id, 'in', logEvent.duration);
-      if (err) {
-        $log.debug('fp: ' + logEvent.type + ' on path "' +
-          logEvent.path + '" failed with error: "' +
-          err.message + '"');
-      }
+      if (!logEvent.end) {
   
-      if (service.operationCount === 0) {
+        service.operationCount--;
   
-        if (service.timeout) {
-          $timeout.cancel(service.timeout);
+        logEvent.count = 1;
+        logEvent.end = Date.now();
+        logEvent.duration = logEvent.end - logEvent.start;
+        if (err) {
+          logEvent.error = err;
         }
   
-        // wait 75 ms, then assume we're all done loading
-        service.timeout = $timeout(function() {
+        $log.debug('fp: completed', logEvent.type, 'of',
+          logEvent.path, 'in', logEvent.duration, 'ms');
   
-          if (service.operationCount === 0) {
+        if (err) {
+          $log.debug('fp: ' + logEvent.type + ' on path "' +
+            logEvent.path + '" failed with error: "' +
+            err.message + '"');
+        }
   
-            var operationList = Object.keys(service.operationLog)
-            .reduce(function(list, id) {
-              return list.concat(service.operationLog[id]);
-            }, [])
-            .sort(function(a, b) {
-              return (a.start - b.start) || (a.end - b.end);
-            });
+      } else if (logEvent.type === 'read') {
   
-            // set the "fp-loaded" attribute on the body
-            $animate.addClass($document, 'fp-loaded');
+        // reads can happen multiple times (i.e., because of an "on")
+        if (err) {
   
-            // broadcast the "flashpoint:loaded event" with load data
-            $rootScope.$broadcast(
-              'flashpoint:loaded',
-              service.operations,
-              operationList);
+          logEvent.errorAt = Date.now();
+          logEvent.error = err;
+          $log.debug('fp: read listener on path "' +
+            logEvent.path + '" was terminated with error: "' +
+            err.message + '"');
   
-          }
+        } else {
   
-        }, 75);
+          logEvent.count++;
+          $log.debug('fp: read listener on', logEvent.path, 'has now gotten',
+            logEvent.count, 'responses');
+  
+        }
   
       }
   
@@ -1102,7 +957,7 @@
   });
   
   
-  function FirebaseCtl($q, Firebase) {
+  function FirebaseCtl($q, $scope, Firebase, firebaseStatus, _fpFirebaseUrl) {
   
     /**
      * @ngdoc type
@@ -1118,18 +973,59 @@
      * @property {object} $auth Firebase authentication data, or `null`.
      */
   
-    var self = this,
-      _defaultLoginHandler = function() {
-        return $q.reject(new Error('No login handler is set for ' + self.root));
-      },
-      _defaultLogoutHandler = function() {
-        self.root.unauth();
-      },
-      _loginHandler = _defaultLoginHandler,
-      _logoutHandler = _defaultLogoutHandler;
+    this.__firebaseCtl = true;
   
+    var self = this,
+        watchers = {},
+        values = {},
+        _defaultLoginHandler = function() {
+          return $q.reject(new Error('No login handler is set for ' + self.root));
+        },
+        _defaultLogoutHandler = function() {
+          self.root.unauth();
+        },
+        _loginHandler = _defaultLoginHandler,
+        _logoutHandler = _defaultLogoutHandler;
+  
+  
+    self.auth = null;
+    $scope.$auth = null;
     function authHandler(authData) {
       self.auth = authData;
+      $scope.$auth = authData;
+    }
+  
+  
+    function makeClosure(fn) {
+  
+      var closure = function() {
+        return fn();
+      };
+  
+      closure.now = function() {
+        return closure();
+      };
+  
+      return closure;
+  
+    }
+  
+  
+    function validatePath(pathParts) {
+  
+      // check the arguments
+      var path = pathParts.join('/');
+  
+      if (pathParts.length === 0 || path === '' ||
+        pathParts.indexOf(null) !== -1 || pathParts.indexOf(undefined) !== -1) {
+  
+        // if any one of them is null/undefined, this is not a valid path
+        return null;
+  
+      } else {
+        return path;
+      }
+  
     }
   
     /**
@@ -1146,6 +1042,7 @@
     self.login = function(options) {
       return $q.when(_loginHandler(self.root, options));
     };
+  
   
     /**
      * @ngdoc method
@@ -1174,6 +1071,7 @@
   
     };
   
+  
     /**
      * @ngdoc method
      * @name FirebaseCtl#setLogoutHandler
@@ -1183,6 +1081,7 @@
     self.setLogoutHandler = function(fn) {
       _logoutHandler = (fn || _defaultLogoutHandler);
     };
+  
   
     /**
      * @ngdoc method
@@ -1207,9 +1106,9 @@
   
       // clear auth data.
       delete self.auth;
-      delete self.userId;
   
     };
+  
   
     /**
      * @ngdoc method
@@ -1229,11 +1128,288 @@
   
     };
   
+    if (_fpFirebaseUrl !== null) {
+      // attach using this url.
+      self.attachFirebase(_fpFirebaseUrl);
+    }
+  
+    self.set = function() {
+  
+      // check the arguments
+      var args = Array.prototype.slice.call(arguments, 0),
+        value = args.pop(),
+        path = validatePath(args);
+  
+      return makeClosure(function() {
+  
+        var id = firebaseStatus.start('set', self.root.child(path));
+        return new Fireproof(self.root).child(path).set(value)
+        .finally(function(err) {
+          firebaseStatus.finish(id, err);
+        });
+  
+      });
+  
+    };
+  
+  
+    self.setPriority = function() {
+  
+      // check the arguments
+      var args = Array.prototype.slice.call(arguments, 0),
+        priority = args.pop(),
+        path = validatePath(args);
+  
+      return makeClosure(function() {
+  
+        var id = firebaseStatus.start('setPriority', self.root.child(path));
+        return new Fireproof(self.root).child(path).setPriority(priority)
+        .finally(function(err) {
+          firebaseStatus.finish(id, err);
+        });
+  
+      });
+  
+    };
+  
+  
+    self.setWithPriority = function() {
+  
+      // check the arguments
+      var args = Array.prototype.slice.call(arguments, 0),
+        priority = args.pop(),
+        value = args.pop(),
+        path = validatePath(args);
+  
+      return makeClosure(function() {
+  
+        var id = firebaseStatus.start('setWithPriority', self.root.child(path));
+        return new Fireproof(self.root).child(path)
+        .setWithPriority(value, priority)
+        .finally(function(err) {
+          firebaseStatus.finish(id, err);
+        });
+  
+      });
+  
+    };
+  
+  
+    self.update = function() {
+  
+      // check the arguments
+      var args = Array.prototype.slice.call(arguments, 0),
+        value = args.pop(),
+        path = validatePath(args);
+  
+      return makeClosure(function() {
+  
+        var id = firebaseStatus.start('update', self.root.child(path));
+        return new Fireproof(self.root).child(path).update(value)
+        .finally(function(err) {
+          firebaseStatus.finish(id, err);
+        });
+  
+      });
+  
+    };
+  
+  
+    self.remove = function() {
+  
+      // check the arguments
+      var args = Array.prototype.slice.call(arguments, 0),
+        path = validatePath(args);
+  
+      return makeClosure(function() {
+  
+        var id = firebaseStatus.start('remove', self.root.child(path));
+        return new Fireproof(self.root).child(path).remove()
+        .finally(function(err) {
+          firebaseStatus.finish(id, err);
+        });
+  
+      });
+  
+    };
+  
+  
+    self.increment = function() {
+  
+      // check the arguments
+      var args = Array.prototype.slice.call(arguments, 0),
+        path = validatePath(args);
+  
+      return makeClosure(function() {
+  
+        var id = firebaseStatus.start('increment', self.root.child(path));
+        return new Fireproof(self.root).child(path)
+        .transaction(function(val) {
+  
+          if (angular.isNumber(val)) {
+            return val + 1;
+          } else if (val === null) {
+            return 1;
+          } else {
+            return; // abort transaction
+          }
+  
+        })
+        .then(function(result) {
+  
+          if (!result.committed) {
+            return $q.reject(new Error('Cannot increment the object at ' + path));
+          }
+  
+        })
+        .finally(function(err) {
+          firebaseStatus.finish(id, err);
+        });
+  
+      });
+  
+    };
+  
+  
+    self.decrement = function() {
+  
+      // check the arguments
+      var args = Array.prototype.slice.call(arguments, 0),
+        path = validatePath(args);
+  
+      return makeClosure(function() {
+  
+        var id = firebaseStatus.start('decrement', self.root.child(path));
+        return new Fireproof(self.root).child(path)
+        .transaction(function(val) {
+  
+          if (angular.isNumber(val)) {
+            return val - 1;
+          } else if (val === null) {
+            return 0;
+          } else {
+            return; // abort transaction
+          }
+  
+        })
+        .then(function(result) {
+  
+          if (!result.committed) {
+            return $q.reject(new Error('Cannot decrement the object at ' + path));
+          }
+  
+        })
+        .finally(function(err) {
+          firebaseStatus.finish(id, err);
+        });
+  
+      });
+  
+    };
+  
+  
+    self.val = function() {
+  
+      var path = validatePath(Array.prototype.slice.call(arguments, 0));
+      if (!path) {
+        return;
+      }
+  
+      if (!values.hasOwnProperty(path)) {
+        values[path] = null;
+      }
+  
+      if (!watchers[path]) {
+  
+        var id = firebaseStatus.start('read', self.root.child(path));
+  
+        watchers[path] = self.root.child(path)
+        .on('value', function(snap) {
+  
+          setTimeout(function() {
+  
+            $scope.$apply(function() {
+  
+              firebaseStatus.finish(id);
+              values[path] = snap.val();
+  
+            });
+  
+          }, 0);
+  
+        }, function(err) {
+  
+          if (id) {
+            firebaseStatus.finish(id, err);
+            id = null;
+          }
+  
+        });
+  
+      }
+  
+      return values[path];
+  
+    };
+  
+  
+    // attach authentication methods from controller to scope
+    $scope.$auth = null;
+    $scope.$login = self.login;
+    $scope.$logout = self.logout;
+  
+  
+    // expose these methods on scope also
+    $scope.$set = self.set;
+    $scope.$setPriority = self.setPriority;
+    $scope.$setWithPriority = self.setWithPriority;
+    $scope.$update = self.update;
+    $scope.$remove = self.remove;
+    $scope.$increment = self.increment;
+    $scope.$decrement = self.decrement;
+    $scope.$val = self.val;
+  
+  
+    $scope.$on('$destroy', function() {
+  
+      // remove all listeners
+      angular.forEach(watchers, function(watcher, path) {
+        self.root.child(path).off('value', watcher);
+      });
+  
+      // shut down controller
+      self.cleanup();
+  
+    });
+  
   
   }
   
+  
+  function findFirebaseOrDie(el) {
+  
+    while (el.length) {
+  
+      var ctl = el.controller('firebase') || el.controller();
+  
+      if (ctl && ctl.__firebaseCtl) {
+        return ctl;
+      }
+  
+      el = el.parent();
+  
+    }
+  
+    throw new Error('There is no FirebaseCtl available! Make sure you are ' +
+      'using fpRoute in your route definition or you have set the firebase directive ' +
+      'on this or a parent element.');
+  
+  }
+  
+  
   angular.module('flashpoint')
-  .controller('FirebaseCtl', FirebaseCtl);
+  .controller('FirebaseCtl', FirebaseCtl)
+  .constant('__findFirebaseOrDie', findFirebaseOrDie);
   
 
 }));

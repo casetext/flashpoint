@@ -46,7 +46,7 @@ angular.module('flashpoint')
    *
    * NB: You should not use this service yourself! Instead, use the firebase
    * directive and write your own directives to require it, then access its
-   * `root` Firebase reference. See {}.
+   * `root` Firebase reference.
    */
 
   Fireproof.setNextTick($timeout);

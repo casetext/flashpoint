@@ -1,5 +1,5 @@
 
-function FirebaseCtl($q, Firebase) {
+function FirebaseCtl($q, $scope, Firebase, firebaseStatus, _fpFirebaseUrl) {
 
   /**
    * @ngdoc type
@@ -15,18 +15,59 @@ function FirebaseCtl($q, Firebase) {
    * @property {object} $auth Firebase authentication data, or `null`.
    */
 
-  var self = this,
-    _defaultLoginHandler = function() {
-      return $q.reject(new Error('No login handler is set for ' + self.root));
-    },
-    _defaultLogoutHandler = function() {
-      self.root.unauth();
-    },
-    _loginHandler = _defaultLoginHandler,
-    _logoutHandler = _defaultLogoutHandler;
+  this.__firebaseCtl = true;
 
+  var self = this,
+      watchers = {},
+      values = {},
+      _defaultLoginHandler = function() {
+        return $q.reject(new Error('No login handler is set for ' + self.root));
+      },
+      _defaultLogoutHandler = function() {
+        self.root.unauth();
+      },
+      _loginHandler = _defaultLoginHandler,
+      _logoutHandler = _defaultLogoutHandler;
+
+
+  self.auth = null;
+  $scope.$auth = null;
   function authHandler(authData) {
     self.auth = authData;
+    $scope.$auth = authData;
+  }
+
+
+  function makeClosure(fn) {
+
+    var closure = function() {
+      return fn();
+    };
+
+    closure.now = function() {
+      return closure();
+    };
+
+    return closure;
+
+  }
+
+
+  function validatePath(pathParts) {
+
+    // check the arguments
+    var path = pathParts.join('/');
+
+    if (pathParts.length === 0 || path === '' ||
+      pathParts.indexOf(null) !== -1 || pathParts.indexOf(undefined) !== -1) {
+
+      // if any one of them is null/undefined, this is not a valid path
+      return null;
+
+    } else {
+      return path;
+    }
+
   }
 
   /**
@@ -43,6 +84,7 @@ function FirebaseCtl($q, Firebase) {
   self.login = function(options) {
     return $q.when(_loginHandler(self.root, options));
   };
+
 
   /**
    * @ngdoc method
@@ -71,6 +113,7 @@ function FirebaseCtl($q, Firebase) {
 
   };
 
+
   /**
    * @ngdoc method
    * @name FirebaseCtl#setLogoutHandler
@@ -80,6 +123,7 @@ function FirebaseCtl($q, Firebase) {
   self.setLogoutHandler = function(fn) {
     _logoutHandler = (fn || _defaultLogoutHandler);
   };
+
 
   /**
    * @ngdoc method
@@ -104,9 +148,9 @@ function FirebaseCtl($q, Firebase) {
 
     // clear auth data.
     delete self.auth;
-    delete self.userId;
 
   };
+
 
   /**
    * @ngdoc method
@@ -126,8 +170,285 @@ function FirebaseCtl($q, Firebase) {
 
   };
 
+  if (_fpFirebaseUrl !== null) {
+    // attach using this url.
+    self.attachFirebase(_fpFirebaseUrl);
+  }
+
+  self.set = function() {
+
+    // check the arguments
+    var args = Array.prototype.slice.call(arguments, 0),
+      value = args.pop(),
+      path = validatePath(args);
+
+    return makeClosure(function() {
+
+      var id = firebaseStatus.start('set', self.root.child(path));
+      return new Fireproof(self.root).child(path).set(value)
+      .finally(function(err) {
+        firebaseStatus.finish(id, err);
+      });
+
+    });
+
+  };
+
+
+  self.setPriority = function() {
+
+    // check the arguments
+    var args = Array.prototype.slice.call(arguments, 0),
+      priority = args.pop(),
+      path = validatePath(args);
+
+    return makeClosure(function() {
+
+      var id = firebaseStatus.start('setPriority', self.root.child(path));
+      return new Fireproof(self.root).child(path).setPriority(priority)
+      .finally(function(err) {
+        firebaseStatus.finish(id, err);
+      });
+
+    });
+
+  };
+
+
+  self.setWithPriority = function() {
+
+    // check the arguments
+    var args = Array.prototype.slice.call(arguments, 0),
+      priority = args.pop(),
+      value = args.pop(),
+      path = validatePath(args);
+
+    return makeClosure(function() {
+
+      var id = firebaseStatus.start('setWithPriority', self.root.child(path));
+      return new Fireproof(self.root).child(path)
+      .setWithPriority(value, priority)
+      .finally(function(err) {
+        firebaseStatus.finish(id, err);
+      });
+
+    });
+
+  };
+
+
+  self.update = function() {
+
+    // check the arguments
+    var args = Array.prototype.slice.call(arguments, 0),
+      value = args.pop(),
+      path = validatePath(args);
+
+    return makeClosure(function() {
+
+      var id = firebaseStatus.start('update', self.root.child(path));
+      return new Fireproof(self.root).child(path).update(value)
+      .finally(function(err) {
+        firebaseStatus.finish(id, err);
+      });
+
+    });
+
+  };
+
+
+  self.remove = function() {
+
+    // check the arguments
+    var args = Array.prototype.slice.call(arguments, 0),
+      path = validatePath(args);
+
+    return makeClosure(function() {
+
+      var id = firebaseStatus.start('remove', self.root.child(path));
+      return new Fireproof(self.root).child(path).remove()
+      .finally(function(err) {
+        firebaseStatus.finish(id, err);
+      });
+
+    });
+
+  };
+
+
+  self.increment = function() {
+
+    // check the arguments
+    var args = Array.prototype.slice.call(arguments, 0),
+      path = validatePath(args);
+
+    return makeClosure(function() {
+
+      var id = firebaseStatus.start('increment', self.root.child(path));
+      return new Fireproof(self.root).child(path)
+      .transaction(function(val) {
+
+        if (angular.isNumber(val)) {
+          return val + 1;
+        } else if (val === null) {
+          return 1;
+        } else {
+          return; // abort transaction
+        }
+
+      })
+      .then(function(result) {
+
+        if (!result.committed) {
+          return $q.reject(new Error('Cannot increment the object at ' + path));
+        }
+
+      })
+      .finally(function(err) {
+        firebaseStatus.finish(id, err);
+      });
+
+    });
+
+  };
+
+
+  self.decrement = function() {
+
+    // check the arguments
+    var args = Array.prototype.slice.call(arguments, 0),
+      path = validatePath(args);
+
+    return makeClosure(function() {
+
+      var id = firebaseStatus.start('decrement', self.root.child(path));
+      return new Fireproof(self.root).child(path)
+      .transaction(function(val) {
+
+        if (angular.isNumber(val)) {
+          return val - 1;
+        } else if (val === null) {
+          return 0;
+        } else {
+          return; // abort transaction
+        }
+
+      })
+      .then(function(result) {
+
+        if (!result.committed) {
+          return $q.reject(new Error('Cannot decrement the object at ' + path));
+        }
+
+      })
+      .finally(function(err) {
+        firebaseStatus.finish(id, err);
+      });
+
+    });
+
+  };
+
+
+  self.val = function() {
+
+    var path = validatePath(Array.prototype.slice.call(arguments, 0));
+    if (!path) {
+      return;
+    }
+
+    if (!values.hasOwnProperty(path)) {
+      values[path] = null;
+    }
+
+    if (!watchers[path]) {
+
+      var id = firebaseStatus.start('read', self.root.child(path));
+
+      watchers[path] = self.root.child(path)
+      .on('value', function(snap) {
+
+        setTimeout(function() {
+
+          $scope.$apply(function() {
+
+            firebaseStatus.finish(id);
+            values[path] = snap.val();
+
+          });
+
+        }, 0);
+
+      }, function(err) {
+
+        if (id) {
+          firebaseStatus.finish(id, err);
+          id = null;
+        }
+
+      });
+
+    }
+
+    return values[path];
+
+  };
+
+
+  // attach authentication methods from controller to scope
+  $scope.$auth = null;
+  $scope.$login = self.login;
+  $scope.$logout = self.logout;
+
+
+  // expose these methods on scope also
+  $scope.$set = self.set;
+  $scope.$setPriority = self.setPriority;
+  $scope.$setWithPriority = self.setWithPriority;
+  $scope.$update = self.update;
+  $scope.$remove = self.remove;
+  $scope.$increment = self.increment;
+  $scope.$decrement = self.decrement;
+  $scope.$val = self.val;
+
+
+  $scope.$on('$destroy', function() {
+
+    // remove all listeners
+    angular.forEach(watchers, function(watcher, path) {
+      self.root.child(path).off('value', watcher);
+    });
+
+    // shut down controller
+    self.cleanup();
+
+  });
+
 
 }
 
+
+function findFirebaseOrDie(el) {
+
+  while (el.length) {
+
+    var ctl = el.controller('firebase') || el.controller();
+
+    if (ctl && ctl.__firebaseCtl) {
+      return ctl;
+    }
+
+    el = el.parent();
+
+  }
+
+  throw new Error('There is no FirebaseCtl available! Make sure you are ' +
+    'using fpRoute in your route definition or you have set the firebase directive ' +
+    'on this or a parent element.');
+
+}
+
+
 angular.module('flashpoint')
-.controller('FirebaseCtl', FirebaseCtl);
+.controller('FirebaseCtl', FirebaseCtl)
+.constant('__findFirebaseOrDie', findFirebaseOrDie);

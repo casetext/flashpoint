@@ -47,9 +47,8 @@ describe('firebase', function() {
 
       element = angular.element('<div ' +
         'firebase="' + window.__env__.FIREBASE_TEST_URL + '" ' +
-        'on-change="changed = true"' +
-        'login-handler="handleLogin()">' +
-        '<span>{{ $val("test/firebase/value/kind") }}</span>' +
+        'ng-init="state = {}" login-handler="handleLogin()">' +
+        '<span>{{ state.bar = $val("test/firebase/value/kind") }}</span>' +
         '</div>');
 
       $rootScope.handleLogin = function() {
@@ -91,9 +90,9 @@ describe('firebase', function() {
       expect($scope.$val).to.be.a('function');
       expect(element.find('span').text()).to.equal('');
 
-      var cancel = $scope.$watch('changed', function(didChange) {
+      var cancel = $scope.$watch('state.bar', function(bar) {
 
-        if (didChange) {
+        if (bar === 'widget') {
           expect(element.find('span').text()).to.equal('widget');
           cancel();
           done();
