@@ -1,5 +1,13 @@
 
-function FirebaseCtl($q, $scope, Firebase, firebaseStatus, _fpFirebaseUrl) {
+function FirebaseCtl(
+  $q,
+  $scope,
+  $injector,
+  Firebase,
+  firebaseStatus,
+  _fpFirebaseUrl,
+  _fpOnLoaded,
+  _fpOnError) {
 
   /**
    * @ngdoc type
@@ -170,10 +178,6 @@ function FirebaseCtl($q, $scope, Firebase, firebaseStatus, _fpFirebaseUrl) {
 
   };
 
-  if (_fpFirebaseUrl !== null) {
-    // attach using this url.
-    self.attachFirebase(_fpFirebaseUrl);
-  }
 
   self.set = function() {
 
@@ -423,6 +427,45 @@ function FirebaseCtl($q, $scope, Firebase, firebaseStatus, _fpFirebaseUrl) {
     self.cleanup();
 
   });
+
+  // handle route controller stuff.
+
+  if (_fpFirebaseUrl !== null) {
+    // attach using this url.
+    self.attachFirebase(_fpFirebaseUrl);
+  }
+
+  if (angular.isFunction(_fpOnLoaded)) {
+
+
+    var cancel = $scope.$on('flashpointLoaded', function() {
+
+      cancel();
+      $injector.invoke(_fpOnLoaded, null, {
+        root: self.root,
+        auth: self.auth
+      });
+
+    });
+
+  }
+
+  if (angular.isFunction(_fpOnError)) {
+
+    var onError = function(err) {
+
+      $injector.invoke(_fpOnError, null, {
+        root: self.root,
+        auth: self.auth,
+        error: err
+      });
+
+    };
+
+    $scope.$on('flashpointError', onError);
+    $scope.$on('flashpointTimeout', onError);
+
+  }
 
 
 }

@@ -15,6 +15,7 @@ angular.module('flashpoint')
 
   function reset() {
 
+    service.errors = [];
     service.operationCount = 0;
     service.operations = {
       'read': {},
@@ -71,7 +72,11 @@ angular.module('flashpoint')
         $animate.setClass($document, 'fp-loaded', 'fp-loading');
 
         // broadcast the "flashpoint:loaded event" with load data
-        $rootScope.$broadcast('flashpointLoaded', operationList);
+        if (service.errors.length > 0) {
+          $rootScope.$broadcast('flashpointError', service.errors);
+        } else {
+          $rootScope.$broadcast('flashpointLoaded', operationList);
+        }
 
       }
 
@@ -119,6 +124,7 @@ angular.module('flashpoint')
       logEvent.duration = logEvent.end - logEvent.start;
       if (err) {
         logEvent.error = err;
+        service.errors.push(err);
       }
 
       $log.debug('fp: completed', logEvent.type, 'of',

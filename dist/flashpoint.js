@@ -450,6 +450,7 @@
   
             setTimeout(function() { scope.$apply(function() {
   
+              console.log('ERROR!');
               firebaseStatus.finish(readId, err);
   
               scope.$detach();
@@ -744,58 +745,82 @@
   
   angular.module('flashpoint')
   .constant('_fpFirebaseUrl', null)
+  .constant('_fpOnLoaded', null)
+  .constant('_fpOnError', null)
   .constant('fpRoute', function(routeDefinitionObject) {
   
+    routeDefinitionObject.resolve = routeDefinitionObject.resolve || {};
     routeDefinitionObject.controller = 'FirebaseCtl';
+    if (!routeDefinitionObject.firebase) {
+      throw new Error('No Firebase URL has been defined in your controller. ' +
+        'Please set the "firebase" property in your route definition object.');
+    }
   
-    if (routeDefinitionObject.challenge || routeDefinitionObject.authorize) {
+    var firebaseUrl = routeDefinitionObject.firebase;
+    delete routeDefinitionObject.firebase;
   
-      routeDefinitionObject.resolve = routeDefinitionObject.resolve || {};
-      routeDefinitionObject.resolve._fpFirebaseUrl = function($q, $route, $injector, Firebase, Fireproof) {
+    if (routeDefinitionObject.loaded) {
   
-        var firebaseUrl;
-        if (routeDefinitionObject.firebase) {
-          firebaseUrl = routeDefinitionObject.firebase;
-        } else if ($route.current.params.firebase) {
-          firebaseUrl = 'https://' + $route.current.params.firebase + 'firebaseio.com';
-        } else {
-          return $q.reject(new Error('No Firebase URL available. Set "firebase" ' +
-            'in your route definition or make sure a "firebaseName" parameter is in your route params.'));
-        }
+      var onLoaded = routeDefinitionObject.loaded;
+      delete routeDefinitionObject.loaded;
   
-        var root = new Fireproof(new Firebase());
-  
-        return $q.when()
-        .then(function() {
-  
-          if (routeDefinitionObject.challenge) {
-            // inject this
-            return $injector.invoke(routeDefinitionObject.challenge, null, {
-              root: root
-            });
-          }
-  
-        })
-        .then(function() {
-  
-          if (routeDefinitionObject.authorize) {
-            return $injector.invoke(routeDefinitionObject.authorize, null, {
-              root: root,
-              auth: root.getAuth()
-            });
-          }
-  
-        })
-        .then(function() {
-          return routeDefinitionObject.firebase;
-        });
-  
+      routeDefinitionObject.resolve._fpOnLoaded = function() {
+        return onLoaded;
       };
-  
-      routeDefinitionObject.resolve.$inject = ['$q', '$injector', 'Firebase', 'Fireproof'];
   
     }
   
+    if (routeDefinitionObject.error) {
+  
+      var onError = routeDefinitionObject.error;
+      delete routeDefinitionObject.error;
+  
+      routeDefinitionObject.resolve._fpOnError = function() {
+        return onError;
+      };
+  
+    }
+  
+    routeDefinitionObject.resolve._fpFirebaseUrl = function($q, $injector, Firebase, Fireproof) {
+  
+      var root = new Fireproof(new Firebase(firebaseUrl));
+  
+      return $q.when()
+      .then(function() {
+  
+        if (routeDefinitionObject.challenge && root.getAuth() === null) {
+  
+          // the "challenge" function is injectable
+          return $injector.invoke(routeDefinitionObject.challenge, null, {
+            root: root
+          });
+  
+        }
+  
+      })
+      .then(function() {
+  
+        if (routeDefinitionObject.authorize) {
+  
+          // the "authorize" function is injectable
+          return $injector.invoke(routeDefinitionObject.authorize, null, {
+            root: root,
+            auth: root.getAuth()
+          });
+  
+        }
+  
+      })
+      .then(function() {
+        return firebaseUrl;
+      });
+  
+    };
+  
+    routeDefinitionObject.resolve._fpFirebaseUrl.$inject =
+      ['$q', '$injector', 'Firebase', 'Fireproof'];
+  
+    return routeDefinitionObject;
   
   });
   
@@ -816,6 +841,7 @@
   
     function reset() {
   
+      service.errors = [];
       service.operationCount = 0;
       service.operations = {
         'read': {},
@@ -872,7 +898,11 @@
           $animate.setClass($document, 'fp-loaded', 'fp-loading');
   
           // broadcast the "flashpoint:loaded event" with load data
-          $rootScope.$broadcast('flashpointLoaded', operationList);
+          if (service.errors.length > 0) {
+            $rootScope.$broadcast('flashpointError', service.errors);
+          } else {
+            $rootScope.$broadcast('flashpointLoaded', operationList);
+          }
   
         }
   
@@ -920,6 +950,7 @@
         logEvent.duration = logEvent.end - logEvent.start;
         if (err) {
           logEvent.error = err;
+          service.errors.push(err);
         }
   
         $log.debug('fp: completed', logEvent.type, 'of',
@@ -957,7 +988,15 @@
   });
   
   
-  function FirebaseCtl($q, $scope, Firebase, firebaseStatus, _fpFirebaseUrl) {
+  function FirebaseCtl(
+    $q,
+    $scope,
+    $injector,
+    Firebase,
+    firebaseStatus,
+    _fpFirebaseUrl,
+    _fpOnLoaded,
+    _fpOnError) {
   
     /**
      * @ngdoc type
@@ -1128,10 +1167,6 @@
   
     };
   
-    if (_fpFirebaseUrl !== null) {
-      // attach using this url.
-      self.attachFirebase(_fpFirebaseUrl);
-    }
   
     self.set = function() {
   
@@ -1381,6 +1416,45 @@
       self.cleanup();
   
     });
+  
+    // handle route controller stuff.
+  
+    if (_fpFirebaseUrl !== null) {
+      // attach using this url.
+      self.attachFirebase(_fpFirebaseUrl);
+    }
+  
+    if (angular.isFunction(_fpOnLoaded)) {
+  
+  
+      var cancel = $scope.$on('flashpointLoaded', function() {
+  
+        cancel();
+        $injector.invoke(_fpOnLoaded, null, {
+          root: self.root,
+          auth: self.auth
+        });
+  
+      });
+  
+    }
+  
+    if (angular.isFunction(_fpOnError)) {
+  
+      var onError = function(err) {
+  
+        $injector.invoke(_fpOnError, null, {
+          root: self.root,
+          auth: self.auth,
+          error: err
+        });
+  
+      };
+  
+      $scope.$on('flashpointError', onError);
+      $scope.$on('flashpointTimeout', onError);
+  
+    }
   
   
   }
