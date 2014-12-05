@@ -4,6 +4,7 @@ function FirebaseCtl(
   $scope,
   $injector,
   Firebase,
+  Fireproof,
   firebaseStatus,
   _fpFirebaseUrl,
   _fpOnLoaded,
@@ -39,10 +40,12 @@ function FirebaseCtl(
 
 
   self.auth = null;
-  $scope.$auth = null;
+
   function authHandler(authData) {
     self.auth = authData;
-    $scope.$auth = authData;
+    if (_fpFirebaseUrl !== null) {
+
+    }
   }
 
 
@@ -118,7 +121,6 @@ function FirebaseCtl(
    */
   self.logout = function(options) {
     return $q.when(_logoutHandler(self.root, options));
-
   };
 
 
@@ -173,7 +175,8 @@ function FirebaseCtl(
       self.cleanup();
     }
 
-    self.root = new Firebase(url);
+    self.root = new Fireproof(new Firebase(url));
+    self.auth = self.root.getAuth();
     self.root.onAuth(authHandler);
 
   };
@@ -189,7 +192,7 @@ function FirebaseCtl(
     return makeClosure(function() {
 
       var id = firebaseStatus.start('set', self.root.child(path));
-      return new Fireproof(self.root).child(path).set(value)
+      return self.root.child(path).set(value)
       .finally(function(err) {
         firebaseStatus.finish(id, err);
       });
@@ -209,7 +212,7 @@ function FirebaseCtl(
     return makeClosure(function() {
 
       var id = firebaseStatus.start('setPriority', self.root.child(path));
-      return new Fireproof(self.root).child(path).setPriority(priority)
+      return self.root.child(path).setPriority(priority)
       .finally(function(err) {
         firebaseStatus.finish(id, err);
       });
@@ -230,7 +233,7 @@ function FirebaseCtl(
     return makeClosure(function() {
 
       var id = firebaseStatus.start('setWithPriority', self.root.child(path));
-      return new Fireproof(self.root).child(path)
+      return self.root.child(path)
       .setWithPriority(value, priority)
       .finally(function(err) {
         firebaseStatus.finish(id, err);
@@ -251,7 +254,7 @@ function FirebaseCtl(
     return makeClosure(function() {
 
       var id = firebaseStatus.start('update', self.root.child(path));
-      return new Fireproof(self.root).child(path).update(value)
+      return self.root.child(path).update(value)
       .finally(function(err) {
         firebaseStatus.finish(id, err);
       });
@@ -270,7 +273,7 @@ function FirebaseCtl(
     return makeClosure(function() {
 
       var id = firebaseStatus.start('remove', self.root.child(path));
-      return new Fireproof(self.root).child(path).remove()
+      self.root.child(path).remove()
       .finally(function(err) {
         firebaseStatus.finish(id, err);
       });
@@ -289,7 +292,7 @@ function FirebaseCtl(
     return makeClosure(function() {
 
       var id = firebaseStatus.start('increment', self.root.child(path));
-      return new Fireproof(self.root).child(path)
+      self.root.child(path)
       .transaction(function(val) {
 
         if (angular.isNumber(val)) {
@@ -326,7 +329,7 @@ function FirebaseCtl(
     return makeClosure(function() {
 
       var id = firebaseStatus.start('decrement', self.root.child(path));
-      return new Fireproof(self.root).child(path)
+      return self.root.child(path)
       .transaction(function(val) {
 
         if (angular.isNumber(val)) {
@@ -399,23 +402,6 @@ function FirebaseCtl(
   };
 
 
-  // attach authentication methods from controller to scope
-  $scope.$auth = null;
-  $scope.$login = self.login;
-  $scope.$logout = self.logout;
-
-
-  // expose these methods on scope also
-  $scope.$set = self.set;
-  $scope.$setPriority = self.setPriority;
-  $scope.$setWithPriority = self.setWithPriority;
-  $scope.$update = self.update;
-  $scope.$remove = self.remove;
-  $scope.$increment = self.increment;
-  $scope.$decrement = self.decrement;
-  $scope.$val = self.val;
-
-
   $scope.$on('$destroy', function() {
 
     // remove all listeners
@@ -428,15 +414,18 @@ function FirebaseCtl(
 
   });
 
+
   // handle route controller stuff.
 
   if (_fpFirebaseUrl !== null) {
+
     // attach using this url.
     self.attachFirebase(_fpFirebaseUrl);
+    $scope.fp = self;
+
   }
 
   if (angular.isFunction(_fpOnLoaded)) {
-
 
     var cancel = $scope.$on('flashpointLoaded', function() {
 
@@ -471,27 +460,5 @@ function FirebaseCtl(
 }
 
 
-function findFirebaseOrDie(el) {
-
-  while (el.length) {
-
-    var ctl = el.controller('firebase') || el.controller();
-
-    if (ctl && ctl.__firebaseCtl) {
-      return ctl;
-    }
-
-    el = el.parent();
-
-  }
-
-  throw new Error('There is no FirebaseCtl available! Make sure you are ' +
-    'using fpRoute in your route definition or you have set the firebase directive ' +
-    'on this or a parent element.');
-
-}
-
-
 angular.module('flashpoint')
-.controller('FirebaseCtl', FirebaseCtl)
-.constant('__findFirebaseOrDie', findFirebaseOrDie);
+.controller('FirebaseCtl', FirebaseCtl);

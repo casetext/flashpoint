@@ -450,7 +450,6 @@
   
             setTimeout(function() { scope.$apply(function() {
   
-              console.log('ERROR!');
               firebaseStatus.finish(readId, err);
   
               scope.$detach();
@@ -822,6 +821,18 @@
   
     return routeDefinitionObject;
   
+  })
+  .directive('ngView', function() {
+  
+    return {
+      restrict: 'ECA',
+      priority: -1000,
+      link: function(scope, el) {
+        el.data('$firebaseController', el.data('$ngControllerController'));
+      }
+  
+    };
+  
   });
   
   
@@ -993,6 +1004,7 @@
     $scope,
     $injector,
     Firebase,
+    Fireproof,
     firebaseStatus,
     _fpFirebaseUrl,
     _fpOnLoaded,
@@ -1028,7 +1040,7 @@
   
   
     self.auth = null;
-    $scope.$auth = null;
+  
     function authHandler(authData) {
       self.auth = authData;
       $scope.$auth = authData;
@@ -1162,7 +1174,7 @@
         self.cleanup();
       }
   
-      self.root = new Firebase(url);
+      self.root = new Fireproof(new Firebase(url));
       self.root.onAuth(authHandler);
   
     };
@@ -1388,22 +1400,36 @@
     };
   
   
-    // attach authentication methods from controller to scope
-    $scope.$auth = null;
-    $scope.$login = self.login;
-    $scope.$logout = self.logout;
+    self.attach = function($scope) {
+  
+      // attach authentication methods from controller to scope
+      $scope.$auth = self.auth;
+      $scope.$login = self.login;
+      $scope.$logout = self.logout;
+  
+      // set an authentication listener
+      $scope.$$authListener = function(auth) {
+        $scope.$auth = auth;
+      };
+  
+      self.root.onAuth($scope.$$authListener);
+  
+      // expose these methods on scope also
+      $scope.$set = self.set;
+      $scope.$setPriority = self.setPriority;
+      $scope.$setWithPriority = self.setWithPriority;
+      $scope.$update = self.update;
+      $scope.$remove = self.remove;
+      $scope.$increment = self.increment;
+      $scope.$decrement = self.decrement;
+      $scope.$val = self.val;
+  
+    };
   
   
-    // expose these methods on scope also
-    $scope.$set = self.set;
-    $scope.$setPriority = self.setPriority;
-    $scope.$setWithPriority = self.setWithPriority;
-    $scope.$update = self.update;
-    $scope.$remove = self.remove;
-    $scope.$increment = self.increment;
-    $scope.$decrement = self.decrement;
-    $scope.$val = self.val;
-  
+    self.detach = function($scope) {
+      angular.offAuth($scope.$$authListener);
+    };
   
     $scope.$on('$destroy', function() {
   
@@ -1424,8 +1450,10 @@
       self.attachFirebase(_fpFirebaseUrl);
     }
   
-    if (angular.isFunction(_fpOnLoaded)) {
+    // attach to our own scope
+    self.attach($scope);
   
+    if (angular.isFunction(_fpOnLoaded)) {
   
       var cancel = $scope.$on('flashpointLoaded', function() {
   

@@ -78,4 +78,16 @@ angular.module('flashpoint')
 
   return routeDefinitionObject;
 
+})
+.directive('ngView', function() {
+
+  return {
+    restrict: 'ECA',
+    priority: 1000,
+    link: { pre: function(scope, el) {
+      el.data('$firebaseController', el.data('$ngControllerController'));
+    }}
+
+  };
+
 });

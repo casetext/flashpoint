@@ -137,6 +137,7 @@ angular.module('flashpoint')
     if (attrs.firebase) {
       attachToController(attrs.firebase);
     }
+    scope.fp = controller;
 
     attrs.$observe('firebase', attachToController);
 

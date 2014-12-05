@@ -12,7 +12,7 @@ angular.module('flashpoint')
   return 250;
 
 })
-.directive('fpBind', function($q, $animate, fpBindSyncTimeout, firebaseStatus, __findFirebaseOrDie) {
+.directive('fpBind', function($q, $animate, fpBindSyncTimeout, firebaseStatus) {
 
   /**
    * @ngdoc directive
@@ -60,9 +60,8 @@ angular.module('flashpoint')
 
     restrict: 'A',
     scope: true,
-    link: function(scope, el, attrs) {
-
-      var firebase = __findFirebaseOrDie(el);
+    require: '^firebase',
+    link: function(scope, el, attrs, firebase) {
 
       var ref, snap, listener, removeScopeListener, syncTimeout;
 
