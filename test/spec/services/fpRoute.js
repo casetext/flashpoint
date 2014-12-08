@@ -162,6 +162,7 @@ describe('flashpoint service', function() {
             var element = angular.element(document.getElementById('test-obj'));
             expect(element.text()).to.equal('12');
             done();
+
           },
           error: function(error) {
             done(error);

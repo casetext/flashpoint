@@ -823,7 +823,7 @@
      * @name FirebaseCtl#logout
      * @description Requests that the logout handler deauthorize the user and return
      * the result. Also made available on the enclosing scope as `$logout`.
-     * If no `logout-handler` has been set, this method just calls `root.unauth()`.
+     * If no logout handler has been set, this method just calls `root.unauth()`.
      * @param {object=} options An arbitrary set of options which will be passed
      * to the logout handler for convenience.
      * @return {Promise} A promise that resolves if the user successfully logs
