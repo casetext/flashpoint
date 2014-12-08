@@ -48,7 +48,7 @@ describe('firebase', function() {
       element = angular.element('<div ' +
         'firebase="' + window.__env__.FIREBASE_TEST_URL + '" ' +
         'ng-init="state = {}" login-handler="handleLogin()">' +
-        '<span>{{ state.bar = $val("test/firebase/value/kind") }}</span>' +
+        '<span>{{ state.bar = fp.val("test/firebase/value/kind") }}</span>' +
         '</div>');
 
       $rootScope.handleLogin = function() {
@@ -83,11 +83,11 @@ describe('firebase', function() {
   });
 
 
-  describe('$val', function() {
+  describe('val', function() {
 
-    it('is a method on scope to get Firebase values', function(done) {
+    it('is a method to get Firebase values', function(done) {
 
-      expect($scope.$val).to.be.a('function');
+      expect($scope.fp.val).to.be.a('function');
       expect(element.find('span').text()).to.equal('');
 
       var cancel = $scope.$watch('state.bar', function(bar) {
@@ -105,11 +105,11 @@ describe('firebase', function() {
   });
 
 
-  describe('$set', function() {
+  describe('set', function() {
 
     it('is a method to set Firebase values', function() {
 
-      return $scope.$set('test/firebase/set', true).now()
+      return $scope.fp.set('test/firebase/set', true).now()
       .then(function() {
         return expect(new Fireproof(root.child('test/firebase/set'))).to.be.true;
       });
@@ -119,11 +119,11 @@ describe('firebase', function() {
   });
 
 
-  describe('$setPriority', function() {
+  describe('setPriority', function() {
 
     it('is a method to set Firebase priorities', function() {
 
-      return $scope.$setPriority('test/firebase/set', 7).now()
+      return $scope.fp.setPriority('test/firebase/set', 7).now()
       .then(function() {
         return expect(new Fireproof(root.child('test/firebase/set')))
         .to.have.priority(7);
@@ -134,11 +134,11 @@ describe('firebase', function() {
   });
 
 
-  describe('$setWithPriority', function() {
+  describe('setWithPriority', function() {
 
     it('is a method to set Firebase values with priority', function() {
 
-      return $scope.$setWithPriority('test/firebase/set', 'baz', 9).now()
+      return $scope.fp.setWithPriority('test/firebase/set', 'baz', 9).now()
       .then(function() {
         return expect(new Fireproof(root.child('test/firebase/set')))
         .to.equal('baz');
@@ -153,7 +153,7 @@ describe('firebase', function() {
   });
 
 
-  describe('$update', function() {
+  describe('update', function() {
 
     it('is a method to update Firebase values', function() {
 
@@ -161,7 +161,7 @@ describe('firebase', function() {
         control: 'Smiley now'
       };
 
-      return $scope.$update('test/firebase/value/properties', updateVal).now()
+      return $scope.fp.update('test/firebase/value/properties', updateVal).now()
       .then(function() {
 
         return expect(new Fireproof(root.child('test/firebase/value/properties')))
@@ -178,11 +178,11 @@ describe('firebase', function() {
   });
 
 
-  describe('$remove', function() {
+  describe('remove', function() {
 
     it('is a method to remove Firebase values', function() {
 
-      return $scope.$remove('test/firebase/set').now()
+      return $scope.fp.remove('test/firebase/set').now()
       .then(function() {
         return expect(new Fireproof(root.child('test/firebase/set'))).to.be.null;
       });
@@ -192,13 +192,13 @@ describe('firebase', function() {
   });
 
 
-  describe('$increment', function() {
+  describe('increment', function() {
 
     beforeEach(function() {
 
       return $q.all([
-        $scope.$set('test/firebase/counter/numeric', 6).now(),
-        $scope.$set('test/firebase/counter/error', 'wut').now()
+        $scope.fp.set('test/firebase/counter/numeric', 6).now(),
+        $scope.fp.set('test/firebase/counter/error', 'wut').now()
       ]);
 
     });
@@ -206,9 +206,9 @@ describe('firebase', function() {
     it('atomically increments Firebase values', function() {
 
       return $q.all([
-        $scope.$increment('test/firebase/counter/numeric').now(),
-        $scope.$increment('test/firebase/counter/numeric').now(),
-        $scope.$increment('test/firebase/counter/numeric').now()
+        $scope.fp.increment('test/firebase/counter/numeric').now(),
+        $scope.fp.increment('test/firebase/counter/numeric').now(),
+        $scope.fp.increment('test/firebase/counter/numeric').now()
       ])
       .then(function() {
         return expect(new Fireproof(root.child('test/firebase/counter/numeric')))
@@ -219,7 +219,7 @@ describe('firebase', function() {
 
     it('blows up if the location is non-numeric and non-null', function() {
 
-      return $scope.$increment('test/firebase/counter/error').now()
+      return $scope.fp.increment('test/firebase/counter/error').now()
       .then(function() {
         throw new Error('Expected an error, but the operation passed');
       }, function() {});
@@ -229,13 +229,13 @@ describe('firebase', function() {
   });
 
 
-  describe('$decrement', function() {
+  describe('decrement', function() {
 
     beforeEach(function() {
 
       return $q.all([
-        $scope.$set('test/firebase/counter/numeric', 6).now(),
-        $scope.$set('test/firebase/counter/error', 'wut').now()
+        $scope.fp.set('test/firebase/counter/numeric', 6).now(),
+        $scope.fp.set('test/firebase/counter/error', 'wut').now()
       ]);
 
     });
@@ -243,9 +243,9 @@ describe('firebase', function() {
     it('atomically decrements Firebase values', function() {
 
       return $q.all([
-        $scope.$decrement('test/firebase/counter/numeric').now(),
-        $scope.$decrement('test/firebase/counter/numeric').now(),
-        $scope.$decrement('test/firebase/counter/numeric').now()
+        $scope.fp.decrement('test/firebase/counter/numeric').now(),
+        $scope.fp.decrement('test/firebase/counter/numeric').now(),
+        $scope.fp.decrement('test/firebase/counter/numeric').now()
       ])
       .then(function() {
         return expect(new Fireproof(root.child('test/firebase/counter/numeric')))
@@ -256,7 +256,7 @@ describe('firebase', function() {
 
     it('blows up if the location is non-numeric and non-null', function() {
 
-      return $scope.$decrement('test/firebase/counter/error').now()
+      return $scope.fp.decrement('test/firebase/counter/error').now()
       .then(function() {
         throw new Error('Expected an error, but the operation passed');
       }, function() {});
@@ -270,26 +270,26 @@ describe('firebase', function() {
 
     it('sets $auth, $login, and $logout on scope initially', function() {
 
-      expect($scope.$auth).to.be.null;
-      expect($scope.$login).to.be.a('function');
-      expect($scope.$logout).to.be.a('function');
+      expect($scope.fp.auth).to.be.null;
+      expect($scope.fp.login).to.be.a('function');
+      expect($scope.fp.logout).to.be.a('function');
 
     });
 
     describe('if the user is logged in', function() {
 
       beforeEach(function() {
-        return $scope.$login();
+        return $scope.fp.login();
       });
 
       afterEach(function() {
-        return $scope.$logout();
+        return $scope.fp.logout();
       });
 
       it('sets $auth on scope with the authentication data', function(done) {
 
-        expect($scope.$auth).to.include.keys(['provider', 'uid']);
-        expect($scope.$auth.uid).to.match(/^simplelogin:/);
+        expect($scope.fp.auth).to.include.keys(['provider', 'uid']);
+        expect($scope.fp.auth.uid).to.match(/^simplelogin:/);
         done();
 
       });

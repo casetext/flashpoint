@@ -1,22 +1,22 @@
 
-function runRoutes() {
-
-  inject(function($rootScope, $location, $compile) {
-
-    $location.path('/');
-
-    var element = angular.element('<div ng-view></div>');
-
-    $compile(element)($rootScope);
-    $rootScope.$digest();
-
-  });
-
-}
-
 describe('flashpoint service', function() {
 
   var root;
+
+  function runRoutes() {
+
+    inject(function($rootScope, $location, $compile) {
+
+      $location.path('/');
+
+      var element = angular.element('<div ng-view fp-view></div>');
+      (angular.element(document.body)).append(element);
+      $compile(element)($rootScope);
+      $rootScope.$digest();
+
+    });
+
+  }
 
   beforeEach(function() {
 
@@ -34,12 +34,6 @@ describe('flashpoint service', function() {
 
   describe('fpRoute', function() {
 
-    it('injects FirebaseCtl into a route definition', inject(function(fpRoute) {
-
-      var routeDefinition = fpRoute({ firebase: window.__env__.FIREBASE_TEST_URL });
-      expect(routeDefinition.controller).to.equal('FirebaseCtl');
-
-    }));
 
     it('provides an injectable "loaded" method for the FirebaseCtl', function(done) {
 
@@ -47,10 +41,11 @@ describe('flashpoint service', function() {
 
         $routeProvider.otherwise(fpRoute({
           firebase: window.__env__.FIREBASE_TEST_URL,
-          template: '<div fp-bind="test/foo" as="thing"></div>',
-          loaded: function(root, auth, $location) {
+          template: '<div>{{ fp.val("test/foo") }}</div>',
+          loaded: function(root, auth, testInjectable) {
             expect(root).to.be.defined;
-            expect($location).to.be.defined;
+            expect(auth).to.be.defined;
+            expect(testInjectable).to.equal(1);
             done();
           },
           error: done
@@ -69,11 +64,12 @@ describe('flashpoint service', function() {
         $routeProvider.otherwise(fpRoute({
 
           firebase: window.__env__.FIREBASE_TEST_URL,
-          template: '<div fp-bind="error/foo" as="thing"></div>',
+          template: '<div>{{ fp.val("error/foo") }}</div>',
           loaded: function() {
             done(new Error('loaded should not have been called'));
           },
-          error: function(error, $location) {
+          error: function(error, testInjectable) {
+            expect(testInjectable).to.be.defined;
             expect(error).to.be.defined;
             done();
           }
@@ -93,7 +89,7 @@ describe('flashpoint service', function() {
         $routeProvider.otherwise(fpRoute({
 
           firebase: window.__env__.FIREBASE_TEST_URL,
-          template: '<div fp-bind="error/foo" as="thing"></div>',
+          template: '<div>{{ fp.val("test/foo") }}</div>',
           challenge: function(testInjectable, root) {
             return root.authWithCustomToken(window.__env__.FIREBASE_TEST_SECRET);
           },
@@ -124,7 +120,7 @@ describe('flashpoint service', function() {
         $routeProvider.otherwise(fpRoute({
 
           firebase: window.__env__.FIREBASE_TEST_URL,
-          template: '<div fp-bind="error/foo" as="thing"></div>',
+          template: '<div>{{ fp.val("test/foo") }}</div>',
           authorize: function(testInjectable, auth) {
             didAuthorize = true;
             return auth === null;
@@ -145,7 +141,7 @@ describe('flashpoint service', function() {
 
     });
 
-    it('provides an injectable "extraData" method to add properties to scope', function(done) {
+    it('adds resolve values directly to scope', function(done) {
 
       module(function($routeProvider, fpRoute) {
 
@@ -153,15 +149,18 @@ describe('flashpoint service', function() {
 
           firebase: window.__env__.FIREBASE_TEST_URL,
           template: '<div id="test-obj">{{ thingamajig + friend }}</div>',
-          extraData: function($q) {
-            return {
-              thingamajig: $q.when(5),
-              friend: $q.when(7)
-            };
+          resolve: {
+            thingamajig: function() {
+              return 5;
+            },
+            friend: function() {
+              return 7;
+            }
           },
           loaded: function() {
-            expect(angular.element(document.getElementById('test-obj'))).text()
-            .to.equal('12');
+
+            var element = angular.element(document.getElementById('test-obj'));
+            expect(element.text()).to.equal('12');
             done();
           },
           error: function(error) {

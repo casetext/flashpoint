@@ -29,7 +29,7 @@ describe('flashpoint service', function() {
 
         element = angular.element('<span ' +
           'firebase="' + window.__env__.FIREBASE_TEST_URL + '"' +
-          'fp-bind="test/foo" as="thing">{{ thing }}</span>');
+          '>{{ fp.val("test/foo") }}</span>');
         $compile(element)($rootScope);
 
         $rootScope.$broadcast('$viewContentLoaded');

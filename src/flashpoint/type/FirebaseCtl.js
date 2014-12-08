@@ -24,8 +24,6 @@ function FirebaseCtl(
    * @property {object} $auth Firebase authentication data, or `null`.
    */
 
-  this.__firebaseCtl = true;
-
   var self = this,
       watchers = {},
       values = {},
@@ -273,7 +271,7 @@ function FirebaseCtl(
     return makeClosure(function() {
 
       var id = firebaseStatus.start('remove', self.root.child(path));
-      self.root.child(path).remove()
+      return self.root.child(path).remove()
       .finally(function(err) {
         firebaseStatus.finish(id, err);
       });
@@ -292,7 +290,7 @@ function FirebaseCtl(
     return makeClosure(function() {
 
       var id = firebaseStatus.start('increment', self.root.child(path));
-      self.root.child(path)
+      return self.root.child(path)
       .transaction(function(val) {
 
         if (angular.isNumber(val)) {
@@ -421,7 +419,6 @@ function FirebaseCtl(
 
     // attach using this url.
     self.attachFirebase(_fpFirebaseUrl);
-    $scope.fp = self;
 
   }
 

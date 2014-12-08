@@ -1,16 +1,51 @@
 
+fpViewFillContentFactory.$inject = ['$compile', '$controller', '$route'];
+function fpViewFillContentFactory($compile, $controller, $route) {
+  return {
+    restrict: 'ECA',
+    priority: -350,
+    terminal: true,
+    link: function(scope, $element) {
+
+      var locals = $route.current.locals;
+
+      $element.html(locals.$template);
+
+      var link = $compile($element.contents());
+
+      angular.forEach(locals, function(value, name) {
+
+        if (name.charAt(0) !== '$' && name.charAt(0) !== '_') {
+          scope[name] = value;
+        }
+
+      });
+
+      locals.$scope = scope;
+      var controller = $controller('FirebaseCtl', locals);
+      scope.fp = controller;
+
+      $element.data('$firebaseController', controller);
+      $element.children().data('$firebaseController', controller);
+
+      link(scope);
+
+    }
+  };
+}
+
 angular.module('flashpoint')
 .constant('_fpFirebaseUrl', null)
 .constant('_fpOnLoaded', null)
 .constant('_fpOnError', null)
 .constant('fpRoute', function(routeDefinitionObject) {
 
-  routeDefinitionObject.resolve = routeDefinitionObject.resolve || {};
-  routeDefinitionObject.controller = 'FirebaseCtl';
   if (!routeDefinitionObject.firebase) {
     throw new Error('No Firebase URL has been defined in your controller. ' +
       'Please set the "firebase" property in your route definition object.');
   }
+
+  routeDefinitionObject.resolve = routeDefinitionObject.resolve || {};
 
   var firebaseUrl = routeDefinitionObject.firebase;
   delete routeDefinitionObject.firebase;
@@ -44,7 +79,9 @@ angular.module('flashpoint')
     return $q.when()
     .then(function() {
 
-      if (routeDefinitionObject.challenge && root.getAuth() === null) {
+      if (routeDefinitionObject.challenge &&
+        root.getAuth() === null &&
+        routeDefinitionObject.alwaysChallenge !== false) {
 
         // the "challenge" function is injectable
         return $injector.invoke(routeDefinitionObject.challenge, null, {
@@ -79,15 +116,4 @@ angular.module('flashpoint')
   return routeDefinitionObject;
 
 })
-.directive('ngView', function() {
-
-  return {
-    restrict: 'ECA',
-    priority: 1000,
-    link: { pre: function(scope, el) {
-      el.data('$firebaseController', el.data('$ngControllerController'));
-    }}
-
-  };
-
-});
+.directive('fpView', fpViewFillContentFactory);
