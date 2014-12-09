@@ -18,7 +18,7 @@ describe('flashpoint service', function() {
 
       inject(function($rootScope, $compile) {
 
-        $rootScope.$on('flashpointLoaded', function(e, opsList) {
+        $rootScope.$on('flashpointLoadSuccess', function(e, opsList) {
           expect(opsList.length).to.equal(1);
           expect(opsList[0]).to.have.keys(['type', 'path', 'start', 'end', 'count', 'duration']);
           expect(opsList[0].path).to.match(/test\/foo/);

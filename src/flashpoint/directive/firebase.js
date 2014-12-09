@@ -7,39 +7,28 @@ angular.module('flashpoint')
    * @name firebase
    * @description Wires Firebase into an Angular application.
    *
-   * `firebase` exposes the following methods and variables on local scope:
-   *
-   * | Variable           | Type             | Details                                                                         |
-   * |--------------------|------------------|---------------------------------------------------------------------------------|
-   * | `$auth`            | {@type Object}   | Auth data if the user is logged in, null if not.                                |
-   * | `$login`           | {@type Function} | Runs the login handler. Returns a {@type Promise}.                              |
-   * | `$logout`          | {@type Function} | Runs the logout handler. Returns a {@type Promise}.                             |
-   * | `$val`             | {@type Function} | Evaluates a Firebase value.                                                     |
-   * | `$set`             | {@type Function} | Sets a Firebase location to a given value.                                      |
-   * | `$setPriority`     | {@type Function} | Sets a Firebase location to a given priority.                                   |
-   * | `$setWithPriority` | {@type Function} | Sets a Firebase location to a given value and priority.                         |
-   * | `$update`          | {@type Function} | Updates a Firebase location with a given object.                                |
-   * | `$remove`          | {@type Function} | Sets a Firebase location to null.                                               |
-   * | `$increment`       | {@type Function} | Atomically increments the value at path. Fails for non-numeric non-null values. |
-   * | `$decrement`       | {@type Function} | Atomically decrements the value at path. Fails for non-numeric non-null values. |
+   * The `firebase` directive is an easy way to make the Firebase controller available
+   * to enclosing scope, where it is exposed as `fp`.
    *
    * @example
-   * `$val` and all succeeding methods take a variable number of path components followed by their
-   * necessary arguments (for `$set` and `$update`, a value; for `$setPriority`, a priority; and for
-   * `$setWithPriority`, a value and a priority). So you could do the following:
-   * `Your assigned seat is {{ $val('seatAssignments', $auth.uid) }}`.
+   * `fp.val` and all succeeding methods take a variable number of path components followed by their
+   * necessary arguments (for `fp.set` and `fp.update`, a value; for `fp.setPriority`, a priority; and for
+   * `fp.setWithPriority`, a value and a priority). So you could do the following:
+   * `Your assigned seat is {{ fp.val('seatAssignments', fp.auth.uid) }}`.
    *
-   * `$set` and related methods all return a {@type function} so that you can
+   * `fp.set` and related methods all return a closure {@type function} so that you can
    * easily pass them into a promise chain like so:
    *
    * <example firebase="https://my-firebase.firebaseio.com">
    *   <button ng-click="login().then($set('signups', $auth.uid, true))">Sign up!</button>
    * </example>
    *
-   * If you wanted to run the action immediately, you can use `$set(...).now()`:
+   * If you want to run the action immediately, you can use e.g. `fp.set(...).now()`.
+   * But this is _NOT_ necessary in Angular expressions! Angular already knows
+   * to "unwrap" and evaluate the function. So you can do the following:
    *
    * <example firebase="https://my-firebase.firebaseio.com">
-   *   <button ng-click="$set('signups', $auth.uid, true).now()">Sign up!</button>
+   *   <button ng-click="$set('signups', $auth.uid, true)">Sign up!</button>
    * </example>
    *
    * @restrict A
@@ -53,8 +42,6 @@ angular.module('flashpoint')
    * @param {expression} logoutHandler A method on local scope that handles logout
    * procedures and returns a {@type Promise} that resolves on success or rejects
    * on failure. By default this just calls `root.unauth()`.
-   * @param {expression} onChange An expression that gets evaluated when Firebase
-   * sends a new value that we happen to be listening to.
    * @param {expression} onAuthChange An expression that gets evaluated when
    * auth conditions change, because the user logs in or out.
    */
@@ -63,7 +50,6 @@ angular.module('flashpoint')
 
 
   var preLink = function(scope, el, attrs, controller) {
-
 
     var authHandler = function(authData) {
 

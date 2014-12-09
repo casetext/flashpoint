@@ -30,7 +30,6 @@ angular.module('flashpoint')
     };
     service.operationLog = {};
 
-
   }
 
   reset();
@@ -41,14 +40,14 @@ angular.module('flashpoint')
 
   $rootScope.$on('$viewContentLoaded', function() {
 
-    $rootScope.$broadcast('flashpointLoading');
+    $rootScope.$broadcast('flashpointLoadStart');
     $animate.addClass($document, 'fp-loading');
 
     // after 20 seconds, assume something's gone wrong and signal timeout.
     var deadHand = $timeout(function() {
 
       $interval.cancel(intervalId);
-      $rootScope.$broadcast('flashpointTimeout');
+      $rootScope.$broadcast('flashpointLoadTimeout');
 
     }, fpLoadedTimeout);
 
@@ -73,9 +72,9 @@ angular.module('flashpoint')
 
         // broadcast the "flashpoint:loaded event" with load data
         if (service.errors.length > 0) {
-          $rootScope.$broadcast('flashpointError', service.errors);
+          $rootScope.$broadcast('flashpointLoadError', service.errors);
         } else {
-          $rootScope.$broadcast('flashpointLoaded', operationList);
+          $rootScope.$broadcast('flashpointLoadSuccess', operationList);
         }
 
       }

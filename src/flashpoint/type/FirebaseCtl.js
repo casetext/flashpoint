@@ -3,9 +3,12 @@ function FirebaseCtl(
   $q,
   $scope,
   $injector,
+  $timeout,
   Firebase,
   Fireproof,
   firebaseStatus,
+  _fpHandleLogin,
+  _fpHandleLogout,
   _fpFirebaseUrl,
   _fpOnLoaded,
   _fpOnError) {
@@ -47,10 +50,30 @@ function FirebaseCtl(
   }
 
 
-  function makeClosure(fn) {
+  function makeClosure(operation, path, fn) {
 
     var closure = function() {
-      return fn();
+
+      var id = firebaseStatus.start(operation, self.root.child(path));
+      return fn()
+      .catch(function(err) {
+
+        if (closure._onError) {
+          closure._onError(err, path);
+        } else {
+          return $q.reject(err);
+        }
+
+      })
+      .finally(function(err) {
+        firebaseStatus.finish(id, err);
+      });
+
+    };
+
+    closure.or = function(errHandler) {
+      closure._onError = errHandler;
+      return closure;
     };
 
     closure.now = function() {
@@ -179,7 +202,26 @@ function FirebaseCtl(
 
   };
 
-
+  /**
+   * @ngdoc method
+   * @name FirebaseCtl#set
+   * @description Generates an operation to set a Firebase path to a given value.
+   * @param {...string} pathPart Path components to be joined.
+   * @param {(Object|String|Number|Boolean|Array|null)} value The value to set the path to.
+   * @returns {Function} A closure function that will perform the specified operation.
+   * In an Angular expression, it will execute automatically. You can also call its
+   * `.now()` method to get it to fire immediately.
+   *
+   * @example
+   * ```js
+   * fp.set('users', 'fritz', { hometown: 'Metropolis'}).now()
+   * ```
+   *
+   * ```html
+   * <button ng-click="fp.set('users', user, 'activated', true)">Activate!</button>
+   * ```
+   * @see Firebase#set
+   */
   self.set = function() {
 
     // check the arguments
@@ -187,19 +229,32 @@ function FirebaseCtl(
       value = args.pop(),
       path = validatePath(args);
 
-    return makeClosure(function() {
-
-      var id = firebaseStatus.start('set', self.root.child(path));
-      return self.root.child(path).set(value)
-      .finally(function(err) {
-        firebaseStatus.finish(id, err);
-      });
-
+    return makeClosure('set', path, function() {
+      return self.root.child(path).set(value);
     });
 
   };
 
-
+  /**
+   * @ngdoc method
+   * @name FirebaseCtl#setPriority
+   * @description Generates an operation to set a Firebase path to a given priority.
+   * @param {...string} pathPart Path components to be joined.
+   * @param {(String|Number|null)} priority The priority to set the path to.
+   * @returns {Function} A closure function that will perform the specified operation.
+   * In an Angular expression, it will execute automatically. You can also call its
+   * `.now()` method to get it to fire immediately.
+   *
+   * @example
+   * ```js
+   * fp.setPriority('users', 'fritz', Date.now()).now()
+   * ```
+   *
+   * ```html
+   * <button ng-click="fp.setPriority('users', user, 0)">To teh top!</button>
+   * ```
+   * @see Firebase#setPriority
+   */
   self.setPriority = function() {
 
     // check the arguments
@@ -207,19 +262,33 @@ function FirebaseCtl(
       priority = args.pop(),
       path = validatePath(args);
 
-    return makeClosure(function() {
-
-      var id = firebaseStatus.start('setPriority', self.root.child(path));
-      return self.root.child(path).setPriority(priority)
-      .finally(function(err) {
-        firebaseStatus.finish(id, err);
-      });
-
+    return makeClosure('setPriority', path, function() {
+      return self.root.child(path).setPriority(priority);
     });
 
   };
 
-
+  /**
+   * @ngdoc method
+   * @name FirebaseCtl#setWithPriority
+   * @description Generates an operation to set a Firebase path to a given value and priority.
+   * @param {...string} pathPart Path components to be joined.
+   * @param {(Object|String|Number|Boolean|Array|null)} value The value to set the path to.
+   * @param {(String|Number|null)} priority The priority to set the path to.
+   * @returns {Function} A closure function that will perform the specified operation.
+   * In an Angular expression, it will execute automatically. You can also call its
+   * `.now()` method to get it to fire immediately.
+   *
+   * @example
+   * ```js
+   * fp.setWithPriority('users', 'fritz', { hometown: 'Metropolis' }, Date.now()).now()
+   * ```
+   *
+   * ```html
+   * <button ng-click="fp.setWithPriority('status', event, 'pending', 0)">Reset to pending</button>
+   * ```
+   * @see Firebase#setWithPriority
+   */
   self.setWithPriority = function() {
 
     // check the arguments
@@ -228,20 +297,33 @@ function FirebaseCtl(
       value = args.pop(),
       path = validatePath(args);
 
-    return makeClosure(function() {
-
-      var id = firebaseStatus.start('setWithPriority', self.root.child(path));
-      return self.root.child(path)
-      .setWithPriority(value, priority)
-      .finally(function(err) {
-        firebaseStatus.finish(id, err);
+      return makeClosure('setWithPriority', path, function() {
+        return self.root.child(path).setWithPriority(value, priority);
       });
-
-    });
 
   };
 
 
+  /**
+   * @ngdoc method
+   * @name FirebaseCtl#update
+   * @description Generates an operation to update a Firebase path to a given value.
+   * @param {...string} pathPart Path components to be joined.
+   * @param {(Object|String|Number|Boolean|Array|null)} value The value to update the path with.
+   * @returns {Function} A closure function that will perform the specified operation.
+   * In an Angular expression, it will execute automatically. You can also call its
+   * `.now()` method to get it to fire immediately.
+   *
+   * @example
+   * ```js
+   * fp.update('users', 'fritz', { hometown: 'Metropolis' }).now()
+   * ```
+   *
+   * ```html
+   * <button ng-click="fp.update('users', user, { disabled: true } )">Disable user</button>
+   * ```
+   * @see Firebase#update
+   */
   self.update = function() {
 
     // check the arguments
@@ -249,47 +331,69 @@ function FirebaseCtl(
       value = args.pop(),
       path = validatePath(args);
 
-    return makeClosure(function() {
-
-      var id = firebaseStatus.start('update', self.root.child(path));
-      return self.root.child(path).update(value)
-      .finally(function(err) {
-        firebaseStatus.finish(id, err);
-      });
-
+    return makeClosure('update', path, function() {
+      return self.root.child(path).update(value);
     });
 
   };
 
-
+  /**
+   * @ngdoc method
+   * @name FirebaseCtl#remove
+   * @description Generates an operation to remove a Firebase path.
+   * @param {...string} pathPart Path components to be joined.
+   * @returns {Function} A closure function that will perform the specified operation.
+   * In an Angular expression, it will execute automatically. You can also call its
+   * `.now()` method to get it to fire immediately.
+   *
+   * @example
+   * ```js
+   * fp.remove('users', 'fritz').now()
+   * ```
+   *
+   * ```html
+   * <button ng-click="fp.remove('users', user)">Remove user</button>
+   * ```
+   * @see Firebase#update
+   */
   self.remove = function() {
 
     // check the arguments
     var args = Array.prototype.slice.call(arguments, 0),
       path = validatePath(args);
 
-    return makeClosure(function() {
-
-      var id = firebaseStatus.start('remove', self.root.child(path));
-      return self.root.child(path).remove()
-      .finally(function(err) {
-        firebaseStatus.finish(id, err);
-      });
-
+    return makeClosure('remove', path, function() {
+      return self.root.child(path).remove();
     });
 
   };
 
-
+  /**
+   * @ngdoc method
+   * @name FirebaseCtl#increment
+   * @description Generates an operation to atomically increment a numeric value in Firebase.
+   * @param {...string} pathPart Path components to be joined.
+   * @returns {Function} A closure function that will perform the specified operation.
+   * In an Angular expression, it will execute automatically. You can also call its
+   * `.now()` method to get it to fire immediately.
+   *
+   * @example
+   * ```js
+   * fp.increment('users', 'fritz', 'votes').now()
+   * ```
+   *
+   * ```html
+   * <button ng-click="fp.increment('users', user, 'votes')">Vote for this user!</button>
+   * ```
+   */
   self.increment = function() {
 
     // check the arguments
     var args = Array.prototype.slice.call(arguments, 0),
       path = validatePath(args);
 
-    return makeClosure(function() {
+    return makeClosure('increment', path, function() {
 
-      var id = firebaseStatus.start('increment', self.root.child(path));
       return self.root.child(path)
       .transaction(function(val) {
 
@@ -308,25 +412,39 @@ function FirebaseCtl(
           return $q.reject(new Error('Cannot increment the object at ' + path));
         }
 
-      })
-      .finally(function(err) {
-        firebaseStatus.finish(id, err);
       });
 
     });
 
   };
 
-
+  /**
+   * @ngdoc method
+   * @name FirebaseCtl#decrement
+   * @description Generates an operation to atomically decrement a numeric value in Firebase.
+   * @param {...string} pathPart Path components to be joined.
+   * @returns {Function} A closure function that will perform the specified operation.
+   * In an Angular expression, it will execute automatically. You can also call its
+   * `.now()` method to get it to fire immediately.
+   * @throws {Error} if you specify a non-numeric non-null Firebase value.
+   *
+   * @example
+   * ```js
+   * fp.decrement('users', 'fritz', 'votes').now()
+   * ```
+   *
+   * ```html
+   * <button ng-click="fp.decrement('users', user, 'votes')">Vote against this user!</button>
+   * ```
+   */
   self.decrement = function() {
 
     // check the arguments
     var args = Array.prototype.slice.call(arguments, 0),
       path = validatePath(args);
 
-    return makeClosure(function() {
+    return makeClosure('decrement', path, function() {
 
-      var id = firebaseStatus.start('decrement', self.root.child(path));
       return self.root.child(path)
       .transaction(function(val) {
 
@@ -345,16 +463,71 @@ function FirebaseCtl(
           return $q.reject(new Error('Cannot decrement the object at ' + path));
         }
 
-      })
-      .finally(function(err) {
-        firebaseStatus.finish(id, err);
       });
 
     });
 
   };
 
+  /**
+   * @ngdoc method
+   * @name FirebaseCtl#transaction
+   * @description Generates an operation to perform a transaction in Firebase.
+   * @param {...string} pathPart Path components to be joined.
+   * @param {Function} fn The function that describes the transaction. Takes one
+   * argument, the existing value in Firebase. See the Firebase docs on transactions.
+   * @returns {Function} A closure function that will perform the specified operation.
+   * In an Angular expression, it will execute automatically. You can also call its
+   * `.now()` method to get it to fire immediately.
+   *
+   * @example
+   * ```js
+   * fp.decrement('users', 'fritz', 'votes').now()
+   * ```
+   *
+   * ```html
+   * <button ng-click="fp.decrement('users', user, 'votes')">Vote against this user!</button>
+   * ```
+   * @see Firebase#transaction
+   */
+  self.transaction = function() {
 
+    // check the arguments
+    var args = Array.prototype.slice.call(arguments, 0),
+      fn = args.pop();
+
+    var path = validatePath(args);
+
+    return makeClosure('transaction', path, function() {
+
+      return self.root.child(path)
+      .transaction(function(val) {
+        return fn(val);
+      })
+      .then(function(result) {
+
+        if (!result.committed) {
+          return $q.reject(new Error('Aborted'));
+        }
+
+      });
+
+    });
+
+  };
+
+  /**
+   * @ngdoc method
+   * @name FirebaseCtl#val
+   * @description Gets a value from Firebase and triggers scope refresh when that value changes.
+   * @param {...string} pathPart Path components to be joined.
+   * @returns {*} `null` on the first scope digest, and the actual value subsequently.
+   *
+   * @example
+   * ```html
+   * <span>Welcome, {{ fp.val('users', userId, 'firstName') }}!</button>
+   * ```
+   */
   self.val = function() {
 
     var path = validatePath(Array.prototype.slice.call(arguments, 0));
@@ -424,7 +597,7 @@ function FirebaseCtl(
 
   if (angular.isFunction(_fpOnLoaded)) {
 
-    var cancel = $scope.$on('flashpointLoaded', function() {
+    var cancel = $scope.$on('flashpointLoadSuccess', function() {
 
       cancel();
       $injector.invoke(_fpOnLoaded, null, {
@@ -448,11 +621,36 @@ function FirebaseCtl(
 
     };
 
-    $scope.$on('flashpointError', onError);
-    $scope.$on('flashpointTimeout', onError);
+    $scope.$on('flashpointLoadError', onError);
+    $scope.$on('flashpointLoadTimeout', onError);
 
   }
 
+  if (angular.isFunction(_fpHandleLogin)) {
+
+    self.setLoginHandler(function() {
+
+      return $injector.invoke(_fpHandleLogin, null, {
+        root: self.root,
+        auth: self.auth
+      });
+
+    });
+
+  }
+
+  if (angular.isFunction(_fpHandleLogout)) {
+
+    self.setLogoutHandler(function() {
+
+      return $injector.invoke(_fpHandleLogout, null, {
+        root: self.root,
+        auth: self.auth
+      });
+
+    });
+
+  }
 
 }
 

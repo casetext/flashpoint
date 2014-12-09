@@ -1,6 +1,7 @@
 
 fpViewFillContentFactory.$inject = ['$compile', '$controller', '$route'];
 function fpViewFillContentFactory($compile, $controller, $route) {
+
   return {
     restrict: 'ECA',
     priority: -350,
@@ -32,12 +33,15 @@ function fpViewFillContentFactory($compile, $controller, $route) {
 
     }
   };
+
 }
 
 angular.module('flashpoint')
 .constant('_fpFirebaseUrl', null)
 .constant('_fpOnLoaded', null)
 .constant('_fpOnError', null)
+.constant('_fpHandleLogin', null)
+.constant('_fpHandleLogout', null)
 .constant('fpRoute', function(routeDefinitionObject) {
 
   if (!routeDefinitionObject.firebase) {
@@ -49,6 +53,7 @@ angular.module('flashpoint')
 
   var firebaseUrl = routeDefinitionObject.firebase;
   delete routeDefinitionObject.firebase;
+
 
   if (routeDefinitionObject.loaded) {
 
@@ -72,6 +77,28 @@ angular.module('flashpoint')
 
   }
 
+  if (routeDefinitionObject.login) {
+
+    var login = routeDefinitionObject.login;
+
+    routeDefinitionObject.resolve._fpHandleLogin = function() {
+      return login;
+    };
+
+  }
+
+  if (routeDefinitionObject.logout) {
+
+    var logout = routeDefinitionObject.logout;
+    delete routeDefinitionObject.logout;
+
+    routeDefinitionObject.resolve._fpHandleLogout = function() {
+      return logout;
+    };
+
+  }
+
+
   routeDefinitionObject.resolve._fpFirebaseUrl = function($q, $injector, Firebase, Fireproof) {
 
     var root = new Fireproof(new Firebase(firebaseUrl));
@@ -80,12 +107,13 @@ angular.module('flashpoint')
     .then(function() {
 
       if (routeDefinitionObject.challenge &&
-        root.getAuth() === null &&
-        routeDefinitionObject.alwaysChallenge !== false) {
+        routeDefinitionObject.login &&
+        root.getAuth() === null) {
 
-        // the "challenge" function is injectable
-        return $injector.invoke(routeDefinitionObject.challenge, null, {
-          root: root
+        // the "login" function is injectable
+        return $injector.invoke(routeDefinitionObject.login, null, {
+          root: root,
+          auth: null
         });
 
       }

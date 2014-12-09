@@ -82,7 +82,7 @@ describe('flashpoint service', function() {
 
     });
 
-    it('provides an injectable "challenge" method to try auth', function(done) {
+    it('provides an injectable "login" method to try auth', function(done) {
 
        module(function($routeProvider, fpRoute) {
 
@@ -90,9 +90,11 @@ describe('flashpoint service', function() {
 
           firebase: window.__env__.FIREBASE_TEST_URL,
           template: '<div>{{ fp.val("test/foo") }}</div>',
-          challenge: function(testInjectable, root) {
+          login: function(testInjectable, root) {
+            console.log('injecting!');
             return root.authWithCustomToken(window.__env__.FIREBASE_TEST_SECRET);
           },
+          challenge: true,
           loaded: function(root, auth) {
             expect(auth).to.be.an.instanceof(Object);
             expect(auth).to.include.keys(['auth', 'expires', 'token', 'uid', 'provider']);
@@ -112,7 +114,7 @@ describe('flashpoint service', function() {
 
     });
 
-    it('provides an injectable "authorize" method to eval auth', function(done) {
+    it('provides an injectable "authorize" method to evaluate auth', function(done) {
 
       var didAuthorize = false;
       module(function($routeProvider, fpRoute) {
@@ -121,6 +123,7 @@ describe('flashpoint service', function() {
 
           firebase: window.__env__.FIREBASE_TEST_URL,
           template: '<div>{{ fp.val("test/foo") }}</div>',
+          challenge: true,
           authorize: function(testInjectable, auth) {
             didAuthorize = true;
             return auth === null;
