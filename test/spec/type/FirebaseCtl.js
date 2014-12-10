@@ -207,6 +207,32 @@ describe('FirebaseCtl', function() {
 
     }));
 
+    describe('transaction', function() {
+
+      it('performs the specified action atomically', function() {
+
+        var t = fp.transaction('test/firebase/xact', function(val) {
+          if (val === null) {
+            return '8';
+          } else {
+            return val + 'u';
+          }
+        });
+
+        return Q.all([
+          t.now(),
+          t.now(),
+          t.now(),
+          t.now()
+        ])
+        .then(function() {
+          return expect(root.child('test/firebase/xact')).to.equal('8uuu');
+        });
+
+      });
+
+    });
+
     describe('increment', function() {
 
       beforeEach(function() {
