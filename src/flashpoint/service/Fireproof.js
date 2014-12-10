@@ -34,14 +34,14 @@ angular.module('flashpoint')
   return Firebase.ServerValue;
 
 })
-.factory('Fireproof', function($timeout, $q) {
+.factory('Fireproof', function($rootScope, $q) {
 
   /**
    * @ngdoc service
    * @name Fireproof
    * @description The Fireproof class, properly configured for use in Angular.
    *
-   * "Properly configured" means that $timeout is used for nextTick and
+   * "Properly configured" means that $rootScope.$evalAsync is used for nextTick and
    * Angular's $q is used for promises).
    *
    * NB: You should not use this service yourself! Instead, use the firebase
@@ -49,7 +49,9 @@ angular.module('flashpoint')
    * `root` Firebase reference.
    */
 
-  Fireproof.setNextTick($timeout);
+  Fireproof.setNextTick(function(fn) {
+    $rootScope.$evalAsync(fn);
+  });
   Fireproof.bless($q);
 
   return Fireproof;

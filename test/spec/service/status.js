@@ -7,8 +7,8 @@ describe('flashpoint service', function() {
 
     root = new Fireproof(new Firebase(window.__env__.FIREBASE_TEST_URL));
 
+    module('flashpoint.mocks.pump');
     module('flashpoint');
-    module('flashpoint.mocks');
 
   });
 

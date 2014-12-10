@@ -28,6 +28,7 @@ angular.module('flashpoint')
       'increment': {},
       'decrement': {}
     };
+    service.listeners = {};
     service.operationLog = {};
 
   }
@@ -154,6 +155,44 @@ angular.module('flashpoint')
 
       }
 
+    }
+
+  };
+
+  service.startListening = function(ref) {
+
+    var fullPath = ref.toString();
+
+    if (service.listeners[fullPath]) {
+      service.listeners[fullPath]++;
+    } else {
+      service.listeners[fullPath] = 1;
+    }
+
+    return service.start('read', ref);
+
+  };
+
+  service.tallyRead = function(ref) {
+
+    var path = ref.toString();
+
+    if (service.operations.read[path]) {
+      service.operations.read[path]++;
+    } else {
+      service.operations.read[path] = 1;
+    }
+
+  };
+
+  service.stopListening = function(ref) {
+
+    var fullPath = ref.toString();
+
+    if (service.listeners[fullPath] && service.listeners[fullPath] > 0) {
+      service.listeners[fullPath]--;
+    } else {
+      throw new Error('No listener currently on path ' + fullPath);
     }
 
   };

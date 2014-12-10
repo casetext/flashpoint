@@ -20,6 +20,7 @@
   "trailing": true,
   "smarttabs": true,
   "globals": {
+    "Q": false,
     "sinon": false,
     "inject": false,
     "module": false,

@@ -173,7 +173,7 @@
   
   
   angular.module('flashpoint')
-  .directive('fpPage', function($q, Fireproof, $animate) {
+  .directive('fpPage', function($q, Fireproof, $animate, firebaseStatus) {
   
     /**
      * @ngdoc directive
@@ -188,7 +188,7 @@
      * | `$previous`    | {@type function}     | Fetches the previous set of values into scope.             |
      * | `$reset`       | {@type function}     | Starts again at the beginning.                             |
      * | `$keys`        | {@type Array.string} | The keys in the current page.                              |
-     * | `$values`      | {@type Array.*}      | The values in the current page.                           |
+     * | `$values`      | {@type Array.*}      | The values in the current page.                            |
      * | `$priorities`  | {@type Array.*}      | The priorities in the current page.                        |
      * | `$hasNext`     | {@type boolean}      | True if there are more values to page over.                |
      * | `$hasPrevious` | {@type boolean}      | True if there are previous values to page back over again. |
@@ -221,7 +221,7 @@
       restrict: 'A',
       scope: true,
       require: 'firebase',
-      link: function(scope, el, attrs, firebase) {
+      link: function(scope, el, attrs, fp) {
   
         var ref, pager;
   
@@ -343,7 +343,7 @@
             return;
           }
   
-          ref = firebase.root.child(path);
+          ref = fp.root.child(path);
           scope.$reset();
   
         });
@@ -391,14 +391,14 @@
     return Firebase.ServerValue;
   
   })
-  .factory('Fireproof', function($timeout, $q) {
+  .factory('Fireproof', function($rootScope, $q) {
   
     /**
      * @ngdoc service
      * @name Fireproof
      * @description The Fireproof class, properly configured for use in Angular.
      *
-     * "Properly configured" means that $timeout is used for nextTick and
+     * "Properly configured" means that $rootScope.$evalAsync is used for nextTick and
      * Angular's $q is used for promises).
      *
      * NB: You should not use this service yourself! Instead, use the firebase
@@ -406,7 +406,9 @@
      * `root` Firebase reference.
      */
   
-    Fireproof.setNextTick($timeout);
+    Fireproof.setNextTick(function(fn) {
+      $rootScope.$evalAsync(fn);
+    });
     Fireproof.bless($q);
   
     return Fireproof;
@@ -591,6 +593,7 @@
         'increment': {},
         'decrement': {}
       };
+      service.listeners = {};
       service.operationLog = {};
   
     }
@@ -721,10 +724,49 @@
   
     };
   
+    service.startListening = function(ref) {
+  
+      var fullPath = ref.toString();
+  
+      if (service.listeners[fullPath]) {
+        service.listeners[fullPath]++;
+      } else {
+        service.listeners[fullPath] = 1;
+      }
+  
+      return service.start('read', ref);
+  
+    };
+  
+    service.tallyRead = function(ref) {
+  
+      var path = ref.toString();
+  
+      if (service.operations.read[path]) {
+        service.operations.read[path]++;
+      } else {
+        service.operations.read[path] = 1;
+      }
+  
+    };
+  
+    service.stopListening = function(ref) {
+  
+      var fullPath = ref.toString();
+  
+      if (service.listeners[fullPath] && service.listeners[fullPath] > 0) {
+        service.listeners[fullPath]--;
+      } else {
+        throw new Error('No listener currently on path ' + fullPath);
+      }
+  
+    };
+  
   });
   
   
   function FirebaseCtl(
+    $log,
     $q,
     $scope,
     $injector,
@@ -753,7 +795,8 @@
      */
   
     var self = this,
-        watchers = {},
+        watchers = self.$$watchers = {},
+        liveWatchers = {},
         values = {},
         _defaultLoginHandler = function() {
           return $q.reject(new Error('No login handler is set for ' + self.root));
@@ -767,11 +810,9 @@
   
     self.auth = null;
   
+  
     function authHandler(authData) {
       self.auth = authData;
-      if (_fpFirebaseUrl !== null) {
-  
-      }
     }
   
   
@@ -1031,6 +1072,40 @@
   
     /**
      * @ngdoc method
+     * @name FirebaseCtl#push
+     * @description Generates an operation to add a child to a Firebase path.
+     * @param {...string} pathPart Path components to be joined.
+     * @param {(Object|String|Number|Boolean|Array|null)} value The value to append to the path.
+     * @param {(String|Number|null)} priority The priority to set the path to.
+     * @returns {Function} A closure function that will perform the specified operation.
+     * In an Angular expression, it will execute automatically. You can also call its
+     * `.now()` method to get it to fire immediately.
+     *
+     * @example
+     * ```js
+     * fp.push('users', { name: 'Fritz', hometown: 'Metropolis' }).now()
+     * ```
+     *
+     * ```html
+     * <button ng-click="fp.push('comments', commentText)">Add your comment!</button>
+     * ```
+     * @see Firebase#push
+     */
+    self.push = function() {
+  
+      // check the arguments
+      var args = Array.prototype.slice.call(arguments, 0),
+        value = args.pop(),
+        path = validatePath(args);
+  
+        return makeClosure('push', path, function() {
+          return self.root.child(path).push(value);
+        });
+  
+    };
+  
+    /**
+     * @ngdoc method
      * @name FirebaseCtl#update
      * @description Generates an operation to update a Firebase path to a given value.
      * @param {...string} pathPart Path components to be joined.
@@ -1104,7 +1179,7 @@
      *
      * @example
      * ```js
-     * fp.increment('users', 'fritz', 'votes').now()
+     * fp.increment('users/fritz/votes').now()
      * ```
      *
      * ```html
@@ -1264,23 +1339,25 @@
         values[path] = null;
       }
   
+      liveWatchers[path] = true;
+  
       if (!watchers[path]) {
   
-        var id = firebaseStatus.start('read', self.root.child(path));
+        var id = firebaseStatus.startListening(self.root.child(path));
   
-        watchers[path] = self.root.child(path)
+        watchers[path] = self.root.child(path).toFirebase()
         .on('value', function(snap) {
   
-          setTimeout(function() {
+          values[path] = snap.val();
+          if (id) {
+            firebaseStatus.finish(id);
+            id = null;
+          } else {
+            firebaseStatus.tallyRead(self.root.child(path));
+          }
   
-            $scope.$apply(function() {
-  
-              firebaseStatus.finish(id);
-              values[path] = snap.val();
-  
-            });
-  
-          }, 0);
+          // trigger a scope cycle if we aren't already in one
+          $scope.$evalAsync();
   
         }, function(err) {
   
@@ -1296,6 +1373,44 @@
       return values[path];
   
     };
+  
+  
+    // Clean up orphaned Firebase listeners between scope cycles.
+    // HERE BE DRAGONS! We employ the private $scope.$$postDigest method.
+    var scrubbingListeners = false;
+  
+    function scrubListeners() {
+  
+      for (var path in watchers) {
+  
+        if (watchers[path] && !liveWatchers[path]) {
+  
+          // disconnect this watcher, it doesn't exist anymore.
+          self.root.child(path).toFirebase().off('value', watchers[path]);
+          firebaseStatus.stopListening(self.root.child(path));
+          watchers[path] = null;
+          values[path] = null;
+  
+        }
+  
+      }
+  
+      // as of now, nothing is alive.
+      liveWatchers = {};
+      scrubbingListeners = false;
+  
+    }
+  
+    $scope.$watch(function() {
+  
+      if (!scrubbingListeners) {
+  
+        scrubbingListeners = true;
+        $scope.$$postDigest(scrubListeners);
+  
+      }
+  
+    });
   
   
     $scope.$on('$destroy', function() {
@@ -1356,8 +1471,7 @@
       self.setLoginHandler(function() {
   
         return $injector.invoke(_fpHandleLogin, null, {
-          root: self.root,
-          auth: self.auth
+          root: self.root
         });
   
       });

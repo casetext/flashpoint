@@ -1,5 +1,6 @@
 
 function FirebaseCtl(
+  $log,
   $q,
   $scope,
   $injector,
@@ -28,7 +29,8 @@ function FirebaseCtl(
    */
 
   var self = this,
-      watchers = {},
+      watchers = self.$$watchers = {},
+      liveWatchers = {},
       values = {},
       _defaultLoginHandler = function() {
         return $q.reject(new Error('No login handler is set for ' + self.root));
@@ -42,11 +44,9 @@ function FirebaseCtl(
 
   self.auth = null;
 
+
   function authHandler(authData) {
     self.auth = authData;
-    if (_fpFirebaseUrl !== null) {
-
-    }
   }
 
 
@@ -306,6 +306,40 @@ function FirebaseCtl(
 
   /**
    * @ngdoc method
+   * @name FirebaseCtl#push
+   * @description Generates an operation to add a child to a Firebase path.
+   * @param {...string} pathPart Path components to be joined.
+   * @param {(Object|String|Number|Boolean|Array|null)} value The value to append to the path.
+   * @param {(String|Number|null)} priority The priority to set the path to.
+   * @returns {Function} A closure function that will perform the specified operation.
+   * In an Angular expression, it will execute automatically. You can also call its
+   * `.now()` method to get it to fire immediately.
+   *
+   * @example
+   * ```js
+   * fp.push('users', { name: 'Fritz', hometown: 'Metropolis' }).now()
+   * ```
+   *
+   * ```html
+   * <button ng-click="fp.push('comments', commentText)">Add your comment!</button>
+   * ```
+   * @see Firebase#push
+   */
+  self.push = function() {
+
+    // check the arguments
+    var args = Array.prototype.slice.call(arguments, 0),
+      value = args.pop(),
+      path = validatePath(args);
+
+      return makeClosure('push', path, function() {
+        return self.root.child(path).push(value);
+      });
+
+  };
+
+  /**
+   * @ngdoc method
    * @name FirebaseCtl#update
    * @description Generates an operation to update a Firebase path to a given value.
    * @param {...string} pathPart Path components to be joined.
@@ -379,7 +413,7 @@ function FirebaseCtl(
    *
    * @example
    * ```js
-   * fp.increment('users', 'fritz', 'votes').now()
+   * fp.increment('users/fritz/votes').now()
    * ```
    *
    * ```html
@@ -539,23 +573,25 @@ function FirebaseCtl(
       values[path] = null;
     }
 
+    liveWatchers[path] = true;
+
     if (!watchers[path]) {
 
-      var id = firebaseStatus.start('read', self.root.child(path));
+      var id = firebaseStatus.startListening(self.root.child(path));
 
-      watchers[path] = self.root.child(path)
+      watchers[path] = self.root.child(path).toFirebase()
       .on('value', function(snap) {
 
-        setTimeout(function() {
+        values[path] = snap.val();
+        if (id) {
+          firebaseStatus.finish(id);
+          id = null;
+        } else {
+          firebaseStatus.tallyRead(self.root.child(path));
+        }
 
-          $scope.$apply(function() {
-
-            firebaseStatus.finish(id);
-            values[path] = snap.val();
-
-          });
-
-        }, 0);
+        // trigger a scope cycle if we aren't already in one
+        $scope.$evalAsync();
 
       }, function(err) {
 
@@ -571,6 +607,44 @@ function FirebaseCtl(
     return values[path];
 
   };
+
+
+  // Clean up orphaned Firebase listeners between scope cycles.
+  // HERE BE DRAGONS! We employ the private $scope.$$postDigest method.
+  var scrubbingListeners = false;
+
+  function scrubListeners() {
+
+    for (var path in watchers) {
+
+      if (watchers[path] && !liveWatchers[path]) {
+
+        // disconnect this watcher, it doesn't exist anymore.
+        self.root.child(path).toFirebase().off('value', watchers[path]);
+        firebaseStatus.stopListening(self.root.child(path));
+        watchers[path] = null;
+        values[path] = null;
+
+      }
+
+    }
+
+    // as of now, nothing is alive.
+    liveWatchers = {};
+    scrubbingListeners = false;
+
+  }
+
+  $scope.$watch(function() {
+
+    if (!scrubbingListeners) {
+
+      scrubbingListeners = true;
+      $scope.$$postDigest(scrubListeners);
+
+    }
+
+  });
 
 
   $scope.$on('$destroy', function() {
@@ -631,8 +705,7 @@ function FirebaseCtl(
     self.setLoginHandler(function() {
 
       return $injector.invoke(_fpHandleLogin, null, {
-        root: self.root,
-        auth: self.auth
+        root: self.root
       });
 
     });

@@ -1,6 +1,6 @@
 
 angular.module('flashpoint')
-.directive('fpPage', function($q, Fireproof, $animate) {
+.directive('fpPage', function($q, Fireproof, $animate, firebaseStatus) {
 
   /**
    * @ngdoc directive
@@ -15,7 +15,7 @@ angular.module('flashpoint')
    * | `$previous`    | {@type function}     | Fetches the previous set of values into scope.             |
    * | `$reset`       | {@type function}     | Starts again at the beginning.                             |
    * | `$keys`        | {@type Array.string} | The keys in the current page.                              |
-   * | `$values`      | {@type Array.*}      | The values in the current page.                           |
+   * | `$values`      | {@type Array.*}      | The values in the current page.                            |
    * | `$priorities`  | {@type Array.*}      | The priorities in the current page.                        |
    * | `$hasNext`     | {@type boolean}      | True if there are more values to page over.                |
    * | `$hasPrevious` | {@type boolean}      | True if there are previous values to page back over again. |
@@ -48,7 +48,7 @@ angular.module('flashpoint')
     restrict: 'A',
     scope: true,
     require: 'firebase',
-    link: function(scope, el, attrs, firebase) {
+    link: function(scope, el, attrs, fp) {
 
       var ref, pager;
 
@@ -170,7 +170,7 @@ angular.module('flashpoint')
           return;
         }
 
-        ref = firebase.root.child(path);
+        ref = fp.root.child(path);
         scope.$reset();
 
       });

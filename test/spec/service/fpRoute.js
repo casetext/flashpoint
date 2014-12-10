@@ -23,9 +23,9 @@ describe('flashpoint service', function() {
     root = new Fireproof(new Firebase(window.__env__.FIREBASE_TEST_URL));
     root.unauth();
 
-    module('flashpoint');
-    module('flashpoint.mocks');
     module('ngRoute');
+    module('flashpoint.mocks.pump');
+    module('flashpoint');
     module(function($provide) {
       $provide.value('testInjectable', 1);
     });
@@ -33,7 +33,6 @@ describe('flashpoint service', function() {
   });
 
   describe('fpRoute', function() {
-
 
     it('provides an injectable "loaded" method for the FirebaseCtl', function(done) {
 
@@ -91,7 +90,6 @@ describe('flashpoint service', function() {
           firebase: window.__env__.FIREBASE_TEST_URL,
           template: '<div>{{ fp.val("test/foo") }}</div>',
           login: function(testInjectable, root) {
-            console.log('injecting!');
             return root.authWithCustomToken(window.__env__.FIREBASE_TEST_SECRET);
           },
           challenge: true,

@@ -7,8 +7,8 @@ describe('fpPage', function() {
 
   beforeEach(function(done) {
 
-    module('flashpoint.mocks');
     module('flashpoint');
+    module('flashpoint.mocks.pump');
 
     root.authWithCustomToken(window.__env__.FIREBASE_TEST_SECRET, function() {
 

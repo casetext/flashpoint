@@ -2,7 +2,7 @@
 
 describe('FirebaseCtl', function() {
 
-  var fp, $q, root;
+  var fp, $rootScope, root;
   var r = new Firebase(window.__env__.FIREBASE_TEST_URL);
 
   before(function(done) {
@@ -41,20 +41,23 @@ describe('FirebaseCtl', function() {
 
     this.timeout(10000);
 
-    module('flashpoint.mocks');
+    module(function($provide) {
+      // use Kris Kowal's Q here to get out of the digest cycle
+      $provide.value('$q', Q);
+    });
     module('flashpoint');
 
     // generate the controller
-    inject(function($rootScope, $controller, _$q_, Fireproof) {
+    inject(function(_$rootScope_, $controller, Fireproof) {
 
-      $q = _$q_;
+      $rootScope = _$rootScope_;
       fp = $controller('FirebaseCtl', { $scope: $rootScope });
       fp.attachFirebase(window.__env__.FIREBASE_TEST_URL);
       root = new Fireproof(r);
 
       fp.setLoginHandler(function() {
 
-        var deferred = $q.defer();
+        var deferred = Q.defer();
 
         root.authWithPassword({
           email: 'testy@testerson.com',
@@ -78,14 +81,28 @@ describe('FirebaseCtl', function() {
 
   describe('val', function() {
 
-    it('is a method to get Firebase values', function() {
+    it('is a method to get Firebase values', function(done) {
 
       expect(fp.val).to.be.a('function');
-      expect(fp.val('test/firebase/val')).to.equal(null);
-      return root.child('test/firebase/val').set(1)
-      .then(function() {
-        expect(fp.val('test/firebase/val')).to.equal(1);
+      expect(fp.val('test/firebase/value/id')).to.be.null;
+      setTimeout(function() {
+        expect(fp.val('test/firebase/value/id')).to.equal(5);
+        done();
+      }, 250);
+
+    });
+
+    it('garbage collects disconnected listeners between scope cycles', function() {
+
+      $rootScope.$apply(function() {
+        expect(fp.val('test/firebase/lol')).to.be.null;
+        expect(fp.val('test/firebase/wut')).to.be.null;
       });
+      // a scope cycle goes by in which the same values are not requested...
+      $rootScope.$digest();
+      // and then both listeners should be detached
+      expect(fp.$$watchers['test/firebase/lol']).to.be.null;
+      expect(fp.$$watchers['test/firebase/wut']).to.be.null;
 
     });
 
@@ -178,79 +195,91 @@ describe('FirebaseCtl', function() {
 
   });
 
+  describe('atomic operation', function() {
 
-  describe('increment', function() {
+    beforeEach(inject(function(Fireproof) {
 
-    beforeEach(function() {
+      Fireproof.setNextTick(function(fn) {
+        setTimeout(function() {
+          $rootScope.$apply(fn);
+        }, 0);
+      });
 
-      return $q.all([
-        fp.set('test/firebase/counter/numeric', 6).now(),
-        fp.set('test/firebase/counter/error', 'wut').now()
-      ]);
+    }));
 
-    });
+    describe('increment', function() {
 
-    it('atomically increments Firebase values', function() {
+      beforeEach(function() {
 
-      return $q.all([
-        fp.increment('test/firebase/counter/numeric').now(),
-        fp.increment('test/firebase/counter/numeric').now(),
-        fp.increment('test/firebase/counter/numeric').now()
-      ])
-      .then(function() {
-        return expect(root.child('test/firebase/counter/numeric'))
-        .to.equal(9);
+        return Q.all([
+          fp.set('test/firebase/counter/numeric', 6).now(),
+          fp.set('test/firebase/counter/error', 'wut').now()
+        ]);
+
+      });
+
+      it('atomically increments Firebase values', function() {
+
+        return Q.all([
+          fp.increment('test/firebase/counter/numeric').now(),
+          fp.increment('test/firebase/counter/numeric').now(),
+          fp.increment('test/firebase/counter/numeric').now()
+        ])
+        .then(function() {
+          return expect(root.child('test/firebase/counter/numeric'))
+          .to.equal(9);
+        });
+
+      });
+
+      it('blows up if the location is non-numeric and non-null', function() {
+
+        return fp.increment('test/firebase/counter/error').now()
+        .then(function() {
+          throw new Error('Expected an error, but the operation passed');
+        }, function() {});
+
       });
 
     });
 
-    it('blows up if the location is non-numeric and non-null', function() {
 
-      return fp.increment('test/firebase/counter/error').now()
-      .then(function() {
-        throw new Error('Expected an error, but the operation passed');
-      }, function() {});
+    describe('decrement', function() {
 
-    });
+      beforeEach(function() {
 
-  });
+        return Q.all([
+          fp.set('test/firebase/counter/numeric', 6).now(),
+          fp.set('test/firebase/counter/error', 'wut').now()
+        ]);
 
+      });
 
-  describe('decrement', function() {
+      it('atomically decrements Firebase values', function() {
 
-    beforeEach(function() {
+        return Q.all([
+          fp.decrement('test/firebase/counter/numeric').now(),
+          fp.decrement('test/firebase/counter/numeric').now(),
+          fp.decrement('test/firebase/counter/numeric').now()
+        ])
+        .then(function() {
+          return expect(root.child('test/firebase/counter/numeric'))
+          .to.equal(3);
+        });
 
-      return $q.all([
-        fp.set('test/firebase/counter/numeric', 6).now(),
-        fp.set('test/firebase/counter/error', 'wut').now()
-      ]);
+      });
 
-    });
+      it('blows up if the location is non-numeric and non-null', function() {
 
-    it('atomically decrements Firebase values', function() {
+        return fp.decrement('test/firebase/counter/error').now()
+        .then(function() {
+          throw new Error('Expected an error, but the operation passed');
+        }, function() {});
 
-      return $q.all([
-        fp.decrement('test/firebase/counter/numeric').now(),
-        fp.decrement('test/firebase/counter/numeric').now(),
-        fp.decrement('test/firebase/counter/numeric').now()
-      ])
-      .then(function() {
-        return expect(root.child('test/firebase/counter/numeric'))
-        .to.equal(3);
       });
 
     });
 
-    it('blows up if the location is non-numeric and non-null', function() {
-
-      return fp.decrement('test/firebase/counter/error').now()
-      .then(function() {
-        throw new Error('Expected an error, but the operation passed');
-      }, function() {});
-
-    });
-
   });
-
 
 });
