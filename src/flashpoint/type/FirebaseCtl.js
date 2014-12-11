@@ -170,22 +170,20 @@ function FirebaseCtl(
   /**
    * @ngdoc method
    * @name FirebaseCtl#set
-   * @description Generates an operation to set a Firebase path to a given value.
+   * @description Set a Firebase path to a given value.
    * @param {...string} pathPart Path components to be joined.
    * @param {(Object|String|Number|Boolean|Array|null)} value The value to set the path to.
-   * @returns {Function} A closure function that will perform the specified operation.
-   * In an Angular expression, it will execute automatically. You can also call its
-   * `.now()` method to get it to fire immediately.
+   * @returns {Promise}
+   * @see Fireproof#set
    *
    * @example
    * ```js
-   * fp.set('users', 'fritz', { hometown: 'Metropolis'}).now()
+   * fp.set('users', 'fritz', { hometown: 'Metropolis'})
    * ```
    *
    * ```html
    * <button ng-click="fp.set('users', user, 'activated', true)">Activate!</button>
    * ```
-   * @see Firebase#set
    */
   self.set = function() {
 
@@ -201,16 +199,15 @@ function FirebaseCtl(
   /**
    * @ngdoc method
    * @name FirebaseCtl#setPriority
-   * @description Generates an operation to set a Firebase path to a given priority.
+   * @description Set a Firebase path to a given priority.
    * @param {...string} pathPart Path components to be joined.
    * @param {(String|Number|null)} priority The priority to set the path to.
-   * @returns {Function} A closure function that will perform the specified operation.
-   * In an Angular expression, it will execute automatically. You can also call its
-   * `.now()` method to get it to fire immediately.
+   * @returns {Promise}
+   * @see Fireproof#setPriority
    *
    * @example
    * ```js
-   * fp.setPriority('users', 'fritz', Date.now()).now()
+   * fp.setPriority('users', 'fritz', Date)
    * ```
    *
    * ```html
@@ -232,17 +229,16 @@ function FirebaseCtl(
   /**
    * @ngdoc method
    * @name FirebaseCtl#setWithPriority
-   * @description Generates an operation to set a Firebase path to a given value and priority.
+   * @description Set a Firebase path to a given value and priority.
    * @param {...string} pathPart Path components to be joined.
    * @param {(Object|String|Number|Boolean|Array|null)} value The value to set the path to.
    * @param {(String|Number|null)} priority The priority to set the path to.
-   * @returns {Function} A closure function that will perform the specified operation.
-   * In an Angular expression, it will execute automatically. You can also call its
-   * `.now()` method to get it to fire immediately.
+   * @returns {Promise}
+   * @see Fireproof#setWithPriority
    *
    * @example
    * ```js
-   * fp.setWithPriority('users', 'fritz', { hometown: 'Metropolis' }, Date.now()).now()
+   * fp.setWithPriority('users', 'fritz', { hometown: 'Metropolis' }, Date)
    * ```
    *
    * ```html
@@ -266,17 +262,16 @@ function FirebaseCtl(
   /**
    * @ngdoc method
    * @name FirebaseCtl#push
-   * @description Generates an operation to add a child to a Firebase path.
+   * @description Add a child to a Firebase path.
    * @param {...string} pathPart Path components to be joined.
    * @param {(Object|String|Number|Boolean|Array|null)} value The value to append to the path.
    * @param {(String|Number|null)} priority The priority to set the path to.
-   * @returns {Function} A closure function that will perform the specified operation.
-   * In an Angular expression, it will execute automatically. You can also call its
-   * `.now()` method to get it to fire immediately.
+   * @returns {Promise}
+   * @see Fireproof#push
    *
    * @example
    * ```js
-   * fp.push('users', { name: 'Fritz', hometown: 'Metropolis' }).now()
+   * fp.push('users', { name: 'Fritz', hometown: 'Metropolis' })
    * ```
    *
    * ```html
@@ -298,16 +293,15 @@ function FirebaseCtl(
   /**
    * @ngdoc method
    * @name FirebaseCtl#update
-   * @description Generates an operation to update a Firebase path to a given value.
+   * @description Update a Firebase path with a given object.
    * @param {...string} pathPart Path components to be joined.
    * @param {(Object|String|Number|Boolean|Array|null)} value The value to update the path with.
-   * @returns {Function} A closure function that will perform the specified operation.
-   * In an Angular expression, it will execute automatically. You can also call its
-   * `.now()` method to get it to fire immediately.
+   * @returns {Promise}
+   * @see Fireproof#update
    *
    * @example
    * ```js
-   * fp.update('users', 'fritz', { hometown: 'Metropolis' }).now()
+   * fp.update('users', 'fritz', { hometown: 'Metropolis' })
    * ```
    *
    * ```html
@@ -329,15 +323,14 @@ function FirebaseCtl(
   /**
    * @ngdoc method
    * @name FirebaseCtl#remove
-   * @description Generates an operation to remove a Firebase path.
+   * @description Remove a Firebase path.
    * @param {...string} pathPart Path components to be joined.
-   * @returns {Function} A closure function that will perform the specified operation.
-   * In an Angular expression, it will execute automatically. You can also call its
-   * `.now()` method to get it to fire immediately.
+   * @returns {Promise}
+   * @see Fireproof#remove
    *
    * @example
    * ```js
-   * fp.remove('users', 'fritz').now()
+   * fp.remove('users', 'fritz')
    * ```
    *
    * ```html
@@ -358,15 +351,13 @@ function FirebaseCtl(
   /**
    * @ngdoc method
    * @name FirebaseCtl#increment
-   * @description Generates an operation to atomically increment a numeric value in Firebase.
+   * @description Atomically increments a numeric value in Firebase.
    * @param {...string} pathPart Path components to be joined.
-   * @returns {Function} A closure function that will perform the specified operation.
-   * In an Angular expression, it will execute automatically. You can also call its
-   * `.now()` method to get it to fire immediately.
+   * @returns {Promise}
    *
    * @example
    * ```js
-   * fp.increment('users/fritz/votes').now()
+   * fp.increment('users/fritz/votes')
    * ```
    *
    * ```html
@@ -405,16 +396,13 @@ function FirebaseCtl(
   /**
    * @ngdoc method
    * @name FirebaseCtl#decrement
-   * @description Generates an operation to atomically decrement a numeric value in Firebase.
+   * @description Atomically decrements a numeric value in Firebase.
    * @param {...string} pathPart Path components to be joined.
-   * @returns {Function} A closure function that will perform the specified operation.
-   * In an Angular expression, it will execute automatically. You can also call its
-   * `.now()` method to get it to fire immediately.
-   * @throws {Error} if you specify a non-numeric non-null Firebase value.
+   * @returns {Promise}
    *
    * @example
    * ```js
-   * fp.decrement('users', 'fritz', 'votes').now()
+   * fp.decrement('users', 'fritz', 'votes')
    * ```
    *
    * ```html
@@ -452,17 +440,16 @@ function FirebaseCtl(
   /**
    * @ngdoc method
    * @name FirebaseCtl#transaction
-   * @description Generates an operation to perform a transaction in Firebase.
+   * @description Performs a transaction in Firebase.
    * @param {...string} pathPart Path components to be joined.
    * @param {Function} fn The function that describes the transaction. Takes one
    * argument, the existing value in Firebase. See the Firebase docs on transactions.
-   * @returns {Function} A closure function that will perform the specified operation.
-   * In an Angular expression, it will execute automatically. You can also call its
-   * `.now()` method to get it to fire immediately.
+   * @returns {Promise}
+   * @see Fireproof#transaction
    *
    * @example
    * ```js
-   * fp.decrement('users', 'fritz', 'votes').now()
+   * fp.decrement('users', 'fritz', 'votes')
    * ```
    *
    * ```html

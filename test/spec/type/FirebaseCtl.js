@@ -113,7 +113,7 @@ describe('FirebaseCtl', function() {
 
     it('is a method to set Firebase values', function() {
 
-      return fp.set('test/firebase/set', true).now()
+      return fp.set('test/firebase/set', true)
       .then(function() {
         return expect(root.child('test/firebase/set')).to.be.true;
       });
@@ -127,7 +127,7 @@ describe('FirebaseCtl', function() {
 
     it('is a method to set Firebase priorities', function() {
 
-      return fp.setPriority('test/firebase/set', 7).now()
+      return fp.setPriority('test/firebase/set', 7)
       .then(function() {
         return expect(root.child('test/firebase/set'))
         .to.have.priority(7);
@@ -142,7 +142,7 @@ describe('FirebaseCtl', function() {
 
     it('is a method to set Firebase values with priority', function() {
 
-      return fp.setWithPriority('test/firebase/set', 'baz', 9).now()
+      return fp.setWithPriority('test/firebase/set', 'baz', 9)
       .then(function() {
         return expect(root.child('test/firebase/set'))
         .to.equal('baz');
@@ -165,7 +165,7 @@ describe('FirebaseCtl', function() {
         control: 'Smiley now'
       };
 
-      return fp.update('test/firebase/value/properties', updateVal).now()
+      return fp.update('test/firebase/value/properties', updateVal)
       .then(function() {
 
         return expect(root.child('test/firebase/value/properties'))
@@ -186,7 +186,7 @@ describe('FirebaseCtl', function() {
 
     it('is a method to remove Firebase values', function() {
 
-      return fp.remove('test/firebase/set').now()
+      return fp.remove('test/firebase/set')
       .then(function() {
         return expect(root.child('test/firebase/set')).to.be.null;
       });
@@ -211,19 +211,19 @@ describe('FirebaseCtl', function() {
 
       it('performs the specified action atomically', function() {
 
-        var t = fp.transaction('test/firebase/xact', function(val) {
+        var xact = function(val) {
           if (val === null) {
             return '8';
           } else {
             return val + 'u';
           }
-        });
+        };
 
         return Q.all([
-          t.now(),
-          t.now(),
-          t.now(),
-          t.now()
+          fp.transaction('test/firebase/xact', xact),
+          fp.transaction('test/firebase/xact', xact),
+          fp.transaction('test/firebase/xact', xact),
+          fp.transaction('test/firebase/xact', xact)
         ])
         .then(function() {
           return expect(root.child('test/firebase/xact')).to.equal('8uuu');
@@ -238,8 +238,8 @@ describe('FirebaseCtl', function() {
       beforeEach(function() {
 
         return Q.all([
-          fp.set('test/firebase/counter/numeric', 6).now(),
-          fp.set('test/firebase/counter/error', 'wut').now()
+          fp.set('test/firebase/counter/numeric', 6),
+          fp.set('test/firebase/counter/error', 'wut')
         ]);
 
       });
@@ -247,9 +247,9 @@ describe('FirebaseCtl', function() {
       it('atomically increments Firebase values', function() {
 
         return Q.all([
-          fp.increment('test/firebase/counter/numeric').now(),
-          fp.increment('test/firebase/counter/numeric').now(),
-          fp.increment('test/firebase/counter/numeric').now()
+          fp.increment('test/firebase/counter/numeric'),
+          fp.increment('test/firebase/counter/numeric'),
+          fp.increment('test/firebase/counter/numeric')
         ])
         .then(function() {
           return expect(root.child('test/firebase/counter/numeric'))
@@ -260,7 +260,7 @@ describe('FirebaseCtl', function() {
 
       it('blows up if the location is non-numeric and non-null', function() {
 
-        return fp.increment('test/firebase/counter/error').now()
+        return fp.increment('test/firebase/counter/error')
         .then(function() {
           throw new Error('Expected an error, but the operation passed');
         }, function() {});
@@ -275,8 +275,8 @@ describe('FirebaseCtl', function() {
       beforeEach(function() {
 
         return Q.all([
-          fp.set('test/firebase/counter/numeric', 6).now(),
-          fp.set('test/firebase/counter/error', 'wut').now()
+          fp.set('test/firebase/counter/numeric', 6),
+          fp.set('test/firebase/counter/error', 'wut')
         ]);
 
       });
@@ -284,9 +284,9 @@ describe('FirebaseCtl', function() {
       it('atomically decrements Firebase values', function() {
 
         return Q.all([
-          fp.decrement('test/firebase/counter/numeric').now(),
-          fp.decrement('test/firebase/counter/numeric').now(),
-          fp.decrement('test/firebase/counter/numeric').now()
+          fp.decrement('test/firebase/counter/numeric'),
+          fp.decrement('test/firebase/counter/numeric'),
+          fp.decrement('test/firebase/counter/numeric')
         ])
         .then(function() {
           return expect(root.child('test/firebase/counter/numeric'))
@@ -297,7 +297,7 @@ describe('FirebaseCtl', function() {
 
       it('blows up if the location is non-numeric and non-null', function() {
 
-        return fp.decrement('test/firebase/counter/error').now()
+        return fp.decrement('test/firebase/counter/error')
         .then(function() {
           throw new Error('Expected an error, but the operation passed');
         }, function() {});
