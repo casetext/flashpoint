@@ -50,41 +50,6 @@ function FirebaseCtl(
   }
 
 
-  function makeClosure(operation, path, fn) {
-
-    var closure = function() {
-
-      var id = firebaseStatus.start(operation, self.root.child(path));
-      return fn()
-      .catch(function(err) {
-
-        if (closure._onError) {
-          closure._onError(err, path);
-        } else {
-          return $q.reject(err);
-        }
-
-      })
-      .finally(function(err) {
-        firebaseStatus.finish(id, err);
-      });
-
-    };
-
-    closure.or = function(errHandler) {
-      closure._onError = errHandler;
-      return closure;
-    };
-
-    closure.now = function() {
-      return closure();
-    };
-
-    return closure;
-
-  }
-
-
   function validatePath(pathParts) {
 
     // check the arguments
@@ -229,9 +194,7 @@ function FirebaseCtl(
       value = args.pop(),
       path = validatePath(args);
 
-    return makeClosure('set', path, function() {
-      return self.root.child(path).set(value);
-    });
+    return self.root.child(path).set(value);
 
   };
 
@@ -262,9 +225,7 @@ function FirebaseCtl(
       priority = args.pop(),
       path = validatePath(args);
 
-    return makeClosure('setPriority', path, function() {
-      return self.root.child(path).setPriority(priority);
-    });
+    return self.root.child(path).setPriority(priority);
 
   };
 
@@ -297,9 +258,7 @@ function FirebaseCtl(
       value = args.pop(),
       path = validatePath(args);
 
-      return makeClosure('setWithPriority', path, function() {
-        return self.root.child(path).setWithPriority(value, priority);
-      });
+      return self.root.child(path).setWithPriority(value, priority);
 
   };
 
@@ -332,9 +291,7 @@ function FirebaseCtl(
       value = args.pop(),
       path = validatePath(args);
 
-      return makeClosure('push', path, function() {
-        return self.root.child(path).push(value);
-      });
+    return self.root.child(path).push(value);
 
   };
 
@@ -365,9 +322,7 @@ function FirebaseCtl(
       value = args.pop(),
       path = validatePath(args);
 
-    return makeClosure('update', path, function() {
-      return self.root.child(path).update(value);
-    });
+    return self.root.child(path).update(value);
 
   };
 
@@ -396,9 +351,7 @@ function FirebaseCtl(
     var args = Array.prototype.slice.call(arguments, 0),
       path = validatePath(args);
 
-    return makeClosure('remove', path, function() {
-      return self.root.child(path).remove();
-    });
+    return self.root.child(path).remove();
 
   };
 
@@ -426,27 +379,24 @@ function FirebaseCtl(
     var args = Array.prototype.slice.call(arguments, 0),
       path = validatePath(args);
 
-    return makeClosure('increment', path, function() {
 
-      return self.root.child(path)
-      .transaction(function(val) {
+    return self.root.child(path)
+    .transaction(function(val) {
 
-        if (angular.isNumber(val)) {
-          return val + 1;
-        } else if (val === null) {
-          return 1;
-        } else {
-          return; // abort transaction
-        }
+      if (angular.isNumber(val)) {
+        return val + 1;
+      } else if (val === null) {
+        return 1;
+      } else {
+        return; // abort transaction
+      }
 
-      })
-      .then(function(result) {
+    })
+    .then(function(result) {
 
-        if (!result.committed) {
-          return $q.reject(new Error('Cannot increment the object at ' + path));
-        }
-
-      });
+      if (!result.committed) {
+        return $q.reject(new Error('Cannot increment the object at ' + path));
+      }
 
     });
 
@@ -477,27 +427,23 @@ function FirebaseCtl(
     var args = Array.prototype.slice.call(arguments, 0),
       path = validatePath(args);
 
-    return makeClosure('decrement', path, function() {
+    return self.root.child(path)
+    .transaction(function(val) {
 
-      return self.root.child(path)
-      .transaction(function(val) {
+      if (angular.isNumber(val)) {
+        return val - 1;
+      } else if (val === null) {
+        return 0;
+      } else {
+        return; // abort transaction
+      }
 
-        if (angular.isNumber(val)) {
-          return val - 1;
-        } else if (val === null) {
-          return 0;
-        } else {
-          return; // abort transaction
-        }
+    })
+    .then(function(result) {
 
-      })
-      .then(function(result) {
-
-        if (!result.committed) {
-          return $q.reject(new Error('Cannot decrement the object at ' + path));
-        }
-
-      });
+      if (!result.committed) {
+        return $q.reject(new Error('Cannot decrement the object at ' + path));
+      }
 
     });
 
@@ -528,23 +474,18 @@ function FirebaseCtl(
 
     // check the arguments
     var args = Array.prototype.slice.call(arguments, 0),
-      fn = args.pop();
+      fn = args.pop(),
+      path = validatePath(args);
 
-    var path = validatePath(args);
+    return self.root.child(path)
+    .transaction(function(val) {
+      return fn(val);
+    })
+    .then(function(result) {
 
-    return makeClosure('transaction', path, function() {
-
-      return self.root.child(path)
-      .transaction(function(val) {
-        return fn(val);
-      })
-      .then(function(result) {
-
-        if (!result.committed) {
-          return $q.reject(new Error('Aborted'));
-        }
-
-      });
+      if (!result.committed) {
+        return $q.reject(new Error('Aborted'));
+      }
 
     });
 
@@ -577,29 +518,16 @@ function FirebaseCtl(
 
     if (!watchers[path]) {
 
-      var id = firebaseStatus.startListening(self.root.child(path));
-
+      var id = Fireproof.stats._start('read', self.root.child(path));
       watchers[path] = self.root.child(path).toFirebase()
       .on('value', function(snap) {
 
+        Fireproof.stats._finish(id);
         values[path] = snap.val();
-        if (id) {
-          firebaseStatus.finish(id);
-          id = null;
-        } else {
-          firebaseStatus.tallyRead(self.root.child(path));
-        }
-
-        // trigger a scope cycle if we aren't already in one
         $scope.$evalAsync();
 
       }, function(err) {
-
-        if (id) {
-          firebaseStatus.finish(id, err);
-          id = null;
-        }
-
+        Fireproof.stats._finish(id, err);
       });
 
     }
@@ -621,7 +549,6 @@ function FirebaseCtl(
 
         // disconnect this watcher, it doesn't exist anymore.
         self.root.child(path).toFirebase().off('value', watchers[path]);
-        firebaseStatus.stopListening(self.root.child(path));
         watchers[path] = null;
         values[path] = null;
 
@@ -690,7 +617,7 @@ function FirebaseCtl(
       $injector.invoke(_fpOnError, null, {
         root: self.root,
         auth: self.auth,
-        error: err
+        event: err
       });
 
     };

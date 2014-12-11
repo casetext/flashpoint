@@ -14,19 +14,18 @@ describe('flashpoint service', function() {
 
   describe('firebaseStatus', function() {
 
-    it('records operations and triggers the flashpointLoaded event', function(done) {
+    it('records operations and triggers the flashpointLoadSuccess event', function(done) {
 
       inject(function($rootScope, $compile) {
 
         $rootScope.$on('flashpointLoadSuccess', function(e, opsList) {
           expect(opsList.length).to.equal(1);
-          expect(opsList[0]).to.have.keys(['type', 'path', 'start', 'end', 'count', 'duration']);
+          expect(opsList[0]).to.have.keys(['id', 'type', 'path', 'start', 'finish', 'duration']);
           expect(opsList[0].path).to.match(/test\/foo/);
           done();
         });
 
         var element;
-        sinon.spy($rootScope, '$broadcast');
 
         element = angular.element('<span ' +
           'firebase="' + window.__env__.FIREBASE_TEST_URL + '"' +

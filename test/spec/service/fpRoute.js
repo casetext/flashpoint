@@ -47,7 +47,9 @@ describe('flashpoint service', function() {
             expect(testInjectable).to.equal(1);
             done();
           },
-          error: done
+          error: function(event) {
+            done(event.error);
+          }
         }));
 
       });
@@ -67,9 +69,9 @@ describe('flashpoint service', function() {
           loaded: function() {
             done(new Error('loaded should not have been called'));
           },
-          error: function(error, testInjectable) {
+          error: function(event, testInjectable) {
             expect(testInjectable).to.be.defined;
-            expect(error).to.be.defined;
+            expect(event).to.be.defined;
             done();
           }
 
@@ -99,9 +101,9 @@ describe('flashpoint service', function() {
             root.unauth();
             done();
           },
-          error: function(error) {
+          error: function(event) {
             root.unauth();
-            done(error);
+            done(event.error);
           }
 
         }));
@@ -130,8 +132,8 @@ describe('flashpoint service', function() {
             expect(didAuthorize).to.be.true;
             done();
           },
-          error: function(error) {
-            done(error);
+          error: function(event) {
+            done(event.error);
           }
 
         }));
@@ -149,7 +151,7 @@ describe('flashpoint service', function() {
         $routeProvider.otherwise(fpRoute({
 
           firebase: window.__env__.FIREBASE_TEST_URL,
-          template: '<div id="test-obj">{{ thingamajig + friend }}</div>',
+          template: '<div><div id="test-obj">{{ thingamajig + friend }}</div><div>{{ fp.val(\'test/foo\') }}</div></div>',
           resolve: {
             thingamajig: function() {
               return 5;
@@ -165,8 +167,8 @@ describe('flashpoint service', function() {
             done();
 
           },
-          error: function(error) {
-            done(error);
+          error: function(event) {
+            done(event.error);
           }
 
         }));
