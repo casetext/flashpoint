@@ -7,7 +7,8 @@ function FirebaseCtl(
   $timeout,
   Firebase,
   Fireproof,
-  firebaseStatus,
+  ChildQuery,
+  validatePath,
   _fpHandleLogin,
   _fpHandleLogout,
   _fpFirebaseUrl,
@@ -44,28 +45,53 @@ function FirebaseCtl(
 
   self.auth = null;
 
+  // Clean up orphaned Firebase listeners between scope cycles.
+  // HERE BE DRAGONS! We employ the private $scope.$$postDigest method.
+  var scrubbingListeners = false;
+
+  function scrubListeners() {
+
+    for (var path in watchers) {
+
+      if (watchers[path] && !liveWatchers[path]) {
+
+        // disconnect this watcher, it doesn't exist anymore.
+        if (watchers[path].disconnect) {
+          watchers[path].disconnect();
+        } else {
+          self.root.child(path).off('value', watchers[path]);
+          values[path] = null;
+        }
+
+        watchers[path] = null;
+
+      }
+
+    }
+
+    // as of now, nothing is alive.
+    liveWatchers = {};
+    scrubbingListeners = false;
+
+  }
+
+
+  $scope.$watch(function() {
+
+    if (!scrubbingListeners) {
+
+      scrubbingListeners = true;
+      $scope.$$postDigest(scrubListeners);
+
+    }
+
+  });
+
 
   function authHandler(authData) {
     self.auth = authData;
   }
 
-
-  function validatePath(pathParts) {
-
-    // check the arguments
-    var path = pathParts.join('/');
-
-    if (pathParts.length === 0 || path === '' ||
-      pathParts.indexOf(null) !== -1 || pathParts.indexOf(undefined) !== -1) {
-
-      // if any one of them is null/undefined, this is not a valid path
-      return null;
-
-    } else {
-      return path;
-    }
-
-  }
 
   /**
    * @ngdoc method
@@ -505,16 +531,12 @@ function FirebaseCtl(
 
     if (!watchers[path]) {
 
-      var id = Fireproof.stats._start('read', self.root.child(path));
-      watchers[path] = self.root.child(path).toFirebase()
+      watchers[path] = self.root.child(path)
       .on('value', function(snap) {
 
-        Fireproof.stats._finish(id);
         values[path] = snap.val();
         $scope.$evalAsync();
 
-      }, function(err) {
-        Fireproof.stats._finish(id, err);
       });
 
     }
@@ -524,41 +546,26 @@ function FirebaseCtl(
   };
 
 
-  // Clean up orphaned Firebase listeners between scope cycles.
-  // HERE BE DRAGONS! We employ the private $scope.$$postDigest method.
-  var scrubbingListeners = false;
-
-  function scrubListeners() {
-
-    for (var path in watchers) {
-
-      if (watchers[path] && !liveWatchers[path]) {
-
-        // disconnect this watcher, it doesn't exist anymore.
-        self.root.child(path).toFirebase().off('value', watchers[path]);
-        watchers[path] = null;
-        values[path] = null;
-
-      }
-
-    }
-
-    // as of now, nothing is alive.
-    liveWatchers = {};
-    scrubbingListeners = false;
-
-  }
-
-  $scope.$watch(function() {
-
-    if (!scrubbingListeners) {
-
-      scrubbingListeners = true;
-      $scope.$$postDigest(scrubListeners);
-
-    }
-
-  });
+  /**
+   * @ngdoc method
+   * @name FirebaseCtl#children
+   * @description Provides a live array of the children at a path in Firebase.
+   * @param {...string} pathPart Path components to be joined.
+   * @returns {Fireproof.LiveArray} A live array, which is an object with three keys:
+   * 'keys', 'priorities', and 'values'.
+   * The array references are guaranteed to remain stable, so you can bind to them
+   * directly.
+   * @see ChildQuery
+   * @example
+   * ```html
+   * <ul>
+   *   <li ng-repeat="user in fp.children().orderByChild('lastName').startAt('Ba').endAt('Bz').of('users').values">
+   *      <span>{{ user.firstName }} {{ user.lastName }} is a user whose last name starts with B!</span>
+   *   </li>
+   * </ul>
+   * ```
+   */
+  self.children = function() { return new ChildQuery(self.root, watchers, liveWatchers); };
 
 
   $scope.$on('$destroy', function() {

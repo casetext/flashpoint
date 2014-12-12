@@ -1,6 +1,6 @@
 
 angular.module('flashpoint')
-.directive('fpPage', function($q, Fireproof, $animate, firebaseStatus) {
+.directive('fpPage', function($q, $animate, Fireproof) {
 
   /**
    * @ngdoc directive

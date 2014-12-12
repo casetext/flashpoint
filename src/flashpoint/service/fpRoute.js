@@ -1,41 +1,4 @@
 
-fpViewFillContentFactory.$inject = ['$compile', '$controller', '$route'];
-function fpViewFillContentFactory($compile, $controller, $route) {
-
-  return {
-    restrict: 'ECA',
-    priority: -350,
-    terminal: true,
-    link: function(scope, $element) {
-
-      var locals = $route.current.locals;
-
-      $element.html(locals.$template);
-
-      var link = $compile($element.contents());
-
-      angular.forEach(locals, function(value, name) {
-
-        if (name.charAt(0) !== '$' && name.charAt(0) !== '_') {
-          scope[name] = value;
-        }
-
-      });
-
-      locals.$scope = scope;
-      var controller = $controller('FirebaseCtl', locals);
-      scope.fp = controller;
-
-      $element.data('$firebaseController', controller);
-      $element.children().data('$firebaseController', controller);
-
-      link(scope);
-
-    }
-  };
-
-}
-
 angular.module('flashpoint')
 .constant('_fpFirebaseUrl', null)
 .constant('_fpOnLoaded', null)
@@ -143,5 +106,4 @@ angular.module('flashpoint')
 
   return routeDefinitionObject;
 
-})
-.directive('fpView', fpViewFillContentFactory);
+});

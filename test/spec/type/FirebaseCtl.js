@@ -18,6 +18,40 @@ describe('FirebaseCtl', function() {
           displayName: 'La Mer, as performed by Julio Iglesias'
         }
       },
+      children: {
+        'a': {
+          '.value': false,
+          '.priority': null
+        },
+        'b': {
+          '.value': false,
+          '.priority': null
+        },
+        'c': {
+          '.value': true,
+          '.priority': 0
+        },
+        'd': {
+          '.value': true,
+          '.priority': 0
+        },
+        'e': {
+          '.value': 0,
+          '.priority': 1
+        },
+        'f': {
+          '.value': 1,
+          '.priority': 2,
+        },
+        'g': {
+          '.value': 'hello',
+          '.priority': 'hello',
+        },
+        'h': {
+          '.value': 'world',
+          '.priority': 'world'
+        }
+      }
     }, function() {
 
       r.removeUser({
@@ -81,7 +115,7 @@ describe('FirebaseCtl', function() {
 
   describe('val', function() {
 
-    it('is a method to get Firebase values', function(done) {
+    it('listens and gets Firebase values', function(done) {
 
       expect(fp.val).to.be.a('function');
       expect(fp.val('test/firebase/value/id')).to.be.null;
@@ -98,8 +132,10 @@ describe('FirebaseCtl', function() {
         expect(fp.val('test/firebase/lol')).to.be.null;
         expect(fp.val('test/firebase/wut')).to.be.null;
       });
+
       // a scope cycle goes by in which the same values are not requested...
       $rootScope.$digest();
+
       // and then both listeners should be detached
       expect(fp.$$watchers['test/firebase/lol']).to.be.null;
       expect(fp.$$watchers['test/firebase/wut']).to.be.null;
@@ -108,10 +144,50 @@ describe('FirebaseCtl', function() {
 
   });
 
+  describe('children', function() {
+
+    it('returns a LiveArray of Firebase children', function(done) {
+
+      expect(fp.children).to.be.a('function');
+      var array = fp.children().orderByKey().startAt('b').endAt('d').of('test/firebase/children');
+      expect(array).to.be.an.instanceof(Fireproof.LiveArray);
+      expect(fp.children().endAt('d').startAt('b').orderByKey().of('test/firebase/children'))
+      .to.equal(array);
+
+      setTimeout(function() {
+        expect(array.keys).to.deep.equal(['b', 'c', 'd']);
+        expect(array.values).to.deep.equal([false, true, true]);
+        expect(array.priorities).to.deep.equal([null, 0, 0]);
+        root.child('test/firebase/children/b1').set(true)
+        .then(function() {
+          expect(array.keys).to.deep.equal(['b', 'b1', 'c', 'd']);
+        });
+        done();
+
+      }, 250);
+
+    });
+
+    it('garbage collects disconnected listeners between scope cycles', function() {
+
+      $rootScope.$apply(function() {
+        expect(fp.children().of('test/firebase/children')).to.exist;
+      });
+
+      // a scope cycle goes by in which the same value is not requested...
+      $rootScope.$digest();
+
+      // and then the listener should be detached
+      expect(fp.$$watchers['test/firebase/children.children']).to.be.null;
+
+    });
+
+  });
+
 
   describe('set', function() {
 
-    it('is a method to set Firebase values', function() {
+    it('sets values on the controller Firebase instance', function() {
 
       return fp.set('test/firebase/set', true)
       .then(function() {
@@ -125,7 +201,7 @@ describe('FirebaseCtl', function() {
 
   describe('setPriority', function() {
 
-    it('is a method to set Firebase priorities', function() {
+    it('sets priorities on the controller Firebase instance', function() {
 
       return fp.setPriority('test/firebase/set', 7)
       .then(function() {
@@ -140,7 +216,7 @@ describe('FirebaseCtl', function() {
 
   describe('setWithPriority', function() {
 
-    it('is a method to set Firebase values with priority', function() {
+    it('sets values and priorities on the controller Firebase instance', function() {
 
       return fp.setWithPriority('test/firebase/set', 'baz', 9)
       .then(function() {
@@ -159,7 +235,7 @@ describe('FirebaseCtl', function() {
 
   describe('update', function() {
 
-    it('is a method to update Firebase values', function() {
+    it('updates values on the controller Firebase instance', function() {
 
       var updateVal = {
         control: 'Smiley now'
@@ -184,7 +260,7 @@ describe('FirebaseCtl', function() {
 
   describe('remove', function() {
 
-    it('is a method to remove Firebase values', function() {
+    it('removes values on the controller Firebase instance', function() {
 
       return fp.remove('test/firebase/set')
       .then(function() {

@@ -16,7 +16,7 @@ describe('flashpoint service', function() {
 
     it('records operations and triggers the flashpointLoadSuccess event', function(done) {
 
-      inject(function($rootScope, $compile) {
+      inject(function($rootScope, $compile, firebaseStatus) {
 
         $rootScope.$on('flashpointLoadSuccess', function(e, opsList) {
           expect(opsList.length).to.equal(1);
@@ -27,12 +27,12 @@ describe('flashpoint service', function() {
 
         var element;
 
+        firebaseStatus.startRoute();
+
         element = angular.element('<span ' +
           'firebase="' + window.__env__.FIREBASE_TEST_URL + '"' +
           '>{{ fp.val("test/foo") }}</span>');
         $compile(element)($rootScope);
-
-        $rootScope.$broadcast('$viewContentLoaded');
 
       });
 

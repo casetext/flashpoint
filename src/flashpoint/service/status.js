@@ -41,6 +41,7 @@ angular.module('flashpoint')
       $animate.setClass($document, 'fp-loaded', 'fp-loading');
 
       $rootScope.$broadcast('flashpointLoadSuccess', operationList);
+      $rootScope.$evalAsync();
 
     }
 
@@ -60,16 +61,12 @@ angular.module('flashpoint')
 
   }
 
-  reset();
+  service.startRoute = function() {
 
-  $rootScope.$on('$routeChangeStart', function() {
     reset();
-  });
 
-  $rootScope.$on('$viewContentLoaded', function() {
-
-    $rootScope.$broadcast('flashpointLoadStart');
-    $animate.addClass($document, 'fp-loading');
+    Fireproof.stats.on('finish', actionFinished);
+    Fireproof.stats.on('error', actionErrored);
 
     // after 20 seconds, assume something's gone wrong and signal timeout.
     service._deadHand = $timeout(function() {
@@ -79,9 +76,10 @@ angular.module('flashpoint')
 
     }, fpLoadedTimeout);
 
-    Fireproof.stats.on('finish', actionFinished);
-    Fireproof.stats.on('error', actionErrored);
+    $rootScope.$broadcast('flashpointLoadStart');
+    $animate.addClass($document, 'fp-loading');
 
-  });
+  };
+
 
 });
