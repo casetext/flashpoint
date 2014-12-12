@@ -61,7 +61,7 @@ angular.module('flashpoint')
         scope.$hasNext = (snaps.length === parseInt(attrs.limit));
 
         scope.$keys = snaps.map(function(snap) {
-          return snap.name();
+          return snap.key();
         });
 
         scope.$values = snaps.map(function(snap) {
