@@ -220,7 +220,7 @@
   
       restrict: 'A',
       scope: true,
-      require: 'firebase',
+      require: '^firebase',
       link: function(scope, el, attrs, fp) {
   
         var ref, pager;

@@ -22,21 +22,13 @@
     <script src="/bower_components/angular/angular.min.js"></script>
     <script src="/flashpoint.js"></script>
     <script>
-    angular.module('demo', ['flashpoint'])
-    .directive('scopeIsolator', function() {
-      return {
-        scope: {}
-      };
-    });
+    angular.module('demo', ['flashpoint']);
     </script>
   </head>
 
   <body firebase="https://flashpoint-demo.firebaseio-demo.com">
     <h2>flashpoint demo</h2>
-    <h4>Value of foo: {{ $val('foo') }}</h4>
-    <h4>Value of bar: {{ $val('bar') }}</h4>
-    <h4>Value of check: {{ $val('check') }}</h4>
-    <div scope-isolator>
+    <div>
       <div fp-page="dinosaurs" limit="3" as="dinosaurs">
         <h4>Page {{ $pageNumber }}</h4>
         <ul>
@@ -48,15 +40,6 @@
         <button ng-click="$previous()">Previous Page</button>
         <button ng-click="$next()">Next Page</button>
       </div>
-
-      <input fp-bind="foo" copy-to="bar" as="foo" ng-model="foo" autosync="true">
-      <input type="checkbox" fp-bind="check" as="check" ng-model="check" autosync="true">
-      <input
-        fp-bind="communities/{{ communityId }}/followers/{{ $auth.uid }}"
-        copy-to="users/{{ $auth.uid }}/followingCommunities/{{ communityId }}"
-        as="isFollowing"
-        ng-click="isFollowing = !isFollowing"
-      >
 
     </div>
   </body>
