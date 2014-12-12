@@ -70,6 +70,9 @@ describe('fpPage', function() {
     return $scope.$next()
     .then(function() {
 
+      expect($scope.$hasNext).to.be.true;
+      expect($scope.$hasPrevious).to.be.true;
+
       expect($scope.$pageNumber).to.equal(2);
       expect($scope.things).to.have.members([3, 4, 5]);
       expect($scope.$priorities).to.deep.equal([1, 2, 3]);
@@ -108,7 +111,20 @@ describe('fpPage', function() {
 
     return $scope.$next()
     .then(function() {
+      return $scope.$next();
+    })
+    .then(function() {
       return $scope.$previous();
+    })
+    .then(function() {
+
+      expect($scope.$pageNumber).to.equal(2);
+      expect($scope.things).to.have.members([3, 4, 5]);
+      expect($scope.$priorities).to.deep.equal([1, 2, 3]);
+      expect($scope.$keys).to.deep.equal(['d', 'e', 'f']);
+
+      return $scope.$previous();
+
     })
     .then(function() {
 
@@ -116,12 +132,21 @@ describe('fpPage', function() {
       expect($scope.things).to.have.members([0, 1, 2]);
       expect($scope.$priorities).to.deep.equal([null, -1, 0]);
       expect($scope.$keys).to.deep.equal(['a', 'b', 'c']);
+      expect($scope.$hasPrevious).to.be.false;
+      expect($scope.$hasNext).to.be.true;
 
-      return $scope.$previous();
+      return $scope.$next();
 
     })
     .then(function() {
-      expect($scope.$hasPrevious).to.be.false;
+
+      expect($scope.$pageNumber).to.equal(2);
+      expect($scope.things).to.have.members([3, 4, 5]);
+      expect($scope.$priorities).to.deep.equal([1, 2, 3]);
+      expect($scope.$keys).to.deep.equal(['d', 'e', 'f']);
+      expect($scope.$hasNext).to.be.true;
+      expect($scope.$hasPrevious).to.be.true;
+
     });
 
   });

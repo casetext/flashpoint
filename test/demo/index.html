@@ -37,8 +37,8 @@
           </li>
         </ul>
 
-        <button ng-click="$previous()">Previous Page</button>
-        <button ng-click="$next()">Next Page</button>
+        <button ng-disabled="!$hasPrevious" ng-click="$previous()">Previous Page</button>
+        <button ng-disabled="!$hasNext" ng-click="$next()">Next Page</button>
       </div>
 
     </div>

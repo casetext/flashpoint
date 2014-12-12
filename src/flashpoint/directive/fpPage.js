@@ -57,8 +57,8 @@ angular.module('flashpoint')
         $animate.removeClass(el, 'fp-paging');
         scope.$paging = false;
 
-        scope.$hasPrevious = scope.$pageNumber > 1;
-        scope.$hasNext = (snaps.length === parseInt(attrs.limit));
+        scope.$hasPrevious = pager.hasPrevious;
+        scope.$hasNext = pager.hasNext;
 
         scope.$keys = snaps.map(function(snap) {
           return snap.key();
@@ -99,19 +99,42 @@ angular.module('flashpoint')
 
         if (pager && !scope.$paging && scope.$hasNext) {
 
+          var count;
+          if (parseInt(attrs.limit)) {
+            count = parseInt(attrs.limit);
+          } else {
+            count = 5;
+          }
+
+          var nextCount;
+          if (pager._direction === 'previous') {
+            // have to go back over some stuff
+            nextCount = (count + scope.$values.length) - 1;
+          } else {
+            // straight back
+            nextCount = count;
+          }
+
           $animate.addClass(el, 'fp-paging');
           scope.$paging = true;
-          return pager.next(parseInt(attrs.limit) || 5)
-          .then(function(result) {
+          return pager.next(nextCount)
+          .then(function(results) {
 
             scope.$pageNumber++;
-            return result;
+
+            if (nextCount !== count) {
+              results = results.slice(count-1);
+            }
+
+            return results;
 
           })
           .then(setPage, handleError);
 
         } else if (!angular.isDefined(pager)) {
           return $q.reject(new Error('Pager does not exist. Has fp-page been set yet?'));
+        } else {
+          return $q.when();
         }
 
       };
@@ -120,19 +143,38 @@ angular.module('flashpoint')
 
         if (pager && !scope.$paging && scope.$hasPrevious) {
 
+          var count;
+          if (parseInt(attrs.limit)) {
+            count = parseInt(attrs.limit);
+          } else {
+            count = 5;
+          }
+
+          var prevCount;
+          if (pager._direction === 'next') {
+            // have to go back over some stuff
+            prevCount = (count + scope.$values.length) - 1;
+          } else {
+            // straight back
+            prevCount = count;
+          }
+
           $animate.addClass(el, 'fp-paging');
           scope.$paging = true;
-          return pager.previous(parseInt(attrs.limit) || 5)
-          .then(function(result) {
+          return pager.previous(prevCount)
+          .then(function(results) {
 
             scope.$pageNumber--;
-            return result;
+            results = results.slice(0, count);
+            return results;
 
           })
           .then(setPage, handleError);
 
         } else if (!angular.isDefined(pager)) {
           return $q.reject(new Error('Pager does not exist. Has fp-page been set yet?'));
+        } else {
+          return $q.when();
         }
 
       };
@@ -149,6 +191,7 @@ angular.module('flashpoint')
         scope.$paging = false;
 
         pager = new Fireproof.Pager(new Fireproof(ref));
+        pager._direction = 'next';
         return scope.$next();
 
       };

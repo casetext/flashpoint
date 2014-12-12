@@ -130,7 +130,7 @@ gulp.task('bump:major', 'Publishes a new major version.', bumpDeps, function(don
 });
 
 
-gulp.task('demo', 'Run a demo server forever.', function(done) {
+gulp.task('demo', 'Run a demo server forever.', ['build'], function(done) {
 
   var express = require('express');
   var app = express();
