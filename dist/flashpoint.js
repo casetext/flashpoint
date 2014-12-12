@@ -173,7 +173,7 @@
   
   
   angular.module('flashpoint')
-  .directive('fpPage', function($q, $animate, Fireproof) {
+  .directive('fpPage', ["$q", "$animate", "Fireproof", function($q, $animate, Fireproof) {
   
     /**
      * @ngdoc directive
@@ -230,7 +230,7 @@
           $animate.removeClass(el, 'fp-paging');
           scope.$paging = false;
   
-          scope.$hasPrevious = pager.hasPrevious;
+          scope.$hasPrevious = pager.hasPrevious && scope.$pageNumber !== 1;
           scope.$hasNext = pager.hasNext;
   
           scope.$keys = snaps.map(function(snap) {
@@ -395,7 +395,7 @@
   
     };
   
-  });
+  }]);
   
   
   
@@ -436,13 +436,14 @@
     };
   
   }
+  fpViewFillContentFactory.$inject = ["$compile", "$controller", "$route", "firebaseStatus"];
   
   angular.module('flashpoint')
   .directive('fpView', fpViewFillContentFactory);
   
   
   angular.module('flashpoint')
-  .factory('ChildQuery', function(validatePath) {
+  .factory('ChildQuery', ["validatePath", function(validatePath) {
   
     /**
      * @ngdoc type
@@ -650,7 +651,7 @@
   
     return ChildQuery;
   
-  });
+  }]);
   
   
   angular.module('flashpoint')
@@ -674,7 +675,7 @@
     return Firebase;
   
   })
-  .factory('ServerValue', function(Firebase) {
+  .factory('ServerValue', ["Firebase", function(Firebase) {
   
     /**
      * @ngdoc service
@@ -687,8 +688,8 @@
   
     return Firebase.ServerValue;
   
-  })
-  .factory('Fireproof', function($rootScope, $q) {
+  }])
+  .factory('Fireproof', ["$rootScope", "$q", function($rootScope, $q) {
   
     /**
      * @ngdoc service
@@ -710,7 +711,7 @@
   
     return Fireproof;
   
-  });
+  }]);
   
   
   angular.module('flashpoint')
@@ -825,7 +826,7 @@
   
   angular.module('flashpoint')
   .value('fpLoadedTimeout', 20000)
-  .service('firebaseStatus', function(
+  .service('firebaseStatus', ["$interval", "$timeout", "$document", "$animate", "$rootScope", "$log", "Fireproof", "fpLoadedTimeout", function(
     $interval,
     $timeout,
     $document,
@@ -906,7 +907,7 @@
     };
   
   
-  });
+  }]);
   
   
   angular.module('flashpoint')
@@ -1582,6 +1583,7 @@
     }
   
   }
+  FirebaseCtl.$inject = ["$log", "$q", "$scope", "$injector", "$timeout", "Firebase", "Fireproof", "ChildQuery", "validatePath", "_fpHandleLogin", "_fpHandleLogout", "_fpFirebaseUrl", "_fpOnLoaded", "_fpOnError"];
   
   
   angular.module('flashpoint')

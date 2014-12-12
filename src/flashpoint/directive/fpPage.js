@@ -57,7 +57,7 @@ angular.module('flashpoint')
         $animate.removeClass(el, 'fp-paging');
         scope.$paging = false;
 
-        scope.$hasPrevious = pager.hasPrevious;
+        scope.$hasPrevious = pager.hasPrevious && scope.$pageNumber !== 1;
         scope.$hasNext = pager.hasNext;
 
         scope.$keys = snaps.map(function(snap) {

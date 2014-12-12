@@ -6,6 +6,8 @@ var rmdir = require('rimraf'),
   rename = require('gulp-rename'),
   concat = require('gulp-concat'),
   bump = require('gulp-bump'),
+  annotate = require('gulp-ng-annotate'),
+  uglify = require('gulp-uglify'),
   wrap = require('gulp-wrap'),
   Dgeni = require('dgeni'),
   filter = require('gulp-filter'),
@@ -64,9 +66,12 @@ gulp.task('build', 'Builds the Javascript for distribution.', ['clean'], functio
 
   return gulp.src('src/**/*.js')
   .pipe(concat('flashpoint.js'))
+  .pipe(annotate())
   .pipe(wrap({ src: 'umd.template' }, { version: version }))
+  .pipe(gulp.dest('./dist'))
+  .pipe(rename('flashpoint.min.js'))
+  .pipe(uglify({preserveComments: 'some'}))
   .pipe(gulp.dest('./dist'));
-
 });
 
 
@@ -140,6 +145,9 @@ gulp.task('demo', 'Run a demo server forever.', ['build'], function(done) {
   app.use('/demo', express.static(__dirname + '/test/demo'));
   app.get('/flashpoint.js', function(req, res) {
     res.sendFile(__dirname + '/dist/flashpoint.js');
+  });
+  app.get('/flashpoint.min.js', function(req, res) {
+    res.sendFile(__dirname + '/dist/flashpoint.min.js');
   });
   app.get('/', function(req, res) {
     res.sendFile(__dirname + '/test/demo/index.html');
