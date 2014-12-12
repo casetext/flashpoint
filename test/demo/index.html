@@ -29,6 +29,9 @@
   <body firebase="https://flashpoint-demo.firebaseio-demo.com">
     <h2>flashpoint demo</h2>
     <div>
+      <ul>
+      <li ng-repeat="dinosaur in fp.children().of('dinosaurs').keys">{{ dinosaur }}</li>
+      </ul>
       <div fp-page="dinosaurs" limit="3" as="dinosaurs">
         <h4>Page {{ $pageNumber }}</h4>
         <ul>
@@ -37,8 +40,8 @@
           </li>
         </ul>
 
-        <button ng-disabled="!$hasPrevious" ng-click="$previous()">Previous Page</button>
-        <button ng-disabled="!$hasNext" ng-click="$next()">Next Page</button>
+        <button ng-disabled="$paging || !$hasPrevious" ng-click="$previous()">Previous Page</button>
+        <button ng-disabled="$paging || !$hasNext" ng-click="$next()">Next Page</button>
       </div>
 
     </div>
