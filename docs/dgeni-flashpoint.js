@@ -4,6 +4,9 @@ var path = require('path');
 var Package = require('dgeni').Package,
   pkg = require('../package.json');
 
+// prep to write docs to Firebase
+
+
 module.exports = new Package('dgeni-flashpoint', [
   require('dgeni-packages/jsdoc'),
 ])
@@ -25,24 +28,7 @@ module.exports = new Package('dgeni-flashpoint', [
   inlineTagProcessor.inlineTagDefinitions.push(linkInlineTagDef);
 })
 .processor(require('./processors/render-docs'))
-.processor(function writeFilesProcessor() {
-
-  // this special writeFilesProcessor sends the docs to Firebase.
-
-  return {
-
-    $process: function(docs) {
-      docs.forEach(function(doc) {
-        console.log(doc.renderedContent);
-      });
-      return docs;
-    },
-    $runAfter: ['writing-files'],
-    $runBefore: ['files-written']
-
-  };
-
-})
+.processor(require('./processors/write-files'))
 .config(function(parseTagsProcessor, getInjectables) {
   parseTagsProcessor.tagDefinitions =
       parseTagsProcessor.tagDefinitions.concat(getInjectables(require('dgeni-packages/ngdoc/tag-defs')));
@@ -66,8 +52,7 @@ module.exports = new Package('dgeni-flashpoint', [
     { include: 'docs/content/**/*.ngdoc', basePath: 'docs/content' }
   ];
 
-  // writeFilesProcessor.outputFolder = './dist/docs';
-  // sendToFirebaseProcessor.firebaseUrl = 'https://test99999.firebaseio-demo.com';
+  writeFilesProcessor.firebaseUrl = firebaseUrl;
 
 })
 .config(function(computeIdsProcessor, createDocMessage, getAliases) {
