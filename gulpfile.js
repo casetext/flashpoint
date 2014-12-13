@@ -13,7 +13,7 @@ var rmdir = require('rimraf'),
   filter = require('gulp-filter'),
   git = require('gulp-git'),
   tagVersion = require('gulp-tag-version'),
-  version = require('./package.json').version,
+  pkg = require('./package.json'),
   karma = require('karma').server;
 
 
@@ -67,7 +67,7 @@ gulp.task('build', 'Builds the Javascript for distribution.', ['clean'], functio
   return gulp.src('src/**/*.js')
   .pipe(concat('flashpoint.js'))
   .pipe(annotate())
-  .pipe(wrap({ src: 'umd.template' }, { version: version }))
+  .pipe(wrap({ src: 'umd.template' }, { pkg: pkg, year: new Date().getFullYear() }))
   .pipe(gulp.dest('./dist'))
   .pipe(rename('flashpoint.min.js'))
   .pipe(uglify({preserveComments: 'some'}))

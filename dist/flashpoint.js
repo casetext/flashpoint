@@ -1,4 +1,6 @@
-
+/*! flashpoint 1.2.4, © 2014 J2H2 Inc. MIT License.
+ * https://github.com/casetext/flashpoint
+ */
 (function (root, factory) {
 
   if (typeof define === 'function' && define.amd) {
