@@ -66,8 +66,8 @@ module.exports = new Package('dgeni-flashpoint', [
     { include: 'docs/content/**/*.ngdoc', basePath: 'docs/content' }
   ];
 
-  writeFilesProcessor.outputFolder = './dist/docs';
-//  sendToFirebaseProcessor.firebaseUrl = 'https://test99999.firebaseio-demo.com';
+  // writeFilesProcessor.outputFolder = './dist/docs';
+  // sendToFirebaseProcessor.firebaseUrl = 'https://test99999.firebaseio-demo.com';
 
 })
 .config(function(computeIdsProcessor, createDocMessage, getAliases) {

@@ -1,4 +1,4 @@
-/*! flashpoint 1.2.4, © 2014 J2H2 Inc. MIT License.
+/*! flashpoint 2.0.1, © 2014 J2H2 Inc. MIT License.
  * https://github.com/casetext/flashpoint
  */
 (function (root, factory) {
@@ -442,499 +442,6 @@
   
   angular.module('flashpoint')
   .directive('fpView', fpViewFillContentFactory);
-  
-  
-  angular.module('flashpoint')
-  .factory('ChildQuery', ["validatePath", function(validatePath) {
-  
-    /**
-     * @ngdoc type
-     * @name ChildQuery
-     * @description A way to generate long Firebase queries inside an Angular expression.
-     */
-    function ChildQuery(root, watchers, liveWatchers) {
-  
-      this.root = root;
-      this.watchers = watchers;
-      this.liveWatchers = liveWatchers;
-      this._props = {};
-  
-    }
-  
-    /**
-     * @ngdoc method
-     * @name ChildQuery#startAt
-     * @description Invokes Fireproof#startAt.
-     */
-    ChildQuery.prototype.startAt = function(value, key) {
-  
-      this._props.startAtValue = value;
-      if (key) {
-        this._props.startAtKey = key;
-      }
-  
-      return this;
-  
-    };
-  
-    /**
-     * @ngdoc method
-     * @name ChildQuery#endAt
-     * @description Invokes Fireproof#endAt.
-     */
-    ChildQuery.prototype.endAt = function(value, key) {
-  
-      this._props.endAtValue = value;
-      if (key) {
-        this._props.endAtKey = key;
-      }
-  
-      return this;
-  
-    };
-  
-    /**
-     * @ngdoc method
-     * @name ChildQuery#equalTo
-     * @description Invokes Fireproof#equalTo.
-     */
-    ChildQuery.prototype.equalTo = function(value, key) {
-  
-      this._props.equalToValue = value;
-      if (key) {
-        this._props.equalToKey = key;
-      }
-  
-      return this;
-  
-    };
-  
-    /**
-     * @ngdoc method
-     * @name ChildQuery#limitToFirst
-     * @description Invokes Fireproof#limitToFirst.
-     */
-    ChildQuery.prototype.limitToFirst = function(limit) {
-  
-      this._props.limitToFirst = limit;
-      return this;
-  
-    };
-  
-    /**
-     * @ngdoc method
-     * @name ChildQuery#limitToLast
-     * @description Invokes Fireproof#limitToLast.
-     */
-    ChildQuery.prototype.limitToLast = function(limit) {
-  
-      this._props.limitToLast = limit;
-      return this;
-  
-    };
-  
-    /**
-     * @ngdoc method
-     * @name ChildQuery#orderByKey
-     * @description Invokes Fireproof#orderByKey.
-     */
-    ChildQuery.prototype.orderByKey = function() {
-  
-      this._props.orderBy = 'key';
-      return this;
-  
-    };
-  
-    /**
-     * @ngdoc method
-     * @name ChildQuery#orderByPriority
-     * @description Invokes Fireproof#orderByPriority.
-     */
-    ChildQuery.prototype.orderByPriority = function() {
-  
-      this._props.orderBy = 'priority';
-      return this;
-  
-    };
-  
-    /**
-     * @ngdoc method
-     * @name ChildQuery#orderByChild
-     * @description Invokes Fireproof#orderByChild.
-     */
-    ChildQuery.prototype.orderByChild = function(child) {
-  
-      this._props.orderBy = 'child';
-      this._props.orderByChild = child;
-      return this;
-  
-    };
-  
-    /**
-     * @ngdoc method
-     * @name ChildQuery#of
-     * @description Specifies the path for the child query. NOTE: ALWAYS DO THIS LAST!
-     * @param {...String} pathParams The path parameters for this query.
-     */
-    ChildQuery.prototype.of = function() {
-  
-      var args = Array.prototype.slice.call(arguments, 0),
-        path = validatePath(args),
-        ref = this.root.child(path),
-        id = path + '.children';
-  
-      switch(this._props.orderBy || '') {
-      case 'key':
-        id += '.orderByKey';
-        ref = ref.orderByKey();
-        break;
-      case 'priority':
-        id += '.orderByPriority';
-        ref = ref.orderByPriority();
-        break;
-      case 'child':
-        id += '.orderByChild.' + this._props.orderByChild;
-        ref = ref.orderByChild(this._props.orderByChild);
-        break;
-      }
-  
-      if (this._props.startAtValue && this._props.startAtKey) {
-        id += '.startAtValue.' + this._props.startAtValue + '.startAtKey.' + this._props.startAtKey;
-        ref = ref.startAt(this._props.startAtValue, this._props.startAtKey);
-      } else if (this._props.startAtValue) {
-        id += '.startAtValue.' + this._props.startAtValue;
-        ref = ref.startAt(this._props.startAtValue);
-      }
-  
-      if (this._props.endAtValue && this._props.endAtKey) {
-        id += '.endAtValue.' + this._props.endAtValue + '.endAtKey.' + this._props.endAtKey;
-        ref = ref.endAt(this._props.endAtValue, this._props.endAtKey);
-      } else if (this._props.endAtValue) {
-        id += '.endAtValue.' + this._props.endAtValue;
-        ref = ref.endAt(this._props.endAtValue);
-      }
-  
-      if (this._props.equalToValue && this._props.equalToKey) {
-        id += '.equalToValue.' + this._props.equalToValue + '.equalToKey.' + this._props.equalToKey;
-        ref = ref.equalTo(this._props.equalToValue, this._props.equalToKey);
-      } else if (this._props.equalToValue) {
-        id += '.equalToValue.' + this._props.equalToValue;
-        ref = ref.equalTo(this._props.equalToValue);
-      }
-  
-      if (this._props.limitToFirst) {
-        id += '.limitToFirst.' + this._props.limitToFirst;
-        ref = ref.limitToFirst(this._props.limitToFirst);
-      }
-  
-      if (this._props.limitToLast) {
-        id += '.limitToLast.' + this._props.limitToLast;
-        ref = ref.limitToLast(this._props.limitToLast);
-      }
-  
-      this.liveWatchers[id] = true;
-  
-      if (!this.watchers[id]) {
-  
-        this.watchers[id] = new Fireproof.LiveArray();
-        if (this._props.orderBy === 'child') {
-          this.watchers[id].connect(ref, this._props.orderBy, this._props.orderByChild);
-        } else if (this._props.orderBy) {
-          this.watchers[id].connect(ref, this._props.orderBy);
-        } else {
-          this.watchers[id].connect(ref);
-        }
-  
-      }
-  
-      return this.watchers[id];
-  
-    };
-  
-    return ChildQuery;
-  
-  }]);
-  
-  
-  angular.module('flashpoint')
-  .factory('Firebase', function() {
-  
-  /**
-   * @ngdoc service
-   * @name Firebase
-   * @description The Firebase class.
-   *
-   * The Firebase library exposes this on window by default, but using Angular DI
-   * allows it to be mocked or modified if you wish.
-   *
-   * NB: You should not use this service yourself! Instead, use the firebase
-   * directive and write your own directives to require it, then access its
-   * `root` Firebase reference.
-   *
-   * @see {@link FirebaseCtl#cleanup}
-   */
-  
-    return Firebase;
-  
-  })
-  .factory('ServerValue', ["Firebase", function(Firebase) {
-  
-    /**
-     * @ngdoc service
-     * @name ServerValue
-     * @description The object ordinarily discovered on `Firebase.ServerValue`.
-     *
-     * Available for convenience.
-     * @see {@link Firebase}
-     */
-  
-    return Firebase.ServerValue;
-  
-  }])
-  .factory('Fireproof', ["$rootScope", "$q", function($rootScope, $q) {
-  
-    /**
-     * @ngdoc service
-     * @name Fireproof
-     * @description The Fireproof class, properly configured for use in Angular.
-     *
-     * "Properly configured" means that $rootScope.$evalAsync is used for nextTick and
-     * Angular's $q is used for promises).
-     *
-     * NB: You should not use this service yourself! Instead, use the firebase
-     * directive and write your own directives to require it, then access its
-     * `root` Firebase reference.
-     */
-  
-    Fireproof.setNextTick(function(fn) {
-      $rootScope.$evalAsync(fn);
-    });
-    Fireproof.bless($q);
-  
-    return Fireproof;
-  
-  }]);
-  
-  
-  angular.module('flashpoint')
-  .constant('_fpFirebaseUrl', null)
-  .constant('_fpOnLoaded', null)
-  .constant('_fpOnError', null)
-  .constant('_fpHandleLogin', null)
-  .constant('_fpHandleLogout', null)
-  .constant('fpRoute', function(routeDefinitionObject) {
-  
-    if (!routeDefinitionObject.firebase) {
-      throw new Error('No Firebase URL has been defined in your controller. ' +
-        'Please set the "firebase" property in your route definition object.');
-    }
-  
-    routeDefinitionObject.resolve = routeDefinitionObject.resolve || {};
-  
-    var firebaseUrl = routeDefinitionObject.firebase;
-    delete routeDefinitionObject.firebase;
-  
-  
-    if (routeDefinitionObject.loaded) {
-  
-      var onLoaded = routeDefinitionObject.loaded;
-      delete routeDefinitionObject.loaded;
-  
-      routeDefinitionObject.resolve._fpOnLoaded = function() {
-        return onLoaded;
-      };
-  
-    }
-  
-    if (routeDefinitionObject.error) {
-  
-      var onError = routeDefinitionObject.error;
-      delete routeDefinitionObject.error;
-  
-      routeDefinitionObject.resolve._fpOnError = function() {
-        return onError;
-      };
-  
-    }
-  
-    if (routeDefinitionObject.login) {
-  
-      var login = routeDefinitionObject.login;
-  
-      routeDefinitionObject.resolve._fpHandleLogin = function() {
-        return login;
-      };
-  
-    }
-  
-    if (routeDefinitionObject.logout) {
-  
-      var logout = routeDefinitionObject.logout;
-      delete routeDefinitionObject.logout;
-  
-      routeDefinitionObject.resolve._fpHandleLogout = function() {
-        return logout;
-      };
-  
-    }
-  
-  
-    routeDefinitionObject.resolve._fpFirebaseUrl = function($q, $injector, Firebase, Fireproof) {
-  
-      var root = new Fireproof(new Firebase(firebaseUrl));
-  
-      return $q.when()
-      .then(function() {
-  
-        if (routeDefinitionObject.challenge &&
-          routeDefinitionObject.login &&
-          root.getAuth() === null) {
-  
-          // the "login" function is injectable
-          return $injector.invoke(routeDefinitionObject.login, null, {
-            root: root,
-            auth: null
-          });
-  
-        }
-  
-      })
-      .then(function() {
-  
-        if (routeDefinitionObject.authorize) {
-  
-          // the "authorize" function is injectable
-          return $injector.invoke(routeDefinitionObject.authorize, null, {
-            root: root,
-            auth: root.getAuth()
-          });
-  
-        }
-  
-      })
-      .then(function() {
-        return firebaseUrl;
-      });
-  
-    };
-  
-    routeDefinitionObject.resolve._fpFirebaseUrl.$inject =
-      ['$q', '$injector', 'Firebase', 'Fireproof'];
-  
-    return routeDefinitionObject;
-  
-  });
-  
-  
-  angular.module('flashpoint')
-  .value('fpLoadedTimeout', 20000)
-  .service('firebaseStatus', ["$interval", "$timeout", "$document", "$animate", "$rootScope", "$log", "Fireproof", "fpLoadedTimeout", function(
-    $interval,
-    $timeout,
-    $document,
-    $animate,
-    $rootScope,
-    $log,
-    Fireproof,
-    fpLoadedTimeout
-  ) {
-  
-    var service = this;
-  
-    function switchOff() {
-  
-      Fireproof.stats.off('finish', actionFinished);
-      Fireproof.stats.off('error', actionErrored);
-      $timeout.cancel(service._deadHand);
-  
-    }
-  
-    function actionFinished() {
-  
-      if (Fireproof.stats.runningOperationCount === 0) {
-  
-        switchOff();
-  
-        var operationList = [];
-        for (var id in Fireproof.stats.operationLog) {
-          operationList.push(Fireproof.stats.operationLog[id]);
-        }
-  
-        operationList.sort(function(a, b) {
-          return (a.start - b.start) || (a.end - b.end);
-        });
-  
-        // set the "fp-loaded" attribute on the body
-        $animate.setClass($document, 'fp-loaded', 'fp-loading');
-  
-        $rootScope.$broadcast('flashpointLoadSuccess', operationList);
-        $rootScope.$evalAsync();
-  
-      }
-  
-    }
-  
-    function actionErrored(event) {
-  
-      switchOff();
-      $rootScope.$broadcast('flashpointLoadError', event);
-  
-    }
-  
-    function reset() {
-  
-      Fireproof.stats.reset();
-      Fireproof.stats.resetListeners();
-  
-    }
-  
-    service.startRoute = function() {
-  
-      reset();
-  
-      Fireproof.stats.on('finish', actionFinished);
-      Fireproof.stats.on('error', actionErrored);
-  
-      // after 20 seconds, assume something's gone wrong and signal timeout.
-      service._deadHand = $timeout(function() {
-  
-        switchOff();
-        $rootScope.$broadcast('flashpointLoadTimeout');
-  
-      }, fpLoadedTimeout);
-  
-      $rootScope.$broadcast('flashpointLoadStart');
-      $animate.addClass($document, 'fp-loading');
-  
-    };
-  
-  
-  }]);
-  
-  
-  angular.module('flashpoint')
-  .factory('validatePath', function() {
-  
-    function validatePath(pathParts) {
-  
-      // check the arguments
-      var path = pathParts.join('/');
-  
-      if (pathParts.length === 0 || path === '' ||
-        pathParts.indexOf(null) !== -1 || pathParts.indexOf(undefined) !== -1) {
-  
-        // if any one of them is null/undefined, this is not a valid path
-        return null;
-  
-      } else {
-        return path;
-      }
-  
-    }
-  
-    return validatePath;
-  
-  });
   
   
   function FirebaseCtl(
@@ -1590,6 +1097,499 @@
   
   angular.module('flashpoint')
   .controller('FirebaseCtl', FirebaseCtl);
+  
+  
+  angular.module('flashpoint')
+  .factory('ChildQuery', ["validatePath", function(validatePath) {
+  
+    /**
+     * @ngdoc type
+     * @name ChildQuery
+     * @description A way to generate long Firebase queries inside an Angular expression.
+     */
+    function ChildQuery(root, watchers, liveWatchers) {
+  
+      this.root = root;
+      this.watchers = watchers;
+      this.liveWatchers = liveWatchers;
+      this._props = {};
+  
+    }
+  
+    /**
+     * @ngdoc method
+     * @name ChildQuery#startAt
+     * @description Invokes Fireproof#startAt.
+     */
+    ChildQuery.prototype.startAt = function(value, key) {
+  
+      this._props.startAtValue = value;
+      if (key) {
+        this._props.startAtKey = key;
+      }
+  
+      return this;
+  
+    };
+  
+    /**
+     * @ngdoc method
+     * @name ChildQuery#endAt
+     * @description Invokes Fireproof#endAt.
+     */
+    ChildQuery.prototype.endAt = function(value, key) {
+  
+      this._props.endAtValue = value;
+      if (key) {
+        this._props.endAtKey = key;
+      }
+  
+      return this;
+  
+    };
+  
+    /**
+     * @ngdoc method
+     * @name ChildQuery#equalTo
+     * @description Invokes Fireproof#equalTo.
+     */
+    ChildQuery.prototype.equalTo = function(value, key) {
+  
+      this._props.equalToValue = value;
+      if (key) {
+        this._props.equalToKey = key;
+      }
+  
+      return this;
+  
+    };
+  
+    /**
+     * @ngdoc method
+     * @name ChildQuery#limitToFirst
+     * @description Invokes Fireproof#limitToFirst.
+     */
+    ChildQuery.prototype.limitToFirst = function(limit) {
+  
+      this._props.limitToFirst = limit;
+      return this;
+  
+    };
+  
+    /**
+     * @ngdoc method
+     * @name ChildQuery#limitToLast
+     * @description Invokes Fireproof#limitToLast.
+     */
+    ChildQuery.prototype.limitToLast = function(limit) {
+  
+      this._props.limitToLast = limit;
+      return this;
+  
+    };
+  
+    /**
+     * @ngdoc method
+     * @name ChildQuery#orderByKey
+     * @description Invokes Fireproof#orderByKey.
+     */
+    ChildQuery.prototype.orderByKey = function() {
+  
+      this._props.orderBy = 'key';
+      return this;
+  
+    };
+  
+    /**
+     * @ngdoc method
+     * @name ChildQuery#orderByPriority
+     * @description Invokes Fireproof#orderByPriority.
+     */
+    ChildQuery.prototype.orderByPriority = function() {
+  
+      this._props.orderBy = 'priority';
+      return this;
+  
+    };
+  
+    /**
+     * @ngdoc method
+     * @name ChildQuery#orderByChild
+     * @description Invokes Fireproof#orderByChild.
+     */
+    ChildQuery.prototype.orderByChild = function(child) {
+  
+      this._props.orderBy = 'child';
+      this._props.orderByChild = child;
+      return this;
+  
+    };
+  
+    /**
+     * @ngdoc method
+     * @name ChildQuery#of
+     * @description Specifies the path for the child query. NOTE: ALWAYS DO THIS LAST!
+     * @param {...String} pathParams The path parameters for this query.
+     */
+    ChildQuery.prototype.of = function() {
+  
+      var args = Array.prototype.slice.call(arguments, 0),
+        path = validatePath(args),
+        ref = this.root.child(path),
+        id = path + '.children';
+  
+      switch(this._props.orderBy || '') {
+      case 'key':
+        id += '.orderByKey';
+        ref = ref.orderByKey();
+        break;
+      case 'priority':
+        id += '.orderByPriority';
+        ref = ref.orderByPriority();
+        break;
+      case 'child':
+        id += '.orderByChild.' + this._props.orderByChild;
+        ref = ref.orderByChild(this._props.orderByChild);
+        break;
+      }
+  
+      if (this._props.startAtValue && this._props.startAtKey) {
+        id += '.startAtValue.' + this._props.startAtValue + '.startAtKey.' + this._props.startAtKey;
+        ref = ref.startAt(this._props.startAtValue, this._props.startAtKey);
+      } else if (this._props.startAtValue) {
+        id += '.startAtValue.' + this._props.startAtValue;
+        ref = ref.startAt(this._props.startAtValue);
+      }
+  
+      if (this._props.endAtValue && this._props.endAtKey) {
+        id += '.endAtValue.' + this._props.endAtValue + '.endAtKey.' + this._props.endAtKey;
+        ref = ref.endAt(this._props.endAtValue, this._props.endAtKey);
+      } else if (this._props.endAtValue) {
+        id += '.endAtValue.' + this._props.endAtValue;
+        ref = ref.endAt(this._props.endAtValue);
+      }
+  
+      if (this._props.equalToValue && this._props.equalToKey) {
+        id += '.equalToValue.' + this._props.equalToValue + '.equalToKey.' + this._props.equalToKey;
+        ref = ref.equalTo(this._props.equalToValue, this._props.equalToKey);
+      } else if (this._props.equalToValue) {
+        id += '.equalToValue.' + this._props.equalToValue;
+        ref = ref.equalTo(this._props.equalToValue);
+      }
+  
+      if (this._props.limitToFirst) {
+        id += '.limitToFirst.' + this._props.limitToFirst;
+        ref = ref.limitToFirst(this._props.limitToFirst);
+      }
+  
+      if (this._props.limitToLast) {
+        id += '.limitToLast.' + this._props.limitToLast;
+        ref = ref.limitToLast(this._props.limitToLast);
+      }
+  
+      this.liveWatchers[id] = true;
+  
+      if (!this.watchers[id]) {
+  
+        this.watchers[id] = new Fireproof.LiveArray();
+        if (this._props.orderBy === 'child') {
+          this.watchers[id].connect(ref, this._props.orderBy, this._props.orderByChild);
+        } else if (this._props.orderBy) {
+          this.watchers[id].connect(ref, this._props.orderBy);
+        } else {
+          this.watchers[id].connect(ref);
+        }
+  
+      }
+  
+      return this.watchers[id];
+  
+    };
+  
+    return ChildQuery;
+  
+  }]);
+  
+  
+  angular.module('flashpoint')
+  .factory('Firebase', function() {
+  
+  /**
+   * @ngdoc service
+   * @name Firebase
+   * @description The Firebase class.
+   *
+   * The Firebase library exposes this on window by default, but using Angular DI
+   * allows it to be mocked or modified if you wish.
+   *
+   * NB: You should not use this service yourself! Instead, use the firebase
+   * directive and write your own directives to require it, then access its
+   * `root` Firebase reference.
+   *
+   * @see {@link FirebaseCtl#cleanup}
+   */
+  
+    return Firebase;
+  
+  })
+  .factory('ServerValue', ["Firebase", function(Firebase) {
+  
+    /**
+     * @ngdoc service
+     * @name ServerValue
+     * @description The object ordinarily discovered on `Firebase.ServerValue`.
+     *
+     * Available for convenience.
+     * @see {@link Firebase}
+     */
+  
+    return Firebase.ServerValue;
+  
+  }])
+  .factory('Fireproof', ["$rootScope", "$q", function($rootScope, $q) {
+  
+    /**
+     * @ngdoc service
+     * @name Fireproof
+     * @description The Fireproof class, properly configured for use in Angular.
+     *
+     * "Properly configured" means that $rootScope.$evalAsync is used for nextTick and
+     * Angular's $q is used for promises).
+     *
+     * NB: You should not use this service yourself! Instead, use the firebase
+     * directive and write your own directives to require it, then access its
+     * `root` Firebase reference.
+     */
+  
+    Fireproof.setNextTick(function(fn) {
+      $rootScope.$evalAsync(fn);
+    });
+    Fireproof.bless($q);
+  
+    return Fireproof;
+  
+  }]);
+  
+  
+  angular.module('flashpoint')
+  .constant('_fpFirebaseUrl', null)
+  .constant('_fpOnLoaded', null)
+  .constant('_fpOnError', null)
+  .constant('_fpHandleLogin', null)
+  .constant('_fpHandleLogout', null)
+  .constant('fpRoute', function(routeDefinitionObject) {
+  
+    if (!routeDefinitionObject.firebase) {
+      throw new Error('No Firebase URL has been defined in your controller. ' +
+        'Please set the "firebase" property in your route definition object.');
+    }
+  
+    routeDefinitionObject.resolve = routeDefinitionObject.resolve || {};
+  
+    var firebaseUrl = routeDefinitionObject.firebase;
+    delete routeDefinitionObject.firebase;
+  
+  
+    if (routeDefinitionObject.loaded) {
+  
+      var onLoaded = routeDefinitionObject.loaded;
+      delete routeDefinitionObject.loaded;
+  
+      routeDefinitionObject.resolve._fpOnLoaded = function() {
+        return onLoaded;
+      };
+  
+    }
+  
+    if (routeDefinitionObject.error) {
+  
+      var onError = routeDefinitionObject.error;
+      delete routeDefinitionObject.error;
+  
+      routeDefinitionObject.resolve._fpOnError = function() {
+        return onError;
+      };
+  
+    }
+  
+    if (routeDefinitionObject.login) {
+  
+      var login = routeDefinitionObject.login;
+  
+      routeDefinitionObject.resolve._fpHandleLogin = function() {
+        return login;
+      };
+  
+    }
+  
+    if (routeDefinitionObject.logout) {
+  
+      var logout = routeDefinitionObject.logout;
+      delete routeDefinitionObject.logout;
+  
+      routeDefinitionObject.resolve._fpHandleLogout = function() {
+        return logout;
+      };
+  
+    }
+  
+  
+    routeDefinitionObject.resolve._fpFirebaseUrl = function($q, $injector, Firebase, Fireproof) {
+  
+      var root = new Fireproof(new Firebase(firebaseUrl));
+  
+      return $q.when()
+      .then(function() {
+  
+        if (routeDefinitionObject.challenge &&
+          routeDefinitionObject.login &&
+          root.getAuth() === null) {
+  
+          // the "login" function is injectable
+          return $injector.invoke(routeDefinitionObject.login, null, {
+            root: root,
+            auth: null
+          });
+  
+        }
+  
+      })
+      .then(function() {
+  
+        if (routeDefinitionObject.authorize) {
+  
+          // the "authorize" function is injectable
+          return $injector.invoke(routeDefinitionObject.authorize, null, {
+            root: root,
+            auth: root.getAuth()
+          });
+  
+        }
+  
+      })
+      .then(function() {
+        return firebaseUrl;
+      });
+  
+    };
+  
+    routeDefinitionObject.resolve._fpFirebaseUrl.$inject =
+      ['$q', '$injector', 'Firebase', 'Fireproof'];
+  
+    return routeDefinitionObject;
+  
+  });
+  
+  
+  angular.module('flashpoint')
+  .value('fpLoadedTimeout', 20000)
+  .service('firebaseStatus', ["$interval", "$timeout", "$document", "$animate", "$rootScope", "$log", "Fireproof", "fpLoadedTimeout", function(
+    $interval,
+    $timeout,
+    $document,
+    $animate,
+    $rootScope,
+    $log,
+    Fireproof,
+    fpLoadedTimeout
+  ) {
+  
+    var service = this;
+  
+    function switchOff() {
+  
+      Fireproof.stats.off('finish', actionFinished);
+      Fireproof.stats.off('error', actionErrored);
+      $timeout.cancel(service._deadHand);
+  
+    }
+  
+    function actionFinished() {
+  
+      if (Fireproof.stats.runningOperationCount === 0) {
+  
+        switchOff();
+  
+        var operationList = [];
+        for (var id in Fireproof.stats.operationLog) {
+          operationList.push(Fireproof.stats.operationLog[id]);
+        }
+  
+        operationList.sort(function(a, b) {
+          return (a.start - b.start) || (a.end - b.end);
+        });
+  
+        // set the "fp-loaded" attribute on the body
+        $animate.setClass($document, 'fp-loaded', 'fp-loading');
+  
+        $rootScope.$broadcast('flashpointLoadSuccess', operationList);
+        $rootScope.$evalAsync();
+  
+      }
+  
+    }
+  
+    function actionErrored(event) {
+  
+      switchOff();
+      $rootScope.$broadcast('flashpointLoadError', event);
+  
+    }
+  
+    function reset() {
+  
+      Fireproof.stats.reset();
+      Fireproof.stats.resetListeners();
+  
+    }
+  
+    service.startRoute = function() {
+  
+      reset();
+  
+      Fireproof.stats.on('finish', actionFinished);
+      Fireproof.stats.on('error', actionErrored);
+  
+      // after 20 seconds, assume something's gone wrong and signal timeout.
+      service._deadHand = $timeout(function() {
+  
+        switchOff();
+        $rootScope.$broadcast('flashpointLoadTimeout');
+  
+      }, fpLoadedTimeout);
+  
+      $rootScope.$broadcast('flashpointLoadStart');
+      $animate.addClass($document, 'fp-loading');
+  
+    };
+  
+  
+  }]);
+  
+  
+  angular.module('flashpoint')
+  .factory('validatePath', function() {
+  
+    function validatePath(pathParts) {
+  
+      // check the arguments
+      var path = pathParts.join('/');
+  
+      if (pathParts.length === 0 || path === '' ||
+        pathParts.indexOf(null) !== -1 || pathParts.indexOf(undefined) !== -1) {
+  
+        // if any one of them is null/undefined, this is not a valid path
+        return null;
+  
+      } else {
+        return path;
+      }
+  
+    }
+  
+    return validatePath;
+  
+  });
   
 
 }));
