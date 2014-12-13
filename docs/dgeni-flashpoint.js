@@ -2,7 +2,8 @@
 var path = require('path');
 
 var Package = require('dgeni').Package,
-  pkg = require('../package.json');
+  pkg = require('../package.json'),
+  firebaseUrl = 'https://' + require('../firebase.json').firebase + '.firebaseio.com';
 
 // prep to write docs to Firebase
 
@@ -53,6 +54,7 @@ module.exports = new Package('dgeni-flashpoint', [
   ];
 
   writeFilesProcessor.firebaseUrl = firebaseUrl;
+  writeFilesProcessor.firebaseAuthSecret = process.env.FLASHPOINT_AUTH_SECRET;
 
 })
 .config(function(computeIdsProcessor, createDocMessage, getAliases) {

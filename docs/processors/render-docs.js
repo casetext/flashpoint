@@ -3,6 +3,17 @@ var _ = require('lodash');
 
 module.exports = function renderDocsProcessor(log) {
 
+  function stripObject(obj) {
+
+    for (var key in obj) {
+      if (obj[key] === undefined || obj[key] === null) {
+        delete obj[key];
+      } else if (typeof obj[key] === 'object') {
+        stripObject(obj[key]);
+      }
+    }
+  }
+
   // this special renderDocsProcessor renders documents into JSON objects.
   return {
     helpers: {},
@@ -20,13 +31,12 @@ module.exports = function renderDocsProcessor(log) {
 
         doc.objectContent = {
 
-          firebasePath: doc.outputPath,
+          firebasePath: doc.outputPath.replace(/[#$~.:]+/g, '/'),
           startingLine: doc.startingLine,
           endingLine: doc.endingLine,
           name: doc.name,
           shortDescription: doc.description.split(/\n\n/)[0],
           area: doc.area,
-          codeName: doc.codeName,
           id: doc.id || doc.name || doc.path
 
         };
@@ -87,6 +97,7 @@ module.exports = function renderDocsProcessor(log) {
         }
 
         log.debug('Rendering doc:', doc.id || doc.name || doc.path);
+        stripObject(doc.objectContent);
         doc.renderedContent = JSON.stringify(doc.objectContent, undefined, 2);
 
       }, this);

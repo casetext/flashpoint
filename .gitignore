@@ -25,6 +25,9 @@ build/Release
 node_modules
 bower_components
 
+# Docs app folder
+docs/dist
+
 # Users Environment Variables
 .lock-wscript
 

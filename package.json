@@ -18,7 +18,7 @@
   "license": "MIT",
   "dependencies": {
     "angular": "^1.2.26",
-    "fireproof": "^2.3.1",
+    "fireproof": "^2.3.2",
     "firebase": "^2.0.6"
   },
   "devDependencies": {
@@ -50,6 +50,7 @@
     "lodash": "^2.4.1",
     "mocha": "^2.0.1",
     "node-html-encoder": "0.0.2",
+    "q": "^1.1.2",
     "rimraf": "^2.2.8"
   }
 }
