@@ -3,10 +3,7 @@ var path = require('path');
 
 var Package = require('dgeni').Package,
   pkg = require('../package.json'),
-  firebaseUrl = 'https://' + require('../firebase.json').firebase + '.firebaseio.com';
-
-// prep to write docs to Firebase
-
+  firebaseUrl = process.env.FLASHPOINT_URL;
 
 module.exports = new Package('dgeni-flashpoint', [
   require('dgeni-packages/jsdoc'),

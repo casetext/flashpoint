@@ -75,35 +75,19 @@ gulp.task('build', 'Builds the Javascript for distribution.', ['clean'], functio
 });
 
 
-gulp.task('docs:clean', 'Cleans docs.', function(done) {
-  rmdir('./docs/dist', done);
-});
+gulp.task('docs', 'Sends docs to Firebase', function() {
 
-gulp.task('docs:assets:js', 'Generates the Javascript assets for docs.', ['build', 'docs:clean'], function() {
-
-  return gulp.src(['dist/**/*.min.js', 'node_modules/fireproof/dist/fireproof.min.js'])
-  .pipe(gulp.dest('./docs/dist/js'));
-
-});
-
-
-gulp.task('docs:assets:app', 'Generates the app assets for docs.', ['build', 'docs:clean'], function() {
-
-  return gulp.src('docs/app/**/*')
-  .pipe(gulp.dest('./docs/dist'));
-
-});
-
-
-gulp.task('docs:firebase', 'Sends docs to Firebase', ['docs:assets:js', 'docs:assets:app'], function() {
-
-  if (!process.env.FLASHPOINT_AUTH_SECRET) {
-    throw new Error('You must set FLASHPOINT_AUTH_SECRET!');
+  if (!(process.env.FLASHPOINT_URL && process.env.FLASHPOINT_AUTH_SECRET)) {
+    throw new Error('You must set FLASHPOINT_URL and FLASHPOINT_AUTH_SECRET!');
   }
 
   var dgeni = new Dgeni([require('./docs/dgeni-flashpoint')]);
   try {
     return dgeni.generate()
+    .then(function() {
+      console.log('All done!');
+      process.exit(0);
+    })
     .catch(function(e) {
       console.log(e.stack);
       process.exit(1);
@@ -112,11 +96,6 @@ gulp.task('docs:firebase', 'Sends docs to Firebase', ['docs:assets:js', 'docs:as
     console.log(e.stack);
     process.exit(1);
   }
-
-});
-
-
-gulp.task('docs', 'Generates all docs.', ['docs:firebase'], function() {
 
 });
 

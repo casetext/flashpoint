@@ -1,7 +1,8 @@
 
 var Q = require('q'),
   Fireproof = require('fireproof'),
-  Firebase = require('firebase');
+  Firebase = require('firebase'),
+  _ = require('lodash');
 
 Fireproof.bless(Q);
 
@@ -25,19 +26,39 @@ module.exports = function writeFilesProcessor() {
         return Q.all(docs.map(function(doc) {
 
           var path = doc.objectContent.firebasePath;
-          delete doc.objectContent.firebasePath;
-          return root.child(path).set(doc.objectContent);
+          return root.child(path).set(_.omit(doc.objectContent, 'firebasePath'));
 
         }));
 
       })
       .then(function() {
 
-        // generate the indexes also
+        // generate the table of contents
+        return Q.all(docs.map(function(doc) {
 
+          var kind = doc.objectContent.ngdoc;
+          switch(kind) {
+          case 'type':
+          case 'directive':
+          case 'service':
+          case 'object':
+          case 'filter':
+            return root.child('toc')
+            .child(doc.module)
+            .child(kind)
+            .child(doc.objectContent.name)
+            .set(true);
+          default:
+            return new Q();
+          }
+
+        }));
+
+      })
+      .then(function() {
         return docs;
-
       });
+
     },
     $runAfter: ['writing-files'],
     $runBefore: ['files-written']
