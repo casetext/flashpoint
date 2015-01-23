@@ -1,5 +1,6 @@
 
-var Q = require('q'),
+var fs = require('fs'),
+  Q = require('q'),
   Fireproof = require('fireproof'),
   Firebase = require('firebase'),
   _ = require('lodash'),
@@ -72,10 +73,23 @@ module.exports = function writeFilesProcessor() {
           return root.child(name)
           .child(version)
           .child('indexes/name->path')
-          .child(keyify(doc.objectContent.name))
-          .set(doc.objectContent.firebasePath);
+          .child(keyify(doc.objectContent.name).toLowerCase())
+          .set({
+            name: keyify(doc.objectContent.name),
+            description: doc.objectContent.shortDescription,
+            path: doc.objectContent.firebasePath
+           });
 
         }));
+
+      })
+      .then(function() {
+
+        // send the README too
+        return root.child(name)
+        .child(version)
+        .child('readme')
+        .set(fs.readFileSync('./README.md').toString());
 
       })
       .then(function() {
