@@ -68,7 +68,9 @@ angular.module('flashpoint')
     Fireproof.stats.on('finish', actionFinished);
     Fireproof.stats.on('error', actionErrored);
 
-    // after 20 seconds, assume something's gone wrong and signal timeout.
+    // after the timeout period (20 seconds by default),
+    // assume something's gone wrong and signal timeout.
+
     service._deadHand = $timeout(function() {
 
       switchOff();
@@ -78,6 +80,23 @@ angular.module('flashpoint')
 
     $rootScope.$broadcast('flashpointLoadStart');
     $animate.addClass($document, 'fp-loading');
+
+  };
+
+  service.routeLinked = function() {
+
+    // If no Firebase loads have started by this point, we assume that none will,
+    // and notify load success.
+    if (Fireproof.stats.runningOperationCount === 0 &&
+      Fireproof.stats.listenCount === 0) {
+
+      // set the "fp-loaded" attribute on the body
+      $animate.setClass($document, 'fp-loaded', 'fp-loading');
+
+      $rootScope.$broadcast('flashpointLoadSuccess', []);
+      $rootScope.$evalAsync();
+
+    }
 
   };
 

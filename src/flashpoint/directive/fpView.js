@@ -1,5 +1,5 @@
 
-function fpViewFillContentFactory($compile, $controller, $route, firebaseStatus) {
+function fpViewFillContentFactory($compile, $controller, $timeout, $route, firebaseStatus) {
 
   return {
     restrict: 'ECA',
@@ -32,7 +32,16 @@ function fpViewFillContentFactory($compile, $controller, $route, firebaseStatus)
 
       link(scope);
 
+      setTimeout(function() {
+
+        scope.$apply(function() {
+          firebaseStatus.routeLinked();
+        });
+
+      }, 0);
+
     }
+
   };
 
 }

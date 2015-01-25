@@ -179,6 +179,26 @@ describe('flashpoint service', function() {
 
     });
 
+    it('calls "loaded" immediately if no Firebase data has been requested', function(done) {
+
+      module(function($routeProvider, fpRoute) {
+
+        $routeProvider.otherwise(fpRoute({
+
+          firebase: window.__env__.FIREBASE_TEST_URL,
+          template: '<div><div id="test-obj">{{ thingamajig + friend }}</div></div>',
+          loaded: function() {
+            done();
+          }
+
+        }));
+
+      });
+
+      runRoutes();
+
+    });
+
   });
 
 });
