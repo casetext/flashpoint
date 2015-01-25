@@ -1,4 +1,4 @@
-/*! flashpoint 2.0.1, © 2014 J2H2 Inc. MIT License.
+/*! flashpoint 2.0.2, © 2015 J2H2 Inc. MIT License.
  * https://github.com/casetext/flashpoint
  */
 (function (root, factory) {
@@ -401,7 +401,7 @@
   
   
   
-  function fpViewFillContentFactory($compile, $controller, $route, firebaseStatus) {
+  function fpViewFillContentFactory($compile, $controller, $timeout, $route, firebaseStatus) {
   
     return {
       restrict: 'ECA',
@@ -434,11 +434,20 @@
   
         link(scope);
   
+        setTimeout(function() {
+  
+          scope.$apply(function() {
+            firebaseStatus.routeLinked();
+          });
+  
+        }, 0);
+  
       }
+  
     };
   
   }
-  fpViewFillContentFactory.$inject = ["$compile", "$controller", "$route", "firebaseStatus"];
+  fpViewFillContentFactory.$inject = ["$compile", "$controller", "$timeout", "$route", "firebaseStatus"];
   
   angular.module('flashpoint')
   .directive('fpView', fpViewFillContentFactory);
@@ -895,7 +904,9 @@
       Fireproof.stats.on('finish', actionFinished);
       Fireproof.stats.on('error', actionErrored);
   
-      // after 20 seconds, assume something's gone wrong and signal timeout.
+      // after the timeout period (20 seconds by default),
+      // assume something's gone wrong and signal timeout.
+  
       service._deadHand = $timeout(function() {
   
         switchOff();
@@ -905,6 +916,23 @@
   
       $rootScope.$broadcast('flashpointLoadStart');
       $animate.addClass($document, 'fp-loading');
+  
+    };
+  
+    service.routeLinked = function() {
+  
+      // If no Firebase loads have started by this point, we assume that none will,
+      // and notify load success.
+      if (Fireproof.stats.runningOperationCount === 0 &&
+        Fireproof.stats.listenCount === 0) {
+  
+        // set the "fp-loaded" attribute on the body
+        $animate.setClass($document, 'fp-loaded', 'fp-loading');
+  
+        $rootScope.$broadcast('flashpointLoadSuccess', []);
+        $rootScope.$evalAsync();
+  
+      }
   
     };
   
