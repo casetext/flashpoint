@@ -31,6 +31,7 @@ module.exports = function renderDocsProcessor(log) {
 
         doc.objectContent = {
 
+          module: doc.module,
           file: doc.fileInfo.projectRelativePath,
           firebasePath: doc.outputPath.replace(/[#$~.:]+/g, '/'),
           startingLine: doc.startingLine,

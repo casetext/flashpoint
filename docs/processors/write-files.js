@@ -33,7 +33,7 @@ module.exports = function writeFilesProcessor() {
 
         return Q.all(docs.map(function(doc) {
 
-          var path = name + '/' + version + '/' + doc.objectContent.firebasePath;
+          var path = version + '/' + doc.objectContent.firebasePath;
           return root.child(path).set(_.omit(doc.objectContent, 'firebasePath'));
 
         }));
@@ -51,8 +51,7 @@ module.exports = function writeFilesProcessor() {
           case 'service':
           case 'object':
           case 'filter':
-            return root.child(name)
-            .child(version)
+            return root.child(version)
             .child('toc')
             .child(doc.module)
             .child(kind)
@@ -70,8 +69,7 @@ module.exports = function writeFilesProcessor() {
         // generate the flat name lookup
         return Q.all(docs.map(function(doc) {
 
-          return root.child(name)
-          .child(version)
+          return root.child(version)
           .child('indexes/name->path')
           .child(keyify(doc.objectContent.name).toLowerCase())
           .set({
@@ -86,8 +84,7 @@ module.exports = function writeFilesProcessor() {
       .then(function() {
 
         // send the README too
-        return root.child(name)
-        .child(version)
+        return root.child(version)
         .child('readme')
         .set(fs.readFileSync('./README.md').toString());
 
