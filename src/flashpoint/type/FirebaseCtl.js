@@ -9,11 +9,7 @@ function FirebaseCtl(
   Fireproof,
   ChildQuery,
   validatePath,
-  _fpHandleLogin,
-  _fpHandleLogout,
-  _fpFirebaseUrl,
-  _fpOnLoaded,
-  _fpOnError) {
+  ListenerSet) {
 
   /**
    * @ngdoc type
@@ -29,122 +25,21 @@ function FirebaseCtl(
    * @property {object} $auth Firebase authentication data, or `null`.
    */
 
-  var self = this,
-      watchers = self.$$watchers = {},
-      liveWatchers = {},
-      values = {},
-      _defaultLoginHandler = function() {
-        return $q.reject(new Error('No login handler is set for ' + self.root));
-      },
-      _defaultLogoutHandler = function() {
-        self.root.unauth();
-      },
-      _loginHandler = _defaultLoginHandler,
-      _logoutHandler = _defaultLogoutHandler;
-
+  var self = this;
 
   self.auth = null;
 
-  // Clean up orphaned Firebase listeners between scope cycles.
-  // HERE BE DRAGONS! We employ the private $scope.$$postDigest method.
-  var scrubbingListeners = false;
-
-  function scrubListeners() {
-
-    for (var path in watchers) {
-
-      if (watchers[path] && !liveWatchers[path]) {
-
-        // disconnect this watcher, it doesn't exist anymore.
-        if (watchers[path].disconnect) {
-          watchers[path].disconnect();
-        } else {
-          self.root.child(path).off('value', watchers[path]);
-          values[path] = null;
-        }
-
-        watchers[path] = null;
-
-      }
-
-    }
-
-    // as of now, nothing is alive.
-    liveWatchers = {};
-    scrubbingListeners = false;
-
-  }
-
-
-  $scope.$watch(function() {
-
-    if (!scrubbingListeners) {
-
-      scrubbingListeners = true;
-      $scope.$$postDigest(scrubListeners);
-
-    }
-
-  });
-
-
   function authHandler(authData) {
+
+    if (self.listenerSet) {
+      self.listenerSet.clear();
+    }
+
     self.auth = authData;
+
+    $scope.$evalAsync();
+
   }
-
-
-  /**
-   * @ngdoc method
-   * @name FirebaseCtl#login
-   * @description Requests that the login handler demand credentials from the
-   * user and return the result.
-   * If no login handler has been set, this method will automatically reject.
-   * @param {object=} options An arbitrary set of options which will be passed
-   * to the login handler for convenience.
-   * @return {Promise} A promise that resolves if the user successfully logs
-   * in and rejects if the user refuses or fails to log in.
-   */
-  self.login = function(options) {
-    return $q.when(_loginHandler(self.root, options));
-  };
-
-
-  /**
-   * @ngdoc method
-   * @name FirebaseCtl#setLoginHandler
-   * @description Sets the login handler method.
-   * @param {function=} fn The login handler. If none is supplied, resets to default.
-   */
-  self.setLoginHandler = function(fn) {
-    _loginHandler = (fn || _defaultLoginHandler);
-  };
-
-
-  /**
-   * @ngdoc method
-   * @name FirebaseCtl#logout
-   * @description Requests that the logout handler deauthorize the user and return
-   * the result. Also made available on the enclosing scope as `$logout`.
-   * If no logout handler has been set, this method just calls `root.unauth()`.
-   * @param {object=} options An arbitrary set of options which will be passed
-   * to the logout handler for convenience.
-   * @return {Promise} A promise that resolves if the user successfully logs
-   * out and rejects if the user refuses or fails to log out.
-   */
-  self.logout = function(options) {
-    return $q.when(_logoutHandler(self.root, options));
-  };
-
-
-  /**
-   * @ngdoc method
-   * @name FirebaseCtl#setLogoutHandler
-   * @description Sets the logout handler method.
-   * @param {function=} fn The logout handler. If none is supplied, resets to default.
-   */
-  self.setLogoutHandler = function(fn) {
-    _logoutHandler = (fn || _defaultLogoutHandler);
-  };
 
 
   /**
@@ -155,9 +50,13 @@ function FirebaseCtl(
    */
   self.cleanup = function() {
 
-    // reset the login and logout handlers to default.
-    _loginHandler = _defaultLoginHandler;
-    _logoutHandler = _defaultLogoutHandler;
+    // detach all watchers
+    if (self.listenerSet) {
+
+      self.listenerSet.clear();
+      delete self.listenerSet;
+
+    }
 
     // detach any remaining listeners here.
     self.root.offAuth(authHandler);
@@ -170,6 +69,8 @@ function FirebaseCtl(
 
     // clear auth data.
     delete self.auth;
+
+    $scope.$evalAsync();
 
   };
 
@@ -188,6 +89,8 @@ function FirebaseCtl(
     }
 
     self.root = new Fireproof(new Firebase(url));
+
+    self.listenerSet = new ListenerSet(self.root, $scope);
     self.auth = self.root.getAuth();
     self.root.onAuth(authHandler);
 
@@ -523,25 +426,63 @@ function FirebaseCtl(
       return;
     }
 
-    if (!values.hasOwnProperty(path)) {
-      values[path] = null;
+    self.listenerSet.add(path);
+
+    if (self.listenerSet.values.hasOwnProperty(path)) {
+      return self.listenerSet.values[path];
+    } else {
+      return null;
     }
 
-    liveWatchers[path] = true;
+  };
 
-    if (!watchers[path]) {
 
-      watchers[path] = self.root.child(path)
-      .on('value', function(snap) {
+  /**
+   * @ngdoc method
+   * @name FirebaseCtl#priority
+   * @description Gets a priority from Firebase and triggers scope refresh when that priority changes.
+   * @param {...string} pathPart Path components to be joined.
+   * @returns {*} `null` on the first scope digest, and the actual priority subsequently.
+   */
+  self.priority = function() {
 
-        values[path] = snap.val();
-        $scope.$evalAsync();
-
-      });
-
+    var path = validatePath(Array.prototype.slice.call(arguments, 0));
+    if (!path) {
+      return;
     }
 
-    return values[path];
+    self.listenerSet.add(path);
+
+    if (self.listenerSet.priorities.hasOwnProperty(path)) {
+      return self.listenerSet.priorities[path];
+    } else {
+      return null;
+    }
+
+  };
+
+
+  /**
+   * @ngdoc method
+   * @name FirebaseCtl#error
+   * @description Gets the error associated with trying to read a specific path in Firebase.
+   * @param {...string} pathPart Path components to be joined.
+   * @returns {*} The error on trying to read the path, or `null` if there wasn't one.
+   *
+   * @example
+   * ```html
+   * <span>Welcome, {{ fp.val('users', userId, 'firstName') }}!</button>
+   * ```
+   */
+  self.error = function() {
+
+    var path = validatePath(Array.prototype.slice.call(arguments, 0));
+
+    if (path && self.listenerSet.errors.hasOwnProperty(path)) {
+      return self.listenerSet.errors[path];
+    } else {
+      return null;
+    }
 
   };
 
@@ -559,92 +500,23 @@ function FirebaseCtl(
    * @example
    * ```html
    * <ul>
-   *   <li ng-repeat="user in fp.children().orderByChild('lastName').startAt('Ba').endAt('Bz').of('users').values">
+   *   <li ng-repeat="user in fp.children().orderByChild('lastName').startAt('B').endAt('Bz').of('users').values">
    *      <span>{{ user.firstName }} {{ user.lastName }} is a user whose last name starts with B!</span>
    *   </li>
    * </ul>
    * ```
    */
-  self.children = function() { return new ChildQuery(self.root, watchers, liveWatchers); };
+  self.children = function() {
+    return new ChildQuery(self.listenerSet);
+  };
 
 
   $scope.$on('$destroy', function() {
-
-    // remove all listeners
-    angular.forEach(watchers, function(watcher, path) {
-      self.root.child(path).off('value', watcher);
-    });
 
     // shut down controller
     self.cleanup();
 
   });
-
-
-  // handle route controller stuff.
-
-  if (_fpFirebaseUrl !== null) {
-
-    // attach using this url.
-    self.attachFirebase(_fpFirebaseUrl);
-
-  }
-
-  if (angular.isFunction(_fpOnLoaded)) {
-
-    var cancel = $scope.$on('flashpointLoadSuccess', function() {
-
-      cancel();
-      $injector.invoke(_fpOnLoaded, null, {
-        root: self.root,
-        auth: self.auth
-      });
-
-    });
-
-  }
-
-  if (angular.isFunction(_fpOnError)) {
-
-    var onError = function(err) {
-
-      $injector.invoke(_fpOnError, null, {
-        root: self.root,
-        auth: self.auth,
-        event: err
-      });
-
-    };
-
-    $scope.$on('flashpointLoadError', onError);
-    $scope.$on('flashpointLoadTimeout', onError);
-
-  }
-
-  if (angular.isFunction(_fpHandleLogin)) {
-
-    self.setLoginHandler(function() {
-
-      return $injector.invoke(_fpHandleLogin, null, {
-        root: self.root
-      });
-
-    });
-
-  }
-
-  if (angular.isFunction(_fpHandleLogout)) {
-
-    self.setLogoutHandler(function() {
-
-      return $injector.invoke(_fpHandleLogout, null, {
-        root: self.root,
-        auth: self.auth
-      });
-
-    });
-
-  }
 
 }
 

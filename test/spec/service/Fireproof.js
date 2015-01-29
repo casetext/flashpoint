@@ -4,7 +4,6 @@ describe('in the Fireproof services,', function() {
   beforeEach(function() {
 
     module('flashpoint');
-    module('flashpoint.mocks.pump');
 
   });
 

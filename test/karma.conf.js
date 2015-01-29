@@ -14,7 +14,8 @@ module.exports = function(config) {
       { pattern: 'node_modules/firebase/lib/firebase-web.js', watched: false },
       { pattern: 'node_modules/fireproof/dist/fireproof.js', watched: false },
       { pattern: 'node_modules/chai-fireproof/dist/chai-fireproof.js', watched: false },
-      'dist/flashpoint.js',
+      'src/flashpoint/index.js',
+      'src/flashpoint/**/*.js',
       'test/mocks.js',
       'test/spec/**/*.js'
     ],

@@ -89,25 +89,6 @@ describe('FirebaseCtl', function() {
       fp.attachFirebase(window.__env__.FIREBASE_TEST_URL);
       root = new Fireproof(r);
 
-      fp.setLoginHandler(function() {
-
-        var deferred = Q.defer();
-
-        root.authWithPassword({
-          email: 'testy@testerson.com',
-          password: '12345'
-        }, function(err) {
-          if (err) {
-            deferred.reject(err);
-          } else {
-            deferred.resolve();
-          }
-        });
-
-        return deferred.promise;
-
-      });
-
     });
 
   });
@@ -137,8 +118,8 @@ describe('FirebaseCtl', function() {
       $rootScope.$digest();
 
       // and then both listeners should be detached
-      expect(fp.$$watchers['test/firebase/lol']).to.be.null;
-      expect(fp.$$watchers['test/firebase/wut']).to.be.null;
+      expect(fp.listenerSet.watchers['test/firebase/lol']).to.be.null;
+      expect(fp.listenerSet.watchers['test/firebase/wut']).to.be.null;
 
     });
 
@@ -178,7 +159,7 @@ describe('FirebaseCtl', function() {
       $rootScope.$digest();
 
       // and then the listener should be detached
-      expect(fp.$$watchers['test/firebase/children.children']).to.be.null;
+      expect(fp.listenerSet.watchers['test/firebase/children.children']).to.be.null;
 
     });
 

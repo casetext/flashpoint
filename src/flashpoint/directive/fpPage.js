@@ -31,7 +31,7 @@ angular.module('flashpoint')
    * `favorites/{{ $auth.uid }}`. Interpolatable.
    * @param {expression} as The name of a variable on scope to bind. So you could do
    * something like
-   * `<example fp-page="users/{{ $auth.uid }}" as="users">
+   * `<example fp-page="users" as="users">
    *   <ul>
    *     <li ng-repeat="user in users"> {{ user.name }} </li>
    *   </ul>

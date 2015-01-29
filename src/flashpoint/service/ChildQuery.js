@@ -7,11 +7,9 @@ angular.module('flashpoint')
    * @name ChildQuery
    * @description A way to generate long Firebase queries inside an Angular expression.
    */
-  function ChildQuery(root, watchers, liveWatchers) {
+  function ChildQuery(listenerSet) {
 
-    this.root = root;
-    this.watchers = watchers;
-    this.liveWatchers = liveWatchers;
+    this.listenerSet = listenerSet;
     this._props = {};
 
   }
@@ -135,7 +133,7 @@ angular.module('flashpoint')
 
     var args = Array.prototype.slice.call(arguments, 0),
       path = validatePath(args),
-      ref = this.root.child(path),
+      ref = this.listenerSet.root.child(path),
       id = path + '.children';
 
     switch(this._props.orderBy || '') {
@@ -187,22 +185,24 @@ angular.module('flashpoint')
       ref = ref.limitToLast(this._props.limitToLast);
     }
 
-    this.liveWatchers[id] = true;
+    if (this.listenerSet.has(id)) {
+      return this.listenerSet.watchers[id];
+    } else {
 
-    if (!this.watchers[id]) {
+      var watcher = new Fireproof.LiveArray();
+      this.listenerSet.add(id, watcher);
 
-      this.watchers[id] = new Fireproof.LiveArray();
       if (this._props.orderBy === 'child') {
-        this.watchers[id].connect(ref, this._props.orderBy, this._props.orderByChild);
+        watcher.connect(ref, this._props.orderBy, this._props.orderByChild);
       } else if (this._props.orderBy) {
-        this.watchers[id].connect(ref, this._props.orderBy);
+        watcher.connect(ref, this._props.orderBy);
       } else {
-        this.watchers[id].connect(ref);
+        watcher.connect(ref);
       }
 
-    }
+      return watcher;
 
-    return this.watchers[id];
+    }
 
   };
 

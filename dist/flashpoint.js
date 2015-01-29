@@ -1,4 +1,4 @@
-/*! flashpoint 2.0.2, © 2015 J2H2 Inc. MIT License.
+/*! flashpoint 2.1.0, © 2015 J2H2 Inc. MIT License.
  * https://github.com/casetext/flashpoint
  */
 (function (root, factory) {
@@ -48,55 +48,23 @@
      * easily pass them into a promise chain like so:
      *
      * <example firebase="https://my-firebase.firebaseio.com">
-     *   <button ng-click="login().then($set('signups', $auth.uid, true))">Sign up!</button>
+     *   <button ng-disabled='fp.auth === null' ng-click="fp.set('signups', $auth.uid, true)">Sign up!</button>
      * </example>
      *
-     * If you want to run the action immediately, you can use e.g. `fp.set(...).now()`.
-     * But this is _NOT_ necessary in Angular expressions! Angular already knows
-     * to "unwrap" and evaluate the function. So you can do the following:
-     *
-     * <example firebase="https://my-firebase.firebaseio.com">
-     *   <button ng-click="$set('signups', $auth.uid, true)">Sign up!</button>
-     * </example>
      *
      * @restrict A
      * @element ANY
      * @scope
      * @param {expression} firebase Full URL to the Firebase, like
      * `https://my-firebase.firebaseio.com`. Interpolatable.
-     * @param {expression} loginHandler A method on local scope that challenges
-     * the user for login credentials and returns a {@type Promise} that resolves
-     * on login or rejects on failure. Required if you plan to use authentication.
-     * @param {expression} logoutHandler A method on local scope that handles logout
-     * procedures and returns a {@type Promise} that resolves on success or rejects
-     * on failure. By default this just calls `root.unauth()`.
-     * @param {expression} onAuthChange An expression that gets evaluated when
-     * auth conditions change, because the user logs in or out.
+     * @param {expression} challenge Expression to evaluate when fp.challenge() is called
+     * somewhere. This expression should evaluate to a promise that resolves on
      */
   
     var attached, attachedUrl;
   
   
-    var preLink = function(scope, el, attrs, controller) {
-  
-      var authHandler = function(authData) {
-  
-        setTimeout(function() {
-  
-          scope.$apply(function() {
-  
-            scope.$auth = authData;
-  
-            if (attrs.onAuthChange) {
-              scope.$evalAsync(attrs.onAuthChange);
-            }
-  
-          });
-  
-        }, 0);
-  
-      };
-  
+    function firebasePreLink(scope, el, attrs, fp) {
   
       var attachToController = function(url) {
   
@@ -105,43 +73,7 @@
           return;
         }
   
-        if (controller.root) {
-  
-          // detach old auth listener
-          controller.root.offAuth(authHandler);
-  
-        }
-  
-        controller.attachFirebase(url);
-  
-        // attach new auth listener
-        controller.root.onAuth(authHandler);
-  
-  
-        // attach handlers, possibly
-        if (attrs.loginHandler) {
-  
-          controller.setLoginHandler(function(root, options) {
-            return scope.$eval(attrs.loginHandler, { $root: root, $options: options });
-          });
-  
-        } else {
-          // reset to default handler.
-          controller.setLoginHandler();
-        }
-  
-  
-        if (attrs.logoutHandler) {
-  
-          controller.setLogoutHandler(function(root, options) {
-            return scope.$eval(attrs.logoutHandler, { $root: root, $options: options });
-          });
-  
-        } else {
-          // reset to default handler.
-          controller.setLogoutHandler();
-        }
-  
+        fp.attachFirebase(url);
         attached = true;
         attachedUrl = url;
   
@@ -151,11 +83,11 @@
       if (attrs.firebase) {
         attachToController(attrs.firebase);
       }
-      scope.fp = controller;
+      scope.fp = fp;
   
       attrs.$observe('firebase', attachToController);
   
-    };
+    }
   
   
     return {
@@ -165,7 +97,7 @@
       controller: 'FirebaseCtl',
       priority: 1000,
       link: {
-        pre: preLink
+        pre: firebasePreLink
       }
   
     };
@@ -206,7 +138,7 @@
      * `favorites/{{ $auth.uid }}`. Interpolatable.
      * @param {expression} as The name of a variable on scope to bind. So you could do
      * something like
-     * `<example fp-page="users/{{ $auth.uid }}" as="users">
+     * `<example fp-page="users" as="users">
      *   <ul>
      *     <li ng-repeat="user in users"> {{ user.name }} </li>
      *   </ul>
@@ -401,58 +333,6 @@
   
   
   
-  function fpViewFillContentFactory($compile, $controller, $timeout, $route, firebaseStatus) {
-  
-    return {
-      restrict: 'ECA',
-      priority: -350,
-      terminal: true,
-      link: function(scope, $element) {
-  
-        var locals = $route.current.locals;
-  
-        $element.html(locals.$template);
-  
-        var link = $compile($element.contents());
-  
-        angular.forEach(locals, function(value, name) {
-  
-          if (name.charAt(0) !== '$' && name.charAt(0) !== '_') {
-            scope[name] = value;
-          }
-  
-        });
-  
-        locals.$scope = scope;
-        var controller = $controller('FirebaseCtl', locals);
-        scope.fp = controller;
-  
-        $element.data('$firebaseController', controller);
-        $element.children().data('$firebaseController', controller);
-  
-        firebaseStatus.startRoute();
-  
-        link(scope);
-  
-        setTimeout(function() {
-  
-          scope.$apply(function() {
-            firebaseStatus.routeLinked();
-          });
-  
-        }, 0);
-  
-      }
-  
-    };
-  
-  }
-  fpViewFillContentFactory.$inject = ["$compile", "$controller", "$timeout", "$route", "firebaseStatus"];
-  
-  angular.module('flashpoint')
-  .directive('fpView', fpViewFillContentFactory);
-  
-  
   angular.module('flashpoint')
   .factory('ChildQuery', ["validatePath", function(validatePath) {
   
@@ -461,11 +341,9 @@
      * @name ChildQuery
      * @description A way to generate long Firebase queries inside an Angular expression.
      */
-    function ChildQuery(root, watchers, liveWatchers) {
+    function ChildQuery(listenerSet) {
   
-      this.root = root;
-      this.watchers = watchers;
-      this.liveWatchers = liveWatchers;
+      this.listenerSet = listenerSet;
       this._props = {};
   
     }
@@ -589,7 +467,7 @@
   
       var args = Array.prototype.slice.call(arguments, 0),
         path = validatePath(args),
-        ref = this.root.child(path),
+        ref = this.listenerSet.root.child(path),
         id = path + '.children';
   
       switch(this._props.orderBy || '') {
@@ -641,22 +519,24 @@
         ref = ref.limitToLast(this._props.limitToLast);
       }
   
-      this.liveWatchers[id] = true;
+      if (this.listenerSet.has(id)) {
+        return this.listenerSet.watchers[id];
+      } else {
   
-      if (!this.watchers[id]) {
+        var watcher = new Fireproof.LiveArray();
+        this.listenerSet.add(id, watcher);
   
-        this.watchers[id] = new Fireproof.LiveArray();
         if (this._props.orderBy === 'child') {
-          this.watchers[id].connect(ref, this._props.orderBy, this._props.orderByChild);
+          watcher.connect(ref, this._props.orderBy, this._props.orderByChild);
         } else if (this._props.orderBy) {
-          this.watchers[id].connect(ref, this._props.orderBy);
+          watcher.connect(ref, this._props.orderBy);
         } else {
-          this.watchers[id].connect(ref);
+          watcher.connect(ref);
         }
   
-      }
+        return watcher;
   
-      return this.watchers[id];
+      }
   
     };
   
@@ -726,218 +606,118 @@
   
   
   angular.module('flashpoint')
-  .constant('_fpFirebaseUrl', null)
-  .constant('_fpOnLoaded', null)
-  .constant('_fpOnError', null)
-  .constant('_fpHandleLogin', null)
-  .constant('_fpHandleLogout', null)
-  .constant('fpRoute', function(routeDefinitionObject) {
+  .factory('ListenerSet', function() {
   
-    if (!routeDefinitionObject.firebase) {
-      throw new Error('No Firebase URL has been defined in your controller. ' +
-        'Please set the "firebase" property in your route definition object.');
-    }
+    function ListenerSet(root, scope) {
   
-    routeDefinitionObject.resolve = routeDefinitionObject.resolve || {};
+      var self = this,
+        scrubbingListeners = false;
   
-    var firebaseUrl = routeDefinitionObject.firebase;
-    delete routeDefinitionObject.firebase;
+      self.watchers = {};
+      self.liveWatchers = {};
+      self.values = {};
+      self.priorities = {};
+      self.errors = {};
   
+      self.scope = scope;
+      self.scope.$watch(function() {
   
-    if (routeDefinitionObject.loaded) {
+        // after each scope cycle, sweep out any "orphaned" listeners, i.e.,
+        // ones we previously connected but don't need anymore.
   
-      var onLoaded = routeDefinitionObject.loaded;
-      delete routeDefinitionObject.loaded;
+        if (!scrubbingListeners) {
   
-      routeDefinitionObject.resolve._fpOnLoaded = function() {
-        return onLoaded;
-      };
+          scrubbingListeners = true;
+          scope.$$postDigest(function() {
   
-    }
+            for (var path in self.watchers) {
   
-    if (routeDefinitionObject.error) {
+              if (self.watchers[path] && !self.liveWatchers[path]) {
+                self.remove(path);
+              }
   
-      var onError = routeDefinitionObject.error;
-      delete routeDefinitionObject.error;
+            }
   
-      routeDefinitionObject.resolve._fpOnError = function() {
-        return onError;
-      };
-  
-    }
-  
-    if (routeDefinitionObject.login) {
-  
-      var login = routeDefinitionObject.login;
-  
-      routeDefinitionObject.resolve._fpHandleLogin = function() {
-        return login;
-      };
-  
-    }
-  
-    if (routeDefinitionObject.logout) {
-  
-      var logout = routeDefinitionObject.logout;
-      delete routeDefinitionObject.logout;
-  
-      routeDefinitionObject.resolve._fpHandleLogout = function() {
-        return logout;
-      };
-  
-    }
-  
-  
-    routeDefinitionObject.resolve._fpFirebaseUrl = function($q, $injector, Firebase, Fireproof) {
-  
-      var root = new Fireproof(new Firebase(firebaseUrl));
-  
-      return $q.when()
-      .then(function() {
-  
-        if (routeDefinitionObject.challenge &&
-          routeDefinitionObject.login &&
-          root.getAuth() === null) {
-  
-          // the "login" function is injectable
-          return $injector.invoke(routeDefinitionObject.login, null, {
-            root: root,
-            auth: null
           });
   
         }
   
-      })
-      .then(function() {
-  
-        if (routeDefinitionObject.authorize) {
-  
-          // the "authorize" function is injectable
-          return $injector.invoke(routeDefinitionObject.authorize, null, {
-            root: root,
-            auth: root.getAuth()
-          });
-  
-        }
-  
-      })
-      .then(function() {
-        return firebaseUrl;
       });
   
-    };
-  
-    routeDefinitionObject.resolve._fpFirebaseUrl.$inject =
-      ['$q', '$injector', 'Firebase', 'Fireproof'];
-  
-    return routeDefinitionObject;
-  
-  });
-  
-  
-  angular.module('flashpoint')
-  .value('fpLoadedTimeout', 20000)
-  .service('firebaseStatus', ["$interval", "$timeout", "$document", "$animate", "$rootScope", "$log", "Fireproof", "fpLoadedTimeout", function(
-    $interval,
-    $timeout,
-    $document,
-    $animate,
-    $rootScope,
-    $log,
-    Fireproof,
-    fpLoadedTimeout
-  ) {
-  
-    var service = this;
-  
-    function switchOff() {
-  
-      Fireproof.stats.off('finish', actionFinished);
-      Fireproof.stats.off('error', actionErrored);
-      $timeout.cancel(service._deadHand);
-  
     }
   
-    function actionFinished() {
+    ListenerSet.prototype.add = function(path, watcher) {
   
-      if (Fireproof.stats.runningOperationCount === 0) {
+      var self = this;
   
-        switchOff();
+      self.liveWatchers[path] = true;
   
-        var operationList = [];
-        for (var id in Fireproof.stats.operationLog) {
-          operationList.push(Fireproof.stats.operationLog[id]);
+      if (!self.watchers[path]) {
+  
+        if (watcher) {
+          self.watchers[path] = watcher;
+        } else {
+  
+          self.watchers[path] = self.root.child(path)
+          .on('value', function(snap) {
+  
+            self.errors[path] = null;
+            self.values[path] = snap.val();
+            self.priorities[path] = snap.getPriority();
+            self.scope.$evalAsync();
+  
+          }, function(err) {
+  
+            self.liveWatchers[path] = false;
+            self.watchers[path] = null;
+            self.errors[path] = err;
+            self.values[path] = null;
+            self.priorities[path] = null;
+            self.scope.$evalAsync();
+  
+          });
+  
         }
   
-        operationList.sort(function(a, b) {
-          return (a.start - b.start) || (a.end - b.end);
-        });
-  
-        // set the "fp-loaded" attribute on the body
-        $animate.setClass($document, 'fp-loaded', 'fp-loading');
-  
-        $rootScope.$broadcast('flashpointLoadSuccess', operationList);
-        $rootScope.$evalAsync();
-  
-      }
-  
-    }
-  
-    function actionErrored(event) {
-  
-      switchOff();
-      $rootScope.$broadcast('flashpointLoadError', event);
-  
-    }
-  
-    function reset() {
-  
-      Fireproof.stats.reset();
-      Fireproof.stats.resetListeners();
-  
-    }
-  
-    service.startRoute = function() {
-  
-      reset();
-  
-      Fireproof.stats.on('finish', actionFinished);
-      Fireproof.stats.on('error', actionErrored);
-  
-      // after the timeout period (20 seconds by default),
-      // assume something's gone wrong and signal timeout.
-  
-      service._deadHand = $timeout(function() {
-  
-        switchOff();
-        $rootScope.$broadcast('flashpointLoadTimeout');
-  
-      }, fpLoadedTimeout);
-  
-      $rootScope.$broadcast('flashpointLoadStart');
-      $animate.addClass($document, 'fp-loading');
-  
-    };
-  
-    service.routeLinked = function() {
-  
-      // If no Firebase loads have started by this point, we assume that none will,
-      // and notify load success.
-      if (Fireproof.stats.runningOperationCount === 0 &&
-        Fireproof.stats.listenCount === 0) {
-  
-        // set the "fp-loaded" attribute on the body
-        $animate.setClass($document, 'fp-loaded', 'fp-loading');
-  
-        $rootScope.$broadcast('flashpointLoadSuccess', []);
-        $rootScope.$evalAsync();
-  
       }
   
     };
   
   
-  }]);
+    ListenerSet.prototype.has = function(path) {
+      return this.watchers.hasOwnProperty(path);
+    };
+  
+  
+    ListenerSet.prototype.remove = function(path) {
+  
+      // disconnect this watcher, it doesn't exist anymore.
+      if (this.watchers[path].disconnect) {
+        this.watchers[path].disconnect();
+      } else {
+        this.root.child(path).off('value', this.watchers[path]);
+      }
+  
+      // clear all values associated with the watcher
+      this.values[path] = null;
+      this.errors[path] = null;
+      this.priorities[path] = null;
+      this.watchers[path] = null;
+  
+    };
+  
+  
+    ListenerSet.prototype.clear = function() {
+  
+      for (var path in this.watchers) {
+        this.remove(path);
+      }
+  
+    };
+  
+    return ListenerSet;
+  
+  });
   
   
   angular.module('flashpoint')
@@ -975,11 +755,7 @@
     Fireproof,
     ChildQuery,
     validatePath,
-    _fpHandleLogin,
-    _fpHandleLogout,
-    _fpFirebaseUrl,
-    _fpOnLoaded,
-    _fpOnError) {
+    ListenerSet) {
   
     /**
      * @ngdoc type
@@ -995,122 +771,18 @@
      * @property {object} $auth Firebase authentication data, or `null`.
      */
   
-    var self = this,
-        watchers = self.$$watchers = {},
-        liveWatchers = {},
-        values = {},
-        _defaultLoginHandler = function() {
-          return $q.reject(new Error('No login handler is set for ' + self.root));
-        },
-        _defaultLogoutHandler = function() {
-          self.root.unauth();
-        },
-        _loginHandler = _defaultLoginHandler,
-        _logoutHandler = _defaultLogoutHandler;
-  
+    var self = this;
   
     self.auth = null;
   
-    // Clean up orphaned Firebase listeners between scope cycles.
-    // HERE BE DRAGONS! We employ the private $scope.$$postDigest method.
-    var scrubbingListeners = false;
-  
-    function scrubListeners() {
-  
-      for (var path in watchers) {
-  
-        if (watchers[path] && !liveWatchers[path]) {
-  
-          // disconnect this watcher, it doesn't exist anymore.
-          if (watchers[path].disconnect) {
-            watchers[path].disconnect();
-          } else {
-            self.root.child(path).off('value', watchers[path]);
-            values[path] = null;
-          }
-  
-          watchers[path] = null;
-  
-        }
-  
-      }
-  
-      // as of now, nothing is alive.
-      liveWatchers = {};
-      scrubbingListeners = false;
-  
-    }
-  
-  
-    $scope.$watch(function() {
-  
-      if (!scrubbingListeners) {
-  
-        scrubbingListeners = true;
-        $scope.$$postDigest(scrubListeners);
-  
-      }
-  
-    });
-  
-  
     function authHandler(authData) {
+  
+      self.listenerSet.clear();
       self.auth = authData;
+  
+      $scope.$evalAsync();
+  
     }
-  
-  
-    /**
-     * @ngdoc method
-     * @name FirebaseCtl#login
-     * @description Requests that the login handler demand credentials from the
-     * user and return the result.
-     * If no login handler has been set, this method will automatically reject.
-     * @param {object=} options An arbitrary set of options which will be passed
-     * to the login handler for convenience.
-     * @return {Promise} A promise that resolves if the user successfully logs
-     * in and rejects if the user refuses or fails to log in.
-     */
-    self.login = function(options) {
-      return $q.when(_loginHandler(self.root, options));
-    };
-  
-  
-    /**
-     * @ngdoc method
-     * @name FirebaseCtl#setLoginHandler
-     * @description Sets the login handler method.
-     * @param {function=} fn The login handler. If none is supplied, resets to default.
-     */
-    self.setLoginHandler = function(fn) {
-      _loginHandler = (fn || _defaultLoginHandler);
-    };
-  
-  
-    /**
-     * @ngdoc method
-     * @name FirebaseCtl#logout
-     * @description Requests that the logout handler deauthorize the user and return
-     * the result. Also made available on the enclosing scope as `$logout`.
-     * If no logout handler has been set, this method just calls `root.unauth()`.
-     * @param {object=} options An arbitrary set of options which will be passed
-     * to the logout handler for convenience.
-     * @return {Promise} A promise that resolves if the user successfully logs
-     * out and rejects if the user refuses or fails to log out.
-     */
-    self.logout = function(options) {
-      return $q.when(_logoutHandler(self.root, options));
-    };
-  
-  
-    /**
-     * @ngdoc method
-     * @name FirebaseCtl#setLogoutHandler
-     * @description Sets the logout handler method.
-     * @param {function=} fn The logout handler. If none is supplied, resets to default.
-     */
-    self.setLogoutHandler = function(fn) {
-      _logoutHandler = (fn || _defaultLogoutHandler);
-    };
   
   
     /**
@@ -1121,9 +793,8 @@
      */
     self.cleanup = function() {
   
-      // reset the login and logout handlers to default.
-      _loginHandler = _defaultLoginHandler;
-      _logoutHandler = _defaultLogoutHandler;
+      // detach all watchers
+      self.listenerSet.clear();
   
       // detach any remaining listeners here.
       self.root.offAuth(authHandler);
@@ -1136,6 +807,8 @@
   
       // clear auth data.
       delete self.auth;
+  
+      $scope.$evalAsync();
   
     };
   
@@ -1154,6 +827,8 @@
       }
   
       self.root = new Fireproof(new Firebase(url));
+  
+      self.listenerSet = new ListenerSet(self.root, $scope);
       self.auth = self.root.getAuth();
       self.root.onAuth(authHandler);
   
@@ -1489,25 +1164,62 @@
         return;
       }
   
-      if (!values.hasOwnProperty(path)) {
-        values[path] = null;
+      self.listenerSet.add(path);
+  
+      if (self.listenerSet.values.hasOwnProperty(path)) {
+        return self.listenerSet.values[path];
+      } else {
+        return null;
       }
   
-      liveWatchers[path] = true;
+    };
   
-      if (!watchers[path]) {
   
-        watchers[path] = self.root.child(path)
-        .on('value', function(snap) {
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#priority
+     * @description Gets a priority from Firebase and triggers scope refresh when that priority changes.
+     * @param {...string} pathPart Path components to be joined.
+     * @returns {*} `null` on the first scope digest, and the actual priority subsequently.
+     */
+    self.priority = function() {
   
-          values[path] = snap.val();
-          $scope.$evalAsync();
-  
-        });
-  
+      var path = validatePath(Array.prototype.slice.call(arguments, 0));
+      if (!path) {
+        return;
       }
   
-      return values[path];
+      self.listenerSet.add(path);
+  
+      if (self.listenerSet.priorities.hasOwnProperty(path)) {
+        return self.listenerSet.priorities[path];
+      } else {
+        return null;
+      }
+  
+    };
+  
+  
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#error
+     * @description Gets the error associated with trying to read a specific path in Firebase.
+     * @param {...string} pathPart Path components to be joined.
+     * @returns {*} The error on trying to read the path, or `null` if there wasn't one.
+     *
+     * @example
+     * ```html
+     * <span>Welcome, {{ fp.val('users', userId, 'firstName') }}!</button>
+     * ```
+     */
+    self.error = function() {
+  
+      var path = validatePath(Array.prototype.slice.call(arguments, 0));
+      if (path) {
+        return self.listenerSet.errors[path];
+      } else {
+        return null;
+      }
   
     };
   
@@ -1525,95 +1237,26 @@
      * @example
      * ```html
      * <ul>
-     *   <li ng-repeat="user in fp.children().orderByChild('lastName').startAt('Ba').endAt('Bz').of('users').values">
+     *   <li ng-repeat="user in fp.children().orderByChild('lastName').startAt('B').endAt('Bz').of('users').values">
      *      <span>{{ user.firstName }} {{ user.lastName }} is a user whose last name starts with B!</span>
      *   </li>
      * </ul>
      * ```
      */
-    self.children = function() { return new ChildQuery(self.root, watchers, liveWatchers); };
+    self.children = function() {
+      return new ChildQuery(self.listenerSet);
+    };
   
   
     $scope.$on('$destroy', function() {
-  
-      // remove all listeners
-      angular.forEach(watchers, function(watcher, path) {
-        self.root.child(path).off('value', watcher);
-      });
   
       // shut down controller
       self.cleanup();
   
     });
   
-  
-    // handle route controller stuff.
-  
-    if (_fpFirebaseUrl !== null) {
-  
-      // attach using this url.
-      self.attachFirebase(_fpFirebaseUrl);
-  
-    }
-  
-    if (angular.isFunction(_fpOnLoaded)) {
-  
-      var cancel = $scope.$on('flashpointLoadSuccess', function() {
-  
-        cancel();
-        $injector.invoke(_fpOnLoaded, null, {
-          root: self.root,
-          auth: self.auth
-        });
-  
-      });
-  
-    }
-  
-    if (angular.isFunction(_fpOnError)) {
-  
-      var onError = function(err) {
-  
-        $injector.invoke(_fpOnError, null, {
-          root: self.root,
-          auth: self.auth,
-          event: err
-        });
-  
-      };
-  
-      $scope.$on('flashpointLoadError', onError);
-      $scope.$on('flashpointLoadTimeout', onError);
-  
-    }
-  
-    if (angular.isFunction(_fpHandleLogin)) {
-  
-      self.setLoginHandler(function() {
-  
-        return $injector.invoke(_fpHandleLogin, null, {
-          root: self.root
-        });
-  
-      });
-  
-    }
-  
-    if (angular.isFunction(_fpHandleLogout)) {
-  
-      self.setLogoutHandler(function() {
-  
-        return $injector.invoke(_fpHandleLogout, null, {
-          root: self.root,
-          auth: self.auth
-        });
-  
-      });
-  
-    }
-  
   }
-  FirebaseCtl.$inject = ["$log", "$q", "$scope", "$injector", "$timeout", "Firebase", "Fireproof", "ChildQuery", "validatePath", "_fpHandleLogin", "_fpHandleLogout", "_fpFirebaseUrl", "_fpOnLoaded", "_fpOnError"];
+  FirebaseCtl.$inject = ["$log", "$q", "$scope", "$injector", "$timeout", "Firebase", "Fireproof", "ChildQuery", "validatePath", "ListenerSet"];
   
   
   angular.module('flashpoint')
