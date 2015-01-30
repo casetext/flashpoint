@@ -1,5 +1,5 @@
 
-describe('fpOnDisconnect', function() {
+describe('onDisconnect', function() {
 
   var root = new Firebase(window.__env__.FIREBASE_TEST_URL),
     $scope;
@@ -9,6 +9,7 @@ describe('fpOnDisconnect', function() {
     module('flashpoint');
     module('flashpoint.mocks.pump');
 
+    root.unauth();
     root.child('test/disconnect').remove(done);
 
   });
@@ -22,7 +23,7 @@ describe('fpOnDisconnect', function() {
     inject(function($rootScope, $compile) {
 
       var el = angular.element('<div firebase="' + window.__env__.FIREBASE_TEST_URL +
-        '" fp-on-disconnect="promise = $set(\'test\', \'disconnect\', true)"></div>');
+        '" on-disconnect="promise = $set(\'test\', \'disconnect\', true)"></div>');
 
       $compile(el)($rootScope);
       $scope = el.scope();
@@ -41,12 +42,12 @@ describe('fpOnDisconnect', function() {
 
   });
 
-  it('evaluates fpOnDisconnectError in case of error', function(done) {
+  it('evaluates onDisconnectError in case of error', function(done) {
 
     inject(function($rootScope, $compile) {
 
       var el = angular.element('<div firebase="' + window.__env__.FIREBASE_TEST_URL +
-        '" fp-on-disconnect-error="done($error)" fp-on-disconnect="$set(\'error\', \'disconnect\', true)"></div>');
+        '" on-disconnect-error="done($error)" on-disconnect="$set(\'error\', \'disconnect\', true)"></div>');
 
       $compile(el)($rootScope);
       $scope = el.scope();

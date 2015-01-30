@@ -1,6 +1,6 @@
 
 angular.module('flashpoint')
-.directive('fpOnDisconnect', function($q, $log, validatePath) {
+.directive('onDisconnect', function($q, $log, validatePath) {
 
   return {
     require: '^firebase',
@@ -10,11 +10,11 @@ angular.module('flashpoint')
 
       var onDisconnectError = function(err) {
 
-        $log.debug('fpOnDisconnect: error evaluating "' + attrs.fpOnDisconnect +
+        $log.debug('onDisconnect: error evaluating "' + attrs.onDisconnect +
           '": ' + err.code);
 
-        if (attrs.fpOnDisconnectError) {
-          scope.$eval(attrs.fpOnDisconnectError, { $error: err });
+        if (attrs.onDisconnectError) {
+          scope.$eval(attrs.onDisconnectError, { $error: err });
         }
 
       };
@@ -102,14 +102,14 @@ angular.module('flashpoint')
       if (fp.root) {
 
         // fp.root already exists, better evaluate disconnect immediately
-        scope.$eval(attrs.fpOnDisconnect, getDisconnectContext(fp.root));
+        scope.$eval(attrs.onDisconnect, getDisconnectContext(fp.root));
 
       }
 
       scope.$on('fpAttach', function(event, root) {
 
         // attach disconnect to this Firebase
-        scope.$eval(attrs.fpOnDisconnect, getDisconnectContext(root));
+        scope.$eval(attrs.onDisconnect, getDisconnectContext(root));
 
       });
 
