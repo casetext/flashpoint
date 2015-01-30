@@ -10,20 +10,6 @@ angular.module('flashpoint')
    * The `firebase` directive is an easy way to make the Firebase controller available
    * to enclosing scope, where it is exposed as `fp`.
    *
-   * @example
-   * `fp.val` and all succeeding methods take a variable number of path components followed by their
-   * necessary arguments (for `fp.set` and `fp.update`, a value; for `fp.setPriority`, a priority; and for
-   * `fp.setWithPriority`, a value and a priority). So you could do the following:
-   * `Your assigned seat is {{ fp.val('seatAssignments', fp.auth.uid) }}`.
-   *
-   * `fp.set` and related methods all return a closure {@type function} so that you can
-   * easily pass them into a promise chain like so:
-   *
-   * <example firebase="https://my-firebase.firebaseio.com" firebase-auth="auth">
-   *   <button ng-disabled='auth === null' ng-click="fp.set('signups', auth.uid, true)">Sign up!</button>
-   * </example>
-   *
-   *
    * @restrict A
    * @element ANY
    * @scope
@@ -76,6 +62,26 @@ angular.module('flashpoint')
         $animate.setClass(el, 'fp-unauthenticated', 'fp-authenticated');
       } else {
         $animate.setClass(el, 'fp-authenticated', 'fp-unauthenticated');
+      }
+
+    });
+
+    scope.$watch('fp.authError', function(authError) {
+
+      if (authError) {
+        $animate.addClass(el, 'fp-auth-error');
+      } else {
+        $animate.removeClass(el, 'fp-auth-error');
+      }
+
+    });
+
+    scope.$watch('fp.accountError', function(accountError) {
+
+      if (accountError) {
+        $animate.addClass(el, 'fp-account-error');
+      } else {
+        $animate.removeClass(el, 'fp-account-error');
       }
 
     });

@@ -106,6 +106,7 @@ angular.module('flashpoint')
 
       }
 
+
       scope.$on('fpAttach', function(event, root) {
 
         // attach disconnect to this Firebase

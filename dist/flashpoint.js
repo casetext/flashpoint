@@ -28,7 +28,7 @@
   
   
   angular.module('flashpoint')
-  .directive('firebase', function() {
+  .directive('firebase', ["$animate", function($animate) {
   
     /**
      * @ngdoc directive
@@ -38,31 +38,14 @@
      * The `firebase` directive is an easy way to make the Firebase controller available
      * to enclosing scope, where it is exposed as `fp`.
      *
-     * @example
-     * `fp.val` and all succeeding methods take a variable number of path components followed by their
-     * necessary arguments (for `fp.set` and `fp.update`, a value; for `fp.setPriority`, a priority; and for
-     * `fp.setWithPriority`, a value and a priority). So you could do the following:
-     * `Your assigned seat is {{ fp.val('seatAssignments', fp.auth.uid) }}`.
-     *
-     * `fp.set` and related methods all return a closure {@type function} so that you can
-     * easily pass them into a promise chain like so:
-     *
-     * <example firebase="https://my-firebase.firebaseio.com">
-     *   <button ng-disabled='fp.auth === null' ng-click="fp.set('signups', $auth.uid, true)">Sign up!</button>
-     * </example>
-     *
-     *
      * @restrict A
      * @element ANY
      * @scope
      * @param {expression} firebase Full URL to the Firebase, like
      * `https://my-firebase.firebaseio.com`. Interpolatable.
-     * @param {expression} challenge Expression to evaluate when fp.challenge() is called
-     * somewhere. This expression should evaluate to a promise that resolves on
      */
   
     var attached, attachedUrl;
-  
   
     function firebasePreLink(scope, el, attrs, fp) {
   
@@ -79,13 +62,57 @@
   
       };
   
-  
       if (attrs.firebase) {
         attachToController(attrs.firebase);
       }
+  
       scope.fp = fp;
   
       attrs.$observe('firebase', attachToController);
+  
+      scope.$watch('fp.connected', function(connected) {
+  
+        if (connected === true) {
+          $animate.setClass(el, 'fp-connected', 'fp-disconnected');
+        } else if (connected === false) {
+          $animate.setClass(el, 'fp-disconnected', 'fp-connected');
+        } else {
+          $animate.setClass(el, [], ['fp-connected', 'fp-disconnected']);
+        }
+  
+      });
+  
+      scope.$watch('fp.auth', function(auth) {
+  
+        if (auth === undefined) {
+          $animate.setClass(el, [], ['fp-unauthenticated', 'fp-authenticated']);
+        } else if (auth === null) {
+          $animate.setClass(el, 'fp-unauthenticated', 'fp-authenticated');
+        } else {
+          $animate.setClass(el, 'fp-authenticated', 'fp-unauthenticated');
+        }
+  
+      });
+  
+      scope.$watch('fp.authError', function(authError) {
+  
+        if (authError) {
+          $animate.addClass(el, 'fp-auth-error');
+        } else {
+          $animate.removeClass(el, 'fp-auth-error');
+        }
+  
+      });
+  
+      scope.$watch('fp.accountError', function(accountError) {
+  
+        if (accountError) {
+          $animate.addClass(el, 'fp-account-error');
+        } else {
+          $animate.removeClass(el, 'fp-account-error');
+        }
+  
+      });
   
     }
   
@@ -102,7 +129,7 @@
   
     };
   
-  });
+  }]);
   
   
   
@@ -142,7 +169,7 @@
      *   <ul>
      *     <li ng-repeat="user in users"> {{ user.name }} </li>
      *   </ul>
-     * </example>`
+     * </example>
      * @param {expression} onPage An expression that gets evaluated when a new page
      * is available.
      * @param {expression} onError An expression that gets evaluated when Firebase
@@ -181,6 +208,8 @@
   
           if (attrs.as) {
             scope[attrs.as] = scope.$values;
+          } else {
+            scope[attrs.fpPage.split(/\//).pop()] = scope.$values;
           }
   
           if (attrs.onPage) {
@@ -331,6 +360,179 @@
   
   }]);
   
+  
+  
+  angular.module('flashpoint')
+  .directive('onAuth', function() {
+  
+    function onAuthPreLink(scope, el, attrs, fp) {
+  
+      function authHandler(authData) {
+  
+        if (attrs.onAuth) {
+          scope.$eval(attrs.onAuth, { $auth: authData });
+        }
+  
+      }
+  
+      if (fp.root) {
+        fp.root.onAuth(authHandler);
+      }
+  
+      scope.$on('fpAttach', function(root) {
+        root.onAuth(authHandler);
+      });
+  
+      scope.$on('fpDetach', function(root) {
+        root.offAuth(authHandler);
+      });
+  
+    }
+  
+    return {
+      priority: 750,
+      require: '^firebase',
+      link: {
+        pre: onAuthPreLink
+      }
+  
+    };
+  
+  });
+  
+  
+  angular.module('flashpoint')
+  .directive('onDisconnect', ["$q", "$log", "validatePath", function($q, $log, validatePath) {
+  
+    return {
+      require: '^firebase',
+      link: function(scope, el, attrs, fp) {
+  
+        var disconnects = {};
+  
+        var onDisconnectError = function(err) {
+  
+          $log.debug('onDisconnect: error evaluating "' + attrs.onDisconnect +
+            '": ' + err.code);
+  
+          if (attrs.onDisconnectError) {
+            scope.$eval(attrs.onDisconnectError, { $error: err });
+          }
+  
+        };
+  
+        var getDisconnectContext = function(root) {
+  
+          return {
+  
+            $set: function() {
+  
+              var args = Array.prototype.slice.call(arguments, 0),
+                data = args.pop(),
+                path = validatePath(args);
+  
+              if (path) {
+  
+                disconnects[path] = true;
+                return root.child(path).onDisconnect().set(data)
+                .catch(onDisconnectError);
+  
+              } else {
+                return $q.reject(new Error('Invalid path'));
+              }
+  
+            },
+  
+            $update: function() {
+  
+              var args = Array.prototype.slice.call(arguments, 0),
+                data = args.pop(),
+                path = validatePath(args);
+  
+              if (path) {
+  
+                disconnects[path] = true;
+                return root.child(path).onDisconnect().update(data)
+                .catch(onDisconnectError);
+  
+              } else {
+                return $q.reject(new Error('Invalid path'));
+              }
+  
+            },
+  
+            $setWithPriority: function() {
+  
+              var args = Array.prototype.slice.call(arguments, 0),
+                priority = args.pop(),
+                data = args.pop(),
+                path = validatePath(args);
+  
+              if (path) {
+  
+                disconnects[path] = true;
+                return root.child(path).onDisconnect().setWithPriority(data, priority)
+                .catch(onDisconnectError);
+  
+              } else {
+                return $q.reject(new Error('Invalid path'));
+              }
+  
+            },
+  
+            $remove: function() {
+  
+              var args = Array.prototype.slice.call(arguments, 0),
+                path = validatePath(args);
+  
+              if (path) {
+  
+                disconnects[path] = true;
+                return root.child(path).onDisconnect().remove()
+                .catch(onDisconnectError);
+  
+              } else {
+                return $q.reject(new Error('Invalid path'));
+              }
+  
+            }
+  
+          };
+  
+        };
+  
+        if (fp.root) {
+  
+          // fp.root already exists, better evaluate disconnect immediately
+          scope.$eval(attrs.onDisconnect, getDisconnectContext(fp.root));
+  
+        }
+  
+  
+        scope.$on('fpAttach', function(event, root) {
+  
+          // attach disconnect to this Firebase
+          scope.$eval(attrs.onDisconnect, getDisconnectContext(root));
+  
+        });
+  
+  
+        scope.$on('fpDetach', function(event, root) {
+  
+          // shut down my disconnects
+          for (var disconnectPath in disconnects) {
+            root.child(disconnectPath).onDisconnect().cancel();
+          }
+  
+          disconnects = {};
+  
+        });
+  
+      }
+  
+    };
+  
+  }]);
   
   
   angular.module('flashpoint')
@@ -619,7 +821,25 @@
       self.priorities = {};
       self.errors = {};
   
+      self.root = root;
       self.scope = scope;
+  
+      function scrubListeners() {
+  
+        for (var path in self.watchers) {
+  
+          if (self.watchers[path] && !self.liveWatchers[path]) {
+            self.remove(path);
+          }
+  
+        }
+  
+        // as of now, nothing is alive.
+        self.liveWatchers = {};
+        scrubbingListeners = false;
+  
+      }
+  
       self.scope.$watch(function() {
   
         // after each scope cycle, sweep out any "orphaned" listeners, i.e.,
@@ -628,17 +848,8 @@
         if (!scrubbingListeners) {
   
           scrubbingListeners = true;
-          scope.$$postDigest(function() {
   
-            for (var path in self.watchers) {
-  
-              if (self.watchers[path] && !self.liveWatchers[path]) {
-                self.remove(path);
-              }
-  
-            }
-  
-          });
+          scope.$$postDigest(scrubListeners);
   
         }
   
@@ -746,11 +957,8 @@
   
   
   function FirebaseCtl(
-    $log,
-    $q,
     $scope,
-    $injector,
-    $timeout,
+    $q,
     Firebase,
     Fireproof,
     ChildQuery,
@@ -764,20 +972,34 @@
      * @description The core controller responsible for binding
      * Firebase data into Angular.
      *
-     * Firebase instantiates a root Firebase object based on
-     * the value of the `firebase` property and attaches a core authentication
-     * handler.
      * @property {Firebase} root The root of the instantiated Firebase store.
-     * @property {object} $auth Firebase authentication data, or `null`.
+     *
+     * @property {Boolean} connected The state of the network connection to Firebase.
+     * This will be:
+     * - `true`, if there is a good network connection to Firebase
+     * - `false`, if the connection to Firebase is interrupted or not available
+     * - `undefined` if the connection state is not known
+     *
+     * @property {Object} auth The authentication data from Firebase. This will be:
+     * - `null`, if the user is not authenticated
+     * - `undefined`, if the authentication state is not yet known
+     * - an `Object`, containing information about the currently-authenticated user
+     *
+     * @property {Error} authError The error reported by the most recent attempt to
+     * authenticate to Firebase, or `null` otherwise.
+     *
+     * @property {Error} accountError The error reported by the most recent attempt
+     * to perform an account-related action on Firebase, or `null` otherwise.
      */
   
     var self = this;
-  
     self.auth = null;
   
     function authHandler(authData) {
   
-      self.listenerSet.clear();
+      if (self.listenerSet) {
+        self.listenerSet.clear();
+      }
       self.auth = authData;
   
       $scope.$evalAsync();
@@ -785,33 +1007,100 @@
     }
   
   
+    function connectedListener(snap) {
+  
+      self.connected = snap.val();
+      $scope.$evalAsync();
+  
+    }
+  
+  
+    function authPassHandler(auth) {
+  
+      self.authError = null;
+      return auth;
+  
+    }
+  
+  
+    function authErrorHandler(err) {
+  
+      self.authError = err;
+      return $q.reject(err);
+  
+    }
+  
+  
+    function accountPassHandler() {
+      self.accountError = null;
+    }
+  
+  
+    function accountErrorHandler(err) {
+  
+      self.accountError = err;
+      return $q.reject(err);
+  
+    }
+  
+  
+    /**
+     * @ngdoc event
+     * @name fpDetach
+     * @description A FirebaseCtl has detached from a Firebase reference it was previously
+     * attached to.
+     * @param root The Fireproof reference that FirebaseCtl is detaching from. You
+     * should remove any event handlers associated with the FirebaseCtl (`onAuth`,
+     * `on`, etc.) during this event.
+     * @eventType broadcast
+     * @eventOf FirebaseCtl
+     */
+  
     /**
      * @ngdoc method
-     * @name FirebaseCtl#cleanup
+     * @name FirebaseCtl#detachFirebase
      * @description Removes and detaches all connections to Firebase used by
      * this controller.
      */
-    self.cleanup = function() {
+    self.detachFirebase = function() {
   
       // detach all watchers
-      self.listenerSet.clear();
+      if (self.listenerSet) {
+  
+        self.listenerSet.clear();
+        delete self.listenerSet;
+  
+      }
   
       // detach any remaining listeners here.
       self.root.offAuth(authHandler);
   
+      self.root.child('.info/connected').off('value', connectedListener);
+      delete self.connected;
+  
       // detach all listeners to prevent leaks.
       self.root.off();
   
+      $scope.$broadcast('fpDetach', self.root);
+  
       // remove the actual root object itself, as it's now invalid.
       delete self.root;
-  
-      // clear auth data.
-      delete self.auth;
   
       $scope.$evalAsync();
   
     };
   
+  
+    /**
+     * @ngdoc event
+     * @name fpAttach
+     * @description A FirebaseCtl has attached to a Firebase reference.
+     * @param root The Fireproof reference that FirebaseCtl is attaching to. You
+     * should add any event handlers associated with the FirebaseCtl (`onAuth`,
+     * `on`, etc.) during this event.
+     * @eventType broadcast
+     * @eventOf FirebaseCtl
+     */
   
     /**
      * @ngdoc method
@@ -823,16 +1112,237 @@
   
       // if we already have a root, make sure to clean it up first
       if (self.root) {
-        self.cleanup();
+        self.detachFirebase();
       }
   
       self.root = new Fireproof(new Firebase(url));
   
       self.listenerSet = new ListenerSet(self.root, $scope);
-      self.auth = self.root.getAuth();
       self.root.onAuth(authHandler);
   
+      // maintain knowledge of connection status
+      // we assume, optimistically, that we're connected initially
+      self.connected = true;
+      self.root.child('.info/connected')
+      .on('value', connectedListener);
+  
+      $scope.$broadcast('fpAttach', self.root);
+  
     };
+  
+  
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#goOffline
+     * @description Disables the connection to the remote Firebase server. NOTE:
+     * this method affects _all_ FirebaseCtl instances on the page.
+     * @see Firebase.goOffline
+     */
+    self.goOffline = function() {
+      Firebase.goOffline();
+    };
+  
+  
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#goOnline
+     * @description Enables the connection to the remote Firebase server. NOTE:
+     * this method affects _all_ FirebaseCtl instances on the page.
+     * @see Firebase.goOnline
+     */
+    self.goOnline = function() {
+      Firebase.goOnline();
+    };
+  
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#unauth
+     * @description Unauthenticates (i.e., logs out) the Firebase connection.
+     * @see Fireproof#unauth
+     */
+    self.unauth = function() {
+      self.root.unauth();
+    };
+  
+  
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#authWithCustomToken
+     * @description Authenticates using a custom token or Firebase secret.
+     * @param {String} token The token to authenticate with.
+     * @returns {Promise} that resolves on success and rejects on error.
+     * @see Fireproof#authWithCustomToken
+     */
+    self.authWithCustomToken = function(token) {
+  
+      return self.root.authWithCustomToken(token)
+      .then(authPassHandler, authErrorHandler);
+  
+    };
+  
+  
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#authAnonymously
+     * @description Authenticates using a new, temporary guest account.
+     * @param {Object} options
+     * @returns {Promise} that resolves on success and rejects on error.
+     * @see Fireproof#authAnonymously
+     */
+    self.authAnonymously = function(options) {
+  
+      return self.root.authAnonymously(null, options)
+      .then(authPassHandler, authErrorHandler);
+  
+    };
+  
+  
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#authWithPassword
+     * @description Authenticates using an email / password combination.
+     * @param {String} email
+     * @param {String} password
+     * @returns {Promise} that resolves on success and rejects on error.
+     * @see Fireproof#authWithPassword
+     */
+    self.authWithPassword = function(email, password) {
+  
+      return self.root.authWithPassword({ email: email, password: password })
+      .then(authPassHandler, authErrorHandler);
+  
+    };
+  
+  
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#authWithOAuthPopup
+     * @description Authenticates using a popup-based OAuth flow.
+     * @param {String} provider
+     * @param {Object} options
+     * @returns {Promise} that resolves on success and rejects on error.
+     * @see Fireproof#authWithOAuthPopup
+     */
+    self.authWithOAuthPopup = function(provider, options) {
+  
+      return self.root.authWithOAuthPopup(provider, null, options)
+      .then(authPassHandler, authErrorHandler);
+  
+    };
+  
+  
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#authWithOAuthToken
+     * @description Authenticates using OAuth access tokens or credentials.
+     * @param {String} provider
+     * @param {Object} credentials
+     * @param {Object} options
+     * @returns {Promise} that resolves on success and rejects on error.
+     * @see Fireproof#authWithOAuthToken
+     */
+    self.authWithOAuthToken = function(provider, credentials, options) {
+  
+      return self.root.authWithOAuthToken(provider, credentials, null, options)
+      .then(authPassHandler, authErrorHandler);
+  
+    };
+  
+  
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#createUser
+     * @description Creates a new user account using an email / password combination.
+     * @param {String} email
+     * @param {String} password
+     * @returns {Promise} that resolves on success and rejects on error.
+     * @see Fireproof#createUser
+     */
+    self.createUser = function(email, password) {
+  
+      return self.root.createUser({ email: email, password: password })
+      .then(accountPassHandler, accountErrorHandler);
+  
+    };
+  
+  
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#removeUser
+     * @description Removes an existing user account using an email / password combination.
+     * @param {String} email
+     * @param {String} password
+     * @returns {Promise} that resolves on success and rejects on error.
+     * @see Fireproof#removeUser
+     */
+    self.removeUser = function(email, password) {
+  
+      return self.root.removeUser({ email: email, password: password })
+      .then(accountPassHandler, accountErrorHandler);
+  
+    };
+  
+  
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#changeEmail
+     * @description Updates the email associated with an email / password user account.
+     * @param {String} oldEmail
+     * @param {String} newEmail
+     * @param {String} password
+     * @returns {Promise} that resolves on success and rejects on error.
+     * @see Fireproof#changeEmail
+     */
+    self.changeEmail = function(oldEmail, newEmail, password) {
+  
+      return self.root.changeEmail({
+        oldEmail: oldEmail,
+        newEmail: newEmail,
+        password: password
+      })
+      .then(accountPassHandler, accountErrorHandler);
+  
+    };
+  
+  
+    /**
+     * @ngdoc method
+     * @name changePassword
+     * @description Changes the password of an existing user using an email / password combination.
+     * @param {String} email
+     * @param {String} oldPassword
+     * @param {String} newPassword
+     * @returns {Promise} that resolves on success and rejects on error.
+     * @see Fireproof#changePassword
+     */
+    self.changePassword = function(email, oldPassword, newPassword) {
+  
+      return self.root.changePassword({
+        email: email,
+        oldPassword: oldPassword,
+        newPassword: newPassword
+      })
+      .then(accountPassHandler, accountErrorHandler);
+  
+    };
+  
+  
+    /**
+     * @ngdoc method
+     * @name FirebaseCtl#resetPassword
+     * @description Sends a password-reset email to the owner of the account,
+     * containing a token that may be used to authenticate and change the user's password.
+     * @param {String} email
+     * @returns {Promise} that resolves on success and rejects on error.
+     * @see Fireproof#resetPassword
+     */
+    self.resetPassword = function(email) {
+  
+      return self.root.resetPassword({ email: email })
+      .then(accountPassHandler, accountErrorHandler);
+  
+    };
+  
   
     /**
      * @ngdoc method
@@ -852,12 +1362,12 @@
      * <button ng-click="fp.set('users', user, 'activated', true)">Activate!</button>
      * ```
      */
-    self.set = function() {
+     self.set = function() {
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-        value = args.pop(),
-        path = validatePath(args);
+      value = args.pop(),
+      path = validatePath(args);
   
       return self.root.child(path).set(value);
   
@@ -882,12 +1392,12 @@
      * ```
      * @see Firebase#setPriority
      */
-    self.setPriority = function() {
+     self.setPriority = function() {
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-        priority = args.pop(),
-        path = validatePath(args);
+      priority = args.pop(),
+      path = validatePath(args);
   
       return self.root.child(path).setPriority(priority);
   
@@ -913,15 +1423,15 @@
      * ```
      * @see Firebase#setWithPriority
      */
-    self.setWithPriority = function() {
+     self.setWithPriority = function() {
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-        priority = args.pop(),
-        value = args.pop(),
-        path = validatePath(args);
+      priority = args.pop(),
+      value = args.pop(),
+      path = validatePath(args);
   
-        return self.root.child(path).setWithPriority(value, priority);
+      return self.root.child(path).setWithPriority(value, priority);
   
     };
   
@@ -946,16 +1456,17 @@
      * ```
      * @see Firebase#push
      */
-    self.push = function() {
+     self.push = function() {
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-        value = args.pop(),
-        path = validatePath(args);
+      value = args.pop(),
+      path = validatePath(args);
   
       return self.root.child(path).push(value);
   
     };
+  
   
     /**
      * @ngdoc method
@@ -976,16 +1487,17 @@
      * ```
      * @see Firebase#update
      */
-    self.update = function() {
+     self.update = function() {
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-        value = args.pop(),
-        path = validatePath(args);
+      value = args.pop(),
+      path = validatePath(args);
   
       return self.root.child(path).update(value);
   
     };
+  
   
     /**
      * @ngdoc method
@@ -1005,15 +1517,16 @@
      * ```
      * @see Firebase#update
      */
-    self.remove = function() {
+     self.remove = function() {
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-        path = validatePath(args);
+      path = validatePath(args);
   
       return self.root.child(path).remove();
   
     };
+  
   
     /**
      * @ngdoc method
@@ -1035,7 +1548,7 @@
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-        path = validatePath(args);
+      path = validatePath(args);
   
   
       return self.root.child(path)
@@ -1060,6 +1573,7 @@
   
     };
   
+  
     /**
      * @ngdoc method
      * @name FirebaseCtl#decrement
@@ -1080,7 +1594,7 @@
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-        path = validatePath(args);
+      path = validatePath(args);
   
       return self.root.child(path)
       .transaction(function(val) {
@@ -1103,6 +1617,7 @@
       });
   
     };
+  
   
     /**
      * @ngdoc method
@@ -1128,8 +1643,8 @@
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-        fn = args.pop(),
-        path = validatePath(args);
+      fn = args.pop(),
+      path = validatePath(args);
   
       return self.root.child(path)
       .transaction(function(val) {
@@ -1144,6 +1659,7 @@
       });
   
     };
+  
   
     /**
      * @ngdoc method
@@ -1215,7 +1731,8 @@
     self.error = function() {
   
       var path = validatePath(Array.prototype.slice.call(arguments, 0));
-      if (path) {
+  
+      if (path && self.listenerSet.errors.hasOwnProperty(path)) {
         return self.listenerSet.errors[path];
       } else {
         return null;
@@ -1251,12 +1768,12 @@
     $scope.$on('$destroy', function() {
   
       // shut down controller
-      self.cleanup();
+      self.detachFirebase();
   
     });
   
   }
-  FirebaseCtl.$inject = ["$log", "$q", "$scope", "$injector", "$timeout", "Firebase", "Fireproof", "ChildQuery", "validatePath", "ListenerSet"];
+  FirebaseCtl.$inject = ["$scope", "$q", "Firebase", "Fireproof", "ChildQuery", "validatePath", "ListenerSet"];
   
   
   angular.module('flashpoint')

@@ -35,7 +35,7 @@ angular.module('flashpoint')
    *   <ul>
    *     <li ng-repeat="user in users"> {{ user.name }} </li>
    *   </ul>
-   * </example>`
+   * </example>
    * @param {expression} onPage An expression that gets evaluated when a new page
    * is available.
    * @param {expression} onError An expression that gets evaluated when Firebase
@@ -74,6 +74,8 @@ angular.module('flashpoint')
 
         if (attrs.as) {
           scope[attrs.as] = scope.$values;
+        } else {
+          scope[attrs.fpPage.split(/\//).pop()] = scope.$values;
         }
 
         if (attrs.onPage) {
