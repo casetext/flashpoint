@@ -18,15 +18,10 @@ function FirebaseCtl(
    * @description The core controller responsible for binding
    * Firebase data into Angular.
    *
-   * Firebase instantiates a root Firebase object based on
-   * the value of the `firebase` property and attaches a core authentication
-   * handler.
    * @property {Firebase} root The root of the instantiated Firebase store.
-   * @property {object} $auth Firebase authentication data, or `null`.
    */
 
   var self = this;
-
   self.auth = null;
 
   function authHandler(authData) {
@@ -34,21 +29,26 @@ function FirebaseCtl(
     if (self.listenerSet) {
       self.listenerSet.clear();
     }
-
     self.auth = authData;
 
     $scope.$evalAsync();
 
   }
 
+  function connectedListener(snap) {
+
+    self.connected = snap.val();
+    $scope.$evalAsync();
+
+  }
 
   /**
    * @ngdoc method
-   * @name FirebaseCtl#cleanup
+   * @name FirebaseCtl#detachFirebase
    * @description Removes and detaches all connections to Firebase used by
    * this controller.
    */
-  self.cleanup = function() {
+  self.detachFirebase = function() {
 
     // detach all watchers
     if (self.listenerSet) {
@@ -61,14 +61,16 @@ function FirebaseCtl(
     // detach any remaining listeners here.
     self.root.offAuth(authHandler);
 
+    self.root.child('.info/connected').off('value', connectedListener);
+    delete self.connected;
+
     // detach all listeners to prevent leaks.
     self.root.off();
 
+    $scope.$broadcast('fpDetach', self.root);
+
     // remove the actual root object itself, as it's now invalid.
     delete self.root;
-
-    // clear auth data.
-    delete self.auth;
 
     $scope.$evalAsync();
 
@@ -85,14 +87,21 @@ function FirebaseCtl(
 
     // if we already have a root, make sure to clean it up first
     if (self.root) {
-      self.cleanup();
+      self.detachFirebase();
     }
 
     self.root = new Fireproof(new Firebase(url));
 
     self.listenerSet = new ListenerSet(self.root, $scope);
-    self.auth = self.root.getAuth();
     self.root.onAuth(authHandler);
+
+    // maintain knowledge of connection status
+    // we assume, optimistically, that we're connected initially
+    self.connected = true;
+    self.root.child('.info/connected')
+    .on('value', connectedListener);
+
+    $scope.$broadcast('fpAttach', self.root);
 
   };
 
@@ -514,7 +523,7 @@ function FirebaseCtl(
   $scope.$on('$destroy', function() {
 
     // shut down controller
-    self.cleanup();
+    self.detachFirebase();
 
   });
 

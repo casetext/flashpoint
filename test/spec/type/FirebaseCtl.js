@@ -94,7 +94,7 @@ describe('FirebaseCtl', function() {
   });
 
 
-  describe('val', function() {
+  describe('#val', function() {
 
     it('listens and gets Firebase values', function(done) {
 
@@ -125,7 +125,7 @@ describe('FirebaseCtl', function() {
 
   });
 
-  describe('children', function() {
+  describe('#children', function() {
 
     it('returns a LiveArray of Firebase children', function(done) {
 
@@ -166,7 +166,7 @@ describe('FirebaseCtl', function() {
   });
 
 
-  describe('set', function() {
+  describe('#set', function() {
 
     it('sets values on the controller Firebase instance', function() {
 
@@ -180,7 +180,7 @@ describe('FirebaseCtl', function() {
   });
 
 
-  describe('setPriority', function() {
+  describe('#setPriority', function() {
 
     it('sets priorities on the controller Firebase instance', function() {
 
@@ -195,7 +195,7 @@ describe('FirebaseCtl', function() {
   });
 
 
-  describe('setWithPriority', function() {
+  describe('#setWithPriority', function() {
 
     it('sets values and priorities on the controller Firebase instance', function() {
 
@@ -214,7 +214,7 @@ describe('FirebaseCtl', function() {
   });
 
 
-  describe('update', function() {
+  describe('#update', function() {
 
     it('updates values on the controller Firebase instance', function() {
 
@@ -239,7 +239,7 @@ describe('FirebaseCtl', function() {
   });
 
 
-  describe('remove', function() {
+  describe('#remove', function() {
 
     it('removes values on the controller Firebase instance', function() {
 
@@ -264,7 +264,7 @@ describe('FirebaseCtl', function() {
 
     }));
 
-    describe('transaction', function() {
+    describe('#transaction', function() {
 
       it('performs the specified action atomically', function() {
 
@@ -290,7 +290,7 @@ describe('FirebaseCtl', function() {
 
     });
 
-    describe('increment', function() {
+    describe('#increment', function() {
 
       beforeEach(function() {
 
@@ -327,7 +327,7 @@ describe('FirebaseCtl', function() {
     });
 
 
-    describe('decrement', function() {
+    describe('#decrement', function() {
 
       beforeEach(function() {
 
@@ -360,6 +360,18 @@ describe('FirebaseCtl', function() {
         }, function() {});
 
       });
+
+    });
+
+    describe('#connected', function() {
+
+      it('correctly reflects the connection state of the Firebase', inject(function(Firebase) {
+
+        expect(fp.connected).to.be.true;
+        Firebase.goOffline();
+        expect(fp.connected).to.be.false;
+
+      }));
 
     });
 
