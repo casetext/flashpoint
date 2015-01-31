@@ -18,15 +18,20 @@ angular.module('flashpoint')
 
     function scrubListeners() {
 
+      var newWatchers = {};
+
       for (var path in self.watchers) {
 
-        if (self.watchers[path] && !self.liveWatchers[path]) {
+        if (self.watchers[path] && self.liveWatchers[path]) {
+          newWatchers[path] = self.watchers[path];
+        } else {
           self.remove(path);
         }
 
       }
 
       // as of now, nothing is alive.
+      self.watchers = newWatchers;
       self.liveWatchers = {};
       scrubbingListeners = false;
 
@@ -94,18 +99,22 @@ angular.module('flashpoint')
 
   ListenerSet.prototype.remove = function(path) {
 
-    // disconnect this watcher, it doesn't exist anymore.
-    if (this.watchers[path].disconnect) {
-      this.watchers[path].disconnect();
-    } else {
-      this.root.child(path).off('value', this.watchers[path]);
-    }
+    if (this.watchers[path]) {
 
-    // clear all values associated with the watcher
-    this.values[path] = null;
-    this.errors[path] = null;
-    this.priorities[path] = null;
-    this.watchers[path] = null;
+      // disconnect this watcher, it doesn't exist anymore.
+      if (this.watchers[path].disconnect) {
+        this.watchers[path].disconnect();
+      } else {
+        this.root.child(path).off('value', this.watchers[path]);
+      }
+
+      // clear all values associated with the watcher
+      this.values[path] = null;
+      this.errors[path] = null;
+      this.priorities[path] = null;
+      this.watchers[path] = null;
+
+    }
 
   };
 
@@ -115,6 +124,8 @@ angular.module('flashpoint')
     for (var path in this.watchers) {
       this.remove(path);
     }
+
+    this.watchers = {};
 
   };
 
