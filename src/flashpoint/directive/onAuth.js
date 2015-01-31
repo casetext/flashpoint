@@ -16,11 +16,11 @@ angular.module('flashpoint')
       fp.root.onAuth(authHandler);
     }
 
-    scope.$on('fpAttach', function(root) {
+    scope.$on('fpAttach', function(event, root) {
       root.onAuth(authHandler);
     });
 
-    scope.$on('fpDetach', function(root) {
+    scope.$on('fpDetach', function(event, root) {
       root.offAuth(authHandler);
     });
 
