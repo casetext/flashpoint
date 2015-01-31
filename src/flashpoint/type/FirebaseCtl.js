@@ -33,10 +33,20 @@ function FirebaseCtl(
    *
    * @property {Error} accountError The error reported by the most recent attempt
    * to perform an account-related action on Firebase, or `null` otherwise.
+   *
+   * @property {Boolean} accountChanging True if an account-changing action
+   * (password reset, user delete, etc.) is in progress, false otherwise.
+   *
+   * @property {Boolean} authenticating True if an authentication attempt is
+   * in progress, false otherwise.
    */
 
   var self = this;
   self.auth = null;
+  self.authError = null;
+  self.accountError = null;
+  self.authenticating = false;
+  self.accountChanging = false;
 
   function authHandler(authData) {
 
@@ -60,6 +70,7 @@ function FirebaseCtl(
 
   function authPassHandler(auth) {
 
+    self.authenticating = false;
     self.authError = null;
     return auth;
 
@@ -68,6 +79,7 @@ function FirebaseCtl(
 
   function authErrorHandler(err) {
 
+    self.authenticating = true;
     self.authError = err;
     return $q.reject(err);
 
@@ -75,12 +87,16 @@ function FirebaseCtl(
 
 
   function accountPassHandler() {
+
+    self.accountChanging = false;
     self.accountError = null;
+
   }
 
 
   function accountErrorHandler(err) {
 
+    self.accountChanging = false;
     self.accountError = err;
     return $q.reject(err);
 
@@ -123,6 +139,12 @@ function FirebaseCtl(
 
     // detach all listeners to prevent leaks.
     self.root.off();
+
+    self.auth = null;
+    self.authError = null;
+    self.accountError = null;
+    self.authenticating = false;
+    self.accountChanging = false;
 
     $scope.$broadcast('fpDetach', self.root);
 
@@ -197,6 +219,7 @@ function FirebaseCtl(
     Firebase.goOnline();
   };
 
+
   /**
    * @ngdoc method
    * @name FirebaseCtl#unauth
@@ -204,7 +227,12 @@ function FirebaseCtl(
    * @see Fireproof#unauth
    */
   self.unauth = function() {
+
+    self.authError = null;
+    self.accountError = null;
+
     self.root.unauth();
+
   };
 
 
@@ -217,6 +245,8 @@ function FirebaseCtl(
    * @see Fireproof#authWithCustomToken
    */
   self.authWithCustomToken = function(token) {
+
+    self.authenticating = true;
 
     return self.root.authWithCustomToken(token)
     .then(authPassHandler, authErrorHandler);
@@ -233,6 +263,8 @@ function FirebaseCtl(
    * @see Fireproof#authAnonymously
    */
   self.authAnonymously = function(options) {
+
+    self.authenticating = true;
 
     return self.root.authAnonymously(null, options)
     .then(authPassHandler, authErrorHandler);
@@ -251,6 +283,8 @@ function FirebaseCtl(
    */
   self.authWithPassword = function(email, password) {
 
+    self.authenticating = true;
+
     return self.root.authWithPassword({ email: email, password: password })
     .then(authPassHandler, authErrorHandler);
 
@@ -267,6 +301,8 @@ function FirebaseCtl(
    * @see Fireproof#authWithOAuthPopup
    */
   self.authWithOAuthPopup = function(provider, options) {
+
+    self.authenticating = true;
 
     return self.root.authWithOAuthPopup(provider, null, options)
     .then(authPassHandler, authErrorHandler);
@@ -286,6 +322,8 @@ function FirebaseCtl(
    */
   self.authWithOAuthToken = function(provider, credentials, options) {
 
+    self.authenticating = true;
+
     return self.root.authWithOAuthToken(provider, credentials, null, options)
     .then(authPassHandler, authErrorHandler);
 
@@ -302,6 +340,8 @@ function FirebaseCtl(
    * @see Fireproof#createUser
    */
   self.createUser = function(email, password) {
+
+    self.accountChanging = true;
 
     return self.root.createUser({ email: email, password: password })
     .then(accountPassHandler, accountErrorHandler);
@@ -320,6 +360,8 @@ function FirebaseCtl(
    */
   self.removeUser = function(email, password) {
 
+    self.accountChanging = true;
+
     return self.root.removeUser({ email: email, password: password })
     .then(accountPassHandler, accountErrorHandler);
 
@@ -337,6 +379,8 @@ function FirebaseCtl(
    * @see Fireproof#changeEmail
    */
   self.changeEmail = function(oldEmail, newEmail, password) {
+
+    self.accountChanging = true;
 
     return self.root.changeEmail({
       oldEmail: oldEmail,
@@ -360,6 +404,8 @@ function FirebaseCtl(
    */
   self.changePassword = function(email, oldPassword, newPassword) {
 
+    self.accountChanging = true;
+
     return self.root.changePassword({
       email: email,
       oldPassword: oldPassword,
@@ -380,6 +426,8 @@ function FirebaseCtl(
    * @see Fireproof#resetPassword
    */
   self.resetPassword = function(email) {
+
+    self.accountChanging = true;
 
     return self.root.resetPassword({ email: email })
     .then(accountPassHandler, accountErrorHandler);

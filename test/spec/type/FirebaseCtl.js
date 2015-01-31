@@ -93,6 +93,10 @@ describe('FirebaseCtl', function() {
 
   });
 
+  afterEach(function() {
+    root.unauth();
+  });
+
 
   describe('#val', function() {
 
@@ -118,8 +122,8 @@ describe('FirebaseCtl', function() {
       $rootScope.$digest();
 
       // and then both listeners should be detached
-      expect(fp.listenerSet.watchers['test/firebase/lol']).to.be.null;
-      expect(fp.listenerSet.watchers['test/firebase/wut']).to.be.null;
+      expect(fp.listenerSet.watchers['test/firebase/lol']).to.be.undefined;
+      expect(fp.listenerSet.watchers['test/firebase/wut']).to.be.undefined;
 
     });
 
@@ -159,7 +163,7 @@ describe('FirebaseCtl', function() {
       $rootScope.$digest();
 
       // and then the listener should be detached
-      expect(fp.listenerSet.watchers['test/firebase/children.children']).to.be.null;
+      expect(fp.listenerSet.watchers['test/firebase/children.children']).to.be.undefined;
 
     });
 
@@ -363,18 +367,115 @@ describe('FirebaseCtl', function() {
 
     });
 
-    describe('#connected', function() {
+  });
 
-      it('correctly reflects the connection state of the Firebase', inject(function(Firebase) {
+  describe('#connected', function() {
 
-        expect(fp.connected).to.be.true;
-        Firebase.goOffline();
-        expect(fp.connected).to.be.false;
+    it('correctly reflects the connection state of the Firebase', inject(function(Firebase) {
 
-      }));
+      expect(fp.connected).to.be.true;
+      Firebase.goOffline();
+      expect(fp.connected).to.be.false;
+      Firebase.goOnline();
+
+    }));
+
+  });
+
+  describe('#authError', function() {
+
+    it('is null by default', function() {
+      expect(fp.authError).to.be.null;
+    });
+
+    it('gets set if an authentication attempt results in an error', function() {
+
+      return fp.authWithCustomToken('35348905349058')
+      .then(function() {
+        throw new Error('Well that should not have worked');
+      }, function() {
+        expect(fp.authError).to.be.an.instanceof(Object);
+      });
+
+    });
+
+    it('gets cleared if another authentication attempt succeeds', function() {
+
+      return fp.authWithCustomToken(window.__env__.FIREBASE_TEST_SECRET)
+      .then(function() {
+        expect(fp.authError).to.be.null;
+      });
 
     });
 
   });
+
+  describe('#accountError', function() {
+
+    it('is null by default', function() {
+      expect(fp.accountError).to.be.null;
+    });
+
+    it('gets set if an account action results in an error', function() {
+
+      return fp.removeUser('fakeuser', 'fakepassword')
+      .then(function() {
+        throw new Error('Well that should not have worked');
+      }, function() {
+        expect(fp.accountError).to.be.an.instanceof(Object);
+      });
+
+    });
+
+    it('gets cleared if another account action succeeds', function() {
+
+      var user = Math.random().toString(36).slice(2) + '@fake.com',
+        pass = 'test123';
+
+      return fp.createUser(user, pass)
+      .then(function() {
+        expect(fp.accountError).to.be.null;
+      })
+      .then(function() {
+        return fp.removeUser(user, pass);
+      })
+      .then(function() {
+        expect(fp.accountError).to.be.null;
+      });
+
+    });
+
+  });
+
+  describe('#authenticating', function() {
+
+    it('is false by default', function() {
+      expect(fp.authenticating).to.be.false;
+    });
+
+    it('gets set if authentication is happening', function() {
+
+      fp.authWithCustomToken('123');
+      expect(fp.authenticating).to.be.true;
+
+    });
+
+  });
+
+  describe('#accountChanging', function() {
+
+    it('is false by default', function() {
+      expect(fp.accountChanging).to.be.false;
+    });
+
+    it('gets set if an account action is in progress', function() {
+
+      fp.createUser('nope', 'nope');
+      expect(fp.accountChanging).to.be.true;
+
+    });
+
+  });
+
 
 });
