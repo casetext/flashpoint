@@ -1,228 +1,172 @@
 
 angular.module('flashpoint')
-.directive('fpPage', function($q, $animate, Fireproof) {
+.constant('FP_DEFAULT_PAGE_SIZE', 3)
+.directive('fpPage', function(FP_DEFAULT_PAGE_SIZE, Page) {
 
   /**
    * @ngdoc directive
    * @name fpPage
-   * @description Pages over the keys at a Firebase location.
+   * @description Pages over the children of a given Firebase location.
    *
-   * fpPage exposes the following methods and variables on local scope:
-   *
-   * | Variable       | Type                 | Details                                                    |
-   * |----------------|----------------------|------------------------------------------------------------|
-   * | `$next`        | {@type function}     | Fetches the next set of values into scope.                 |
-   * | `$previous`    | {@type function}     | Fetches the previous set of values into scope.             |
-   * | `$reset`       | {@type function}     | Starts again at the beginning.                             |
-   * | `$keys`        | {@type Array.string} | The keys in the current page.                              |
-   * | `$values`      | {@type Array.*}      | The values in the current page.                            |
-   * | `$priorities`  | {@type Array.*}      | The priorities in the current page.                        |
-   * | `$hasNext`     | {@type boolean}      | True if there are more values to page over.                |
-   * | `$hasPrevious` | {@type boolean}      | True if there are previous values to page back over again. |
-   * | `$paging`      | {@type boolean}      | True if a paging operation is currently in progress.       |
-   * | `$pageNumber`  | {@type number}       | The current page number of results.                        |
-   * | `$error`       | {@type Error}        | The most recent error returned from Firebase or undefined. |
-   *
+   * The `fpPage` directive makes it easy to page over the static children of a
+   * given Firebase location. Since, as the Firebase docs describe, the operation of
+   * paging over data that changes in real-time is not well-defined, this directive
+   * should only be used with Firebase data that changes rarely or not at all.
+   * After instantiation, scope will have a variable `$page` of type {link Page}
+   * that you can use.
    *
    * @restrict A
    * @element ANY
    * @scope
-   * @param {expression} fpPage Path to the location in the Firebase, like
-   * `favorites/{{ $auth.uid }}`. Interpolatable.
-   * @param {expression} as The name of a variable on scope to bind. So you could do
-   * something like
-   * `<example fp-page="users" as="users">
-   *   <ul>
-   *     <li ng-repeat="user in users"> {{ user.name }} </li>
-   *   </ul>
-   * </example>
-   * @param {expression} onPage An expression that gets evaluated when a new page
-   * is available.
-   * @param {expression} onError An expression that gets evaluated when Firebase
-   * returns an error.
-   * @param {expression} limit The count of objects in each page.
+   *
+   * @param {expression} fpPage An expression that evaluates to a Firebase query to
+   * be used to retrieve items. Some special functions are provided:
+   * - `$orderByPriority(path, size)`: order the children of `path` by priority,
+   * and provide at most `size` objects per page.
+   * - `$orderByKey(path, size)`: order the children of `path` by key,
+   * and provide at most `size` objects per page.
+   * - `$orderByValue(path, size)`: order the children of `path` by priority,
+   * and provide at most `size` objects per page.
+   * - `$orderByValue(path, child, size)`: order the children of `path` by the value of child `child`,
+   * and provide at most `size` objects per page.
+   * @see {Page}
    */
 
-  return {
+  function fpPageLink(scope, el, attrs, fp) {
 
-    restrict: 'A',
-    scope: true,
-    require: '^firebase',
-    link: function(scope, el, attrs, fp) {
+    function $orderByPriority(path, size) {
 
-      var ref, pager;
+      size = parseInt(size);
+      if (isNaN(size)) {
+        size = FP_DEFAULT_PAGE_SIZE;
+      }
 
-      var setPage = function(snaps) {
+      return function(root, last) {
 
-        $animate.removeClass(el, 'fp-paging');
-        scope.$paging = false;
+        var query = root.child(path).orderByPriority();
 
-        scope.$hasPrevious = pager.hasPrevious && scope.$pageNumber !== 1;
-        scope.$hasNext = pager.hasNext;
-
-        scope.$keys = snaps.map(function(snap) {
-          return snap.key();
-        });
-
-        scope.$values = snaps.map(function(snap) {
-          return snap.val();
-        });
-
-        scope.$priorities = snaps.map(function(snap) {
-          return snap.getPriority();
-        });
-
-        if (attrs.as) {
-          scope[attrs.as] = scope.$values;
+        if (last) {
+          return query.startAt(last.getPriority(), last.key()).limitToFirst(size+1);
         } else {
-          scope[attrs.fpPage.split(/\//).pop()] = scope.$values;
-        }
-
-        if (attrs.onPage) {
-          scope.$evalAsync(attrs.onPage);
+          return query.limitToFirst(size);
         }
 
       };
-
-      var handleError = function(err) {
-
-        $animate.removeClass(el, 'fp-paging');
-        scope.$paging = false;
-
-        $animate.addClass(el, 'fp-error');
-        scope.$error = err;
-        if (attrs.onError) {
-          scope.$evalAsync(attrs.onError);
-        }
-
-      };
-
-      scope.$next = function() {
-
-        if (pager && !scope.$paging && scope.$hasNext) {
-
-          var count;
-          if (parseInt(attrs.limit)) {
-            count = parseInt(attrs.limit);
-          } else {
-            count = 5;
-          }
-
-          var nextCount;
-          if (pager._direction === 'previous') {
-            // have to go back over some stuff
-            nextCount = (count + scope.$values.length) - 1;
-          } else {
-            // straight back
-            nextCount = count;
-          }
-
-          $animate.addClass(el, 'fp-paging');
-          scope.$paging = true;
-          return pager.next(nextCount)
-          .then(function(results) {
-
-            scope.$pageNumber++;
-
-            if (nextCount !== count) {
-              results = results.slice(count-1);
-            }
-
-            return results;
-
-          })
-          .then(setPage, handleError);
-
-        } else if (!angular.isDefined(pager)) {
-          return $q.reject(new Error('Pager does not exist. Has fp-page been set yet?'));
-        } else {
-          return $q.when();
-        }
-
-      };
-
-      scope.$previous = function() {
-
-        if (pager && !scope.$paging && scope.$hasPrevious) {
-
-          var count;
-          if (parseInt(attrs.limit)) {
-            count = parseInt(attrs.limit);
-          } else {
-            count = 5;
-          }
-
-          var prevCount;
-          if (pager._direction === 'next') {
-            // have to go back over some stuff
-            prevCount = (count + scope.$values.length) - 1;
-          } else {
-            // straight back
-            prevCount = count;
-          }
-
-          $animate.addClass(el, 'fp-paging');
-          scope.$paging = true;
-          return pager.previous(prevCount)
-          .then(function(results) {
-
-            scope.$pageNumber--;
-            results = results.slice(0, count);
-            return results;
-
-          })
-          .then(setPage, handleError);
-
-        } else if (!angular.isDefined(pager)) {
-          return $q.reject(new Error('Pager does not exist. Has fp-page been set yet?'));
-        } else {
-          return $q.when();
-        }
-
-      };
-
-      scope.$reset = function() {
-
-        $animate.removeClass(el, 'fp-paging');
-        $animate.removeClass(el, 'fp-error');
-
-        delete scope.$error;
-        scope.$pageNumber = 0;
-        scope.$hasNext = true;
-        scope.$hasPrevious = false;
-        scope.$paging = false;
-
-        pager = new Fireproof.Pager(new Fireproof(ref));
-        pager._direction = 'next';
-        return scope.$next();
-
-      };
-
-      attrs.$observe('fpPage', function(path) {
-
-        path = path || '';
-
-        // If any of the following four conditions arise in the path:
-        // 1. The path is the empty string
-        // 2. two slashes appear together
-        // 3. there's a trailing slash
-        // 4. there's a leading slash
-        // we assume there's an incomplete interpolation and don't attach
-        if (path.length === 0 ||
-          path.match(/\/\//) ||
-          path.charAt(0) === '/' ||
-          path.charAt(path.length-1) === '/') {
-          return;
-        }
-
-        ref = fp.root.child(path);
-        scope.$reset();
-
-      });
 
     }
 
+
+    function $orderByKey(path, size) {
+
+      size = parseInt(size);
+      if (isNaN(size)) {
+        size = FP_DEFAULT_PAGE_SIZE;
+      }
+
+      return function(root, last) {
+
+        var query = root.child(path).orderByKey();
+
+        if (last) {
+          return query.startAt(last.key()).limitToFirst(size+1);
+        } else {
+          return query.limitToFirst(size);
+        }
+
+
+      };
+
+    }
+
+
+    function $orderByValue(path, size) {
+
+      size = parseInt(size);
+      if (isNaN(size)) {
+        size = FP_DEFAULT_PAGE_SIZE;
+      }
+
+      return function(root, last) {
+
+        var query = root.child(path).orderByValue();
+
+        if (last) {
+          return query.startAt(last.val(), last.key()).limitToFirst(size+1);
+        } else {
+          return query.limitToFirst(size);
+        }
+
+      };
+
+    }
+
+
+    function $orderByChild(path, child, size) {
+
+      size = parseInt(size);
+      if (isNaN(size)) {
+        size = FP_DEFAULT_PAGE_SIZE;
+      }
+
+      return function(root, last) {
+
+        var query = root.child(path).orderByChild(child);
+
+        if (last) {
+
+          var lastVal = last.val();
+
+          if (angular.isObject(lastVal)) {
+            lastVal = lastVal[child];
+          } else {
+            lastVal = null;
+          }
+
+          return query.startAt(lastVal, last.key()).limitToFirst(size+1);
+
+        } else {
+          return query.limitToFirst(size);
+        }
+
+      };
+
+    }
+
+    var orderingMethods = {
+      $orderByPriority: $orderByPriority,
+      $orderByKey: $orderByKey,
+      $orderByChild: $orderByChild,
+      $orderByValue: $orderByValue
+    };
+
+    var onAttachListener = fp.onAttach(function(root) {
+
+      scope.$page = new Page(scope.$eval(attrs.fpPage, orderingMethods));
+      scope.$page.connect(root);
+
+    });
+
+    var onDetachListener = fp.onDetach(function() {
+      scope.$page.disconnect();
+    });
+
+    scope.$on('$destroy', function() {
+
+      fp.offAttach(onAttachListener);
+      fp.offDetach(onDetachListener);
+
+      scope.$page.disconnect();
+
+    });
+
+  }
+
+  return {
+    link: fpPageLink,
+    restrict: 'A',
+    priority: 750,
+    scope: true,
+    require: '^firebase'
   };
 
 });
-

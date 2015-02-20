@@ -62,4 +62,6 @@ describe('onDisconnect', function() {
 
   });
 
+
+/* TODO(goldibex): test onDisconnect's behavior on detachment */
 });

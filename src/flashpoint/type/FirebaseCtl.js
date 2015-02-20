@@ -42,6 +42,10 @@ function FirebaseCtl(
    */
 
   var self = this;
+
+  var _attachListeners = [],
+    _detachListeners = [];
+
   self.auth = null;
   self.authError = null;
   self.accountError = null;
@@ -104,18 +108,6 @@ function FirebaseCtl(
 
 
   /**
-   * @ngdoc event
-   * @name fpDetach
-   * @description A FirebaseCtl has detached from a Firebase reference it was previously
-   * attached to.
-   * @param root The Fireproof reference that FirebaseCtl is detaching from. You
-   * should remove any event handlers associated with the FirebaseCtl (`onAuth`,
-   * `on`, etc.) during this event.
-   * @eventType broadcast
-   * @eventOf FirebaseCtl
-   */
-
-  /**
    * @ngdoc method
    * @name FirebaseCtl#detachFirebase
    * @description Removes and detaches all connections to Firebase used by
@@ -146,7 +138,9 @@ function FirebaseCtl(
     self.authenticating = false;
     self.accountChanging = false;
 
-    $scope.$broadcast('fpDetach', self.root);
+    _detachListeners.forEach(function(listener) {
+      listener(self.root);
+    });
 
     // remove the actual root object itself, as it's now invalid.
     delete self.root;
@@ -156,16 +150,22 @@ function FirebaseCtl(
   };
 
 
-  /**
-   * @ngdoc event
-   * @name fpAttach
-   * @description A FirebaseCtl has attached to a Firebase reference.
-   * @param root The Fireproof reference that FirebaseCtl is attaching to. You
-   * should add any event handlers associated with the FirebaseCtl (`onAuth`,
-   * `on`, etc.) during this event.
-   * @eventType broadcast
-   * @eventOf FirebaseCtl
-   */
+  self.onDetach = function(fn) {
+
+    _detachListeners.push(fn);
+
+    if (!self.root) {
+      fn();
+    }
+
+    return fn;
+
+  };
+
+
+  self.offDetach = function(fn) {
+    _detachListeners.splice(_detachListeners.indexOf(fn), 1);
+  };
 
   /**
    * @ngdoc method
@@ -191,8 +191,27 @@ function FirebaseCtl(
     self.root.child('.info/connected')
     .on('value', connectedListener);
 
-    $scope.$broadcast('fpAttach', self.root);
+    _attachListeners.forEach(function(listener) {
+      listener(self.root);
+    });
 
+  };
+
+  self.onAttach = function(fn) {
+
+    _attachListeners.push(fn);
+
+    if (self.root) {
+      fn(self.root);
+    }
+
+    return fn;
+
+  };
+
+
+  self.offAttach = function(fn) {
+    _attachListeners.splice(_attachListeners.indexOf(fn), 1);
   };
 
 

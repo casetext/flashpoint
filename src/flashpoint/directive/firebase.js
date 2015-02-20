@@ -38,8 +38,6 @@ angular.module('flashpoint')
       attachToController(attrs.firebase);
     }
 
-    scope.fp = fp;
-
     attrs.$observe('firebase', attachToController);
 
     scope.$watch('fp.connected', function(connected) {
@@ -94,6 +92,7 @@ angular.module('flashpoint')
     restrict: 'A',
     scope: true,
     controller: 'FirebaseCtl',
+    controllerAs: 'fp',
     priority: 1000,
     link: {
       pre: firebasePreLink

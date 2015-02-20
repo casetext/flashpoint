@@ -66,8 +66,6 @@
         attachToController(attrs.firebase);
       }
   
-      scope.fp = fp;
-  
       attrs.$observe('firebase', attachToController);
   
       scope.$watch('fp.connected', function(connected) {
@@ -122,6 +120,7 @@
       restrict: 'A',
       scope: true,
       controller: 'FirebaseCtl',
+      controllerAs: 'fp',
       priority: 1000,
       link: {
         pre: firebasePreLink
@@ -134,236 +133,325 @@
   
   
   angular.module('flashpoint')
-  .directive('fpPage', ["$q", "$animate", "Fireproof", function($q, $animate, Fireproof) {
+  .directive('fpFeed', ["$q", "Feed", function($q, Feed) {
   
     /**
      * @ngdoc directive
-     * @name fpPage
-     * @description Pages over the keys at a Firebase location.
+     * @name fpFeed
+     * @description Gathers objects from a variety of Firebase locations into a single array.
      *
-     * fpPage exposes the following methods and variables on local scope:
-     *
-     * | Variable       | Type                 | Details                                                    |
-     * |----------------|----------------------|------------------------------------------------------------|
-     * | `$next`        | {@type function}     | Fetches the next set of values into scope.                 |
-     * | `$previous`    | {@type function}     | Fetches the previous set of values into scope.             |
-     * | `$reset`       | {@type function}     | Starts again at the beginning.                             |
-     * | `$keys`        | {@type Array.string} | The keys in the current page.                              |
-     * | `$values`      | {@type Array.*}      | The values in the current page.                            |
-     * | `$priorities`  | {@type Array.*}      | The priorities in the current page.                        |
-     * | `$hasNext`     | {@type boolean}      | True if there are more values to page over.                |
-     * | `$hasPrevious` | {@type boolean}      | True if there are previous values to page back over again. |
-     * | `$paging`      | {@type boolean}      | True if a paging operation is currently in progress.       |
-     * | `$pageNumber`  | {@type number}       | The current page number of results.                        |
-     * | `$error`       | {@type Error}        | The most recent error returned from Firebase or undefined. |
-     *
+     * The `fpFeed` directive queries a set of Firebase locations that you specify
+     * and pools all the retrieved values into a single list, available on scope as $page.
      *
      * @restrict A
      * @element ANY
      * @scope
-     * @param {expression} fpPage Path to the location in the Firebase, like
-     * `favorites/{{ $auth.uid }}`. Interpolatable.
-     * @param {expression} as The name of a variable on scope to bind. So you could do
-     * something like
-     * `<example fp-page="users" as="users">
-     *   <ul>
-     *     <li ng-repeat="user in users"> {{ user.name }} </li>
-     *   </ul>
-     * </example>
-     * @param {expression} onPage An expression that gets evaluated when a new page
-     * is available.
-     * @param {expression} onError An expression that gets evaluated when Firebase
-     * returns an error.
-     * @param {expression} limit The count of objects in each page.
+     *
+     * @param {expression} fpFeed An expression that evaluates to an array of absolute
+     * paths in Firebase you wish to query, for instance, `["feeds/" + username, "feeds/firehose"]`.
+     *
+     * @param {expression} feedQuery An expression that evaluates to a query. This will be
+     * run over each path you have supplied with the special variables `$ref` and `$start`.
+     * Required.
+     *
+     * @param {expression} feedTransform An optional expression to transform a feed object
+     * into another linked object. It receives the
+     * special variables `$object` and `$root` and should return
+     * either the transformed object or a promise that resolves to the transformed object.
+     *
+     * @param {expression} feedFilter an optional expression run over each new feed object.
+     * It should return true if the object should be kept, false if not.
+     * Receives the special variables:
+     * - `$object`: the object under consideration.
+     * - `$index`: the proposed index of the new object.
+     * - `$newItems`: the set of all items about to be appended to the feed.
+     * - `$items`: the set of all items currently in the feed.
+     *
+     * @param {expression} feedSort an optional expression to be evaluated to sort the set of
+     * new objects before they're appended to the feed.
+     * Receives the special variables:
+     * - `$a` or `$left`: the left-hand object in the comparison
+     * - `$b` or `$right`: the right-hand object in the comparison
+     * Defaults to sorting by key.
      */
   
-    return {
+    function fpFeedLink(scope, el, attrs, fp) {
   
-      restrict: 'A',
-      scope: true,
-      require: '^firebase',
-      link: function(scope, el, attrs, fp) {
+      var onAttachListener = fp.onAttach(function(root) {
   
-        var ref, pager;
+        scope.$feed = new Feed(scope.$eval(attrs.fpFeed), function(ref, start) {
   
-        var setPage = function(snaps) {
-  
-          $animate.removeClass(el, 'fp-paging');
-          scope.$paging = false;
-  
-          scope.$hasPrevious = pager.hasPrevious && scope.$pageNumber !== 1;
-          scope.$hasNext = pager.hasNext;
-  
-          scope.$keys = snaps.map(function(snap) {
-            return snap.key();
-          });
-  
-          scope.$values = snaps.map(function(snap) {
-            return snap.val();
-          });
-  
-          scope.$priorities = snaps.map(function(snap) {
-            return snap.getPriority();
-          });
-  
-          if (attrs.as) {
-            scope[attrs.as] = scope.$values;
+          if (attrs.feedQuery) {
+            return scope.$eval(attrs.feedQuery, { $ref: ref, $start: start });
           } else {
-            scope[attrs.fpPage.split(/\//).pop()] = scope.$values;
+            throw new Error('fp-feed requires feed-query to be set');
           }
-  
-          if (attrs.onPage) {
-            scope.$evalAsync(attrs.onPage);
-          }
-  
-        };
-  
-        var handleError = function(err) {
-  
-          $animate.removeClass(el, 'fp-paging');
-          scope.$paging = false;
-  
-          $animate.addClass(el, 'fp-error');
-          scope.$error = err;
-          if (attrs.onError) {
-            scope.$evalAsync(attrs.onError);
-          }
-  
-        };
-  
-        scope.$next = function() {
-  
-          if (pager && !scope.$paging && scope.$hasNext) {
-  
-            var count;
-            if (parseInt(attrs.limit)) {
-              count = parseInt(attrs.limit);
-            } else {
-              count = 5;
-            }
-  
-            var nextCount;
-            if (pager._direction === 'previous') {
-              // have to go back over some stuff
-              nextCount = (count + scope.$values.length) - 1;
-            } else {
-              // straight back
-              nextCount = count;
-            }
-  
-            $animate.addClass(el, 'fp-paging');
-            scope.$paging = true;
-            return pager.next(nextCount)
-            .then(function(results) {
-  
-              scope.$pageNumber++;
-  
-              if (nextCount !== count) {
-                results = results.slice(count-1);
-              }
-  
-              return results;
-  
-            })
-            .then(setPage, handleError);
-  
-          } else if (!angular.isDefined(pager)) {
-            return $q.reject(new Error('Pager does not exist. Has fp-page been set yet?'));
-          } else {
-            return $q.when();
-          }
-  
-        };
-  
-        scope.$previous = function() {
-  
-          if (pager && !scope.$paging && scope.$hasPrevious) {
-  
-            var count;
-            if (parseInt(attrs.limit)) {
-              count = parseInt(attrs.limit);
-            } else {
-              count = 5;
-            }
-  
-            var prevCount;
-            if (pager._direction === 'next') {
-              // have to go back over some stuff
-              prevCount = (count + scope.$values.length) - 1;
-            } else {
-              // straight back
-              prevCount = count;
-            }
-  
-            $animate.addClass(el, 'fp-paging');
-            scope.$paging = true;
-            return pager.previous(prevCount)
-            .then(function(results) {
-  
-              scope.$pageNumber--;
-              results = results.slice(0, count);
-              return results;
-  
-            })
-            .then(setPage, handleError);
-  
-          } else if (!angular.isDefined(pager)) {
-            return $q.reject(new Error('Pager does not exist. Has fp-page been set yet?'));
-          } else {
-            return $q.when();
-          }
-  
-        };
-  
-        scope.$reset = function() {
-  
-          $animate.removeClass(el, 'fp-paging');
-          $animate.removeClass(el, 'fp-error');
-  
-          delete scope.$error;
-          scope.$pageNumber = 0;
-          scope.$hasNext = true;
-          scope.$hasPrevious = false;
-          scope.$paging = false;
-  
-          pager = new Fireproof.Pager(new Fireproof(ref));
-          pager._direction = 'next';
-          return scope.$next();
-  
-        };
-  
-        attrs.$observe('fpPage', function(path) {
-  
-          path = path || '';
-  
-          // If any of the following four conditions arise in the path:
-          // 1. The path is the empty string
-          // 2. two slashes appear together
-          // 3. there's a trailing slash
-          // 4. there's a leading slash
-          // we assume there's an incomplete interpolation and don't attach
-          if (path.length === 0 ||
-            path.match(/\/\//) ||
-            path.charAt(0) === '/' ||
-            path.charAt(path.length-1) === '/') {
-            return;
-          }
-  
-          ref = fp.root.child(path);
-          scope.$reset();
   
         });
   
-      }
+        scope.$feed.setTransform(function(object, root) {
   
+          if (attrs.feedTransform) {
+  
+            return scope.$eval(attrs.feedTransform, {
+              '$object': object,
+              '$root': root
+            });
+          } else {
+            return object;
+          }
+  
+        });
+  
+        scope.$feed.setFilter(function(object, index, newItems, items) {
+  
+          if (attrs.feedFilter) {
+            return scope.$eval(attrs.feedFilter, {
+              '$object': object,
+              '$index': index,
+              '$newItems': newItems,
+              '$items': items
+            });
+          } else {
+            return function() { return true; };
+          }
+  
+        });
+  
+        scope.$feed.setSort(function(a, b) {
+  
+          if (attrs.feedSort) {
+  
+            return scope.$eval(attrs.feedSort, {
+              '$a': a,
+              '$b': b,
+              '$left': a,
+              '$right': b
+            });
+  
+          } else {
+            return a.ref().toString().localeCompare(b.ref().toString());
+          }
+  
+        });
+  
+        scope.$feed.connect(root);
+  
+      });
+  
+      var onDetachListener = fp.onDetach(function() {
+        scope.$feed.disconnect();
+      });
+  
+      scope.$on('$destroy', function() {
+  
+        fp.offAttach(onAttachListener);
+        fp.offDetach(onDetachListener);
+  
+        scope.$feed.disconnect();
+  
+      });
+  
+    }
+  
+    return {
+      require: '^firebase',
+      scope: true,
+      link: fpFeedLink
     };
   
   }]);
   
   
+  angular.module('flashpoint')
+  .constant('FP_DEFAULT_PAGE_SIZE', 3)
+  .directive('fpPage', ["FP_DEFAULT_PAGE_SIZE", "Page", function(FP_DEFAULT_PAGE_SIZE, Page) {
+  
+    /**
+     * @ngdoc directive
+     * @name fpPage
+     * @description Pages over the children of a given Firebase location.
+     *
+     * The `fpPage` directive makes it easy to page over the static children of a
+     * given Firebase location. Since, as the Firebase docs describe, the operation of
+     * paging over data that changes in real-time is not well-defined, this directive
+     * should only be used with Firebase data that changes rarely or not at all.
+     * After instantiation, scope will have a variable `$page` of type {link Page}
+     * that you can use.
+     *
+     * @restrict A
+     * @element ANY
+     * @scope
+     *
+     * @param {expression} fpPage An expression that evaluates to a Firebase query to
+     * be used to retrieve items. Some special functions are provided:
+     * - `$orderByPriority(path, size)`: order the children of `path` by priority,
+     * and provide at most `size` objects per page.
+     * - `$orderByKey(path, size)`: order the children of `path` by key,
+     * and provide at most `size` objects per page.
+     * - `$orderByValue(path, size)`: order the children of `path` by priority,
+     * and provide at most `size` objects per page.
+     * - `$orderByValue(path, child, size)`: order the children of `path` by the value of child `child`,
+     * and provide at most `size` objects per page.
+     * @see {Page}
+     */
+  
+    function fpPageLink(scope, el, attrs, fp) {
+  
+      function $orderByPriority(path, size) {
+  
+        size = parseInt(size);
+        if (isNaN(size)) {
+          size = FP_DEFAULT_PAGE_SIZE;
+        }
+  
+        return function(root, last) {
+  
+          var query = root.child(path).orderByPriority();
+  
+          if (last) {
+            return query.startAt(last.getPriority(), last.key()).limitToFirst(size+1);
+          } else {
+            return query.limitToFirst(size);
+          }
+  
+        };
+  
+      }
+  
+  
+      function $orderByKey(path, size) {
+  
+        size = parseInt(size);
+        if (isNaN(size)) {
+          size = FP_DEFAULT_PAGE_SIZE;
+        }
+  
+        return function(root, last) {
+  
+          var query = root.child(path).orderByKey();
+  
+          if (last) {
+            return query.startAt(last.key()).limitToFirst(size+1);
+          } else {
+            return query.limitToFirst(size);
+          }
+  
+  
+        };
+  
+      }
+  
+  
+      function $orderByValue(path, size) {
+  
+        size = parseInt(size);
+        if (isNaN(size)) {
+          size = FP_DEFAULT_PAGE_SIZE;
+        }
+  
+        return function(root, last) {
+  
+          var query = root.child(path).orderByValue();
+  
+          if (last) {
+            return query.startAt(last.val(), last.key()).limitToFirst(size+1);
+          } else {
+            return query.limitToFirst(size);
+          }
+  
+        };
+  
+      }
+  
+  
+      function $orderByChild(path, child, size) {
+  
+        size = parseInt(size);
+        if (isNaN(size)) {
+          size = FP_DEFAULT_PAGE_SIZE;
+        }
+  
+        return function(root, last) {
+  
+          var query = root.child(path).orderByChild(child);
+  
+          if (last) {
+  
+            var lastVal = last.val();
+  
+            if (angular.isObject(lastVal)) {
+              lastVal = lastVal[child];
+            } else {
+              lastVal = null;
+            }
+  
+            return query.startAt(lastVal, last.key()).limitToFirst(size+1);
+  
+          } else {
+            return query.limitToFirst(size);
+          }
+  
+        };
+  
+      }
+  
+      var orderingMethods = {
+        $orderByPriority: $orderByPriority,
+        $orderByKey: $orderByKey,
+        $orderByChild: $orderByChild,
+        $orderByValue: $orderByValue
+      };
+  
+      var onAttachListener = fp.onAttach(function(root) {
+  
+        scope.$page = new Page(scope.$eval(attrs.fpPage, orderingMethods));
+        scope.$page.connect(root);
+  
+      });
+  
+      var onDetachListener = fp.onDetach(function() {
+        scope.$page.disconnect();
+      });
+  
+      scope.$on('$destroy', function() {
+  
+        fp.offAttach(onAttachListener);
+        fp.offDetach(onDetachListener);
+  
+        scope.$page.disconnect();
+  
+      });
+  
+    }
+  
+    return {
+      link: fpPageLink,
+      restrict: 'A',
+      priority: 750,
+      scope: true,
+      require: '^firebase'
+    };
+  
+  }]);
+  
   
   angular.module('flashpoint')
   .directive('onAuth', function() {
+  
+    /**
+     * @ngdoc directive
+     * @name onAuth
+     * @description Evaluates an Angular expression on changes in authentication status.
+     *
+     * The `onAuth` directive hooks into Firebase's `onAuth` expression and evaluates
+     * the expression you supply every time authentication status against your Firebase
+     * changes. This is useful for managing login state. It supplies the special variable
+     * `$auth` to your expression.
+     *
+     * @restrict A
+     * @element ANY
+     */
   
     function onAuthPreLink(scope, el, attrs, fp) {
   
@@ -375,15 +463,11 @@
   
       }
   
-      if (fp.root) {
-        fp.root.onAuth(authHandler);
-      }
-  
-      scope.$on('fpAttach', function(root) {
+      fp.onAttach(function(root) {
         root.onAuth(authHandler);
       });
   
-      scope.$on('fpDetach', function(root) {
+      fp.onDetach(function(root) {
         root.offAuth(authHandler);
       });
   
@@ -392,6 +476,7 @@
     return {
       priority: 750,
       require: '^firebase',
+      restrict: 'A',
       link: {
         pre: onAuthPreLink
       }
@@ -402,134 +487,231 @@
   
   
   angular.module('flashpoint')
-  .directive('onDisconnect', ["$q", "$log", "validatePath", function($q, $log, validatePath) {
+  .directive('onConnect', function() {
+  
+    /**
+     * @ngdoc directive
+     * @name onConnect
+     * @description Evaluates the given expression on successfully establishing a Firebase connection.
+     * Must be supplied together with `firebase`.
+     *
+     * The `onConnect` directive evaluates the expression you supply whenever the
+     * connection to the Firebase is re-established.
+     *
+     * @restrict A
+     * @element ANY
+     */
   
     return {
-      require: '^firebase',
-      link: function(scope, el, attrs, fp) {
+      require: 'firebase',
+      link: fpOnConnectLink
+    };
   
-        var disconnects = {};
+  });
   
-        var onDisconnectError = function(err) {
+  function fpOnConnectLink(scope, el, attrs, fp) {
   
-          $log.debug('onDisconnect: error evaluating "' + attrs.onDisconnect +
-            '": ' + err.code);
+    var cancel;
   
-          if (attrs.onDisconnectError) {
-            scope.$eval(attrs.onDisconnectError, { $error: err });
+    var attachListener = fp.onAttach(function() {
+  
+      cancel = scope.$watch('fp.connected', function(connected) {
+  
+        if (connected === true) {
+          scope.$eval(attrs.onConnect);
+        }
+  
+      });
+  
+    });
+  
+    var detachListener = fp.onDetach(function() {
+  
+      if (cancel) {
+        cancel();
+        cancel = null;
+      }
+  
+    });
+  
+    scope.$on('$destroy', function() {
+  
+      fp.offAttach(attachListener);
+      fp.offDetach(detachListener);
+  
+    });
+  
+  
+  }
+  
+  
+  angular.module('flashpoint')
+  .directive('onDisconnect', ["$q", "$log", "validatePath", function($q, $log, validatePath) {
+  
+    /**
+     * @ngdoc directive
+     * @name onDisconnect
+     * @description Sets a Firebase onDisconnect hook. Must be supplied together with `firebase`.
+     *
+     * Firebase provides a way to make changes to a database in case the user disconnects,
+     * known as "onDisconnect". The `onDisconnect` directive exposes onDisconnect
+     * to Angular expressions.
+     *
+     * The `onDisconnect` expression adds the behavior that when you _detach_ from a Firebase,
+     * the expression is also evaluated.
+     *
+     * NB: `onDisconnect` IS NOT EVALUATED WHEN THE FIREBASE ACTUALLY DISCONNECTS!
+     * Instead, it's the equivalent of telling Firebase, "Hey, if you don't hear back
+     * from me in a while, do this operation for me." The expression actually gets
+     * evaluated right after a successful connection to Firebase.
+     *
+     * The supplied expression gets access to the special functions `$set`,
+     * `$update`, `$setWithPriority`, and `$remove`, all of which behave identically
+     * to their counterparts in Firebase using Flashpoint syntax.
+     * For instance, ```on-disconnect="$remove('online-users', $auth.name)"```.
+     *
+     * @restrict A
+     * @element ANY
+     */
+  
+    function onDisconnectLink(scope, el, attrs, fp) {
+  
+      var disconnects = {};
+  
+      var onDisconnectError = function(err) {
+  
+        $log.debug('onDisconnect: error evaluating "' + attrs.onDisconnect +
+          '": ' + err.code);
+  
+        if (attrs.onDisconnectError) {
+          scope.$eval(attrs.onDisconnectError, { $error: err });
+        }
+  
+      };
+  
+      var getDisconnectContext = function(root) {
+  
+        return {
+  
+          $set: function() {
+  
+            var args = Array.prototype.slice.call(arguments, 0),
+              data = args.pop(),
+              path = validatePath(args);
+  
+            if (path) {
+  
+              disconnects[path] = true;
+              return root.child(path).onDisconnect().set(data)
+              .catch(onDisconnectError);
+  
+            } else {
+              return $q.reject(new Error('Invalid path'));
+            }
+  
+          },
+  
+          $update: function() {
+  
+            var args = Array.prototype.slice.call(arguments, 0),
+              data = args.pop(),
+              path = validatePath(args);
+  
+            if (path) {
+  
+              disconnects[path] = true;
+              return root.child(path).onDisconnect().update(data)
+              .catch(onDisconnectError);
+  
+            } else {
+              return $q.reject(new Error('Invalid path'));
+            }
+  
+          },
+  
+          $setWithPriority: function() {
+  
+            var args = Array.prototype.slice.call(arguments, 0),
+              priority = args.pop(),
+              data = args.pop(),
+              path = validatePath(args);
+  
+            if (path) {
+  
+              disconnects[path] = true;
+              return root.child(path).onDisconnect().setWithPriority(data, priority)
+              .catch(onDisconnectError);
+  
+            } else {
+              return $q.reject(new Error('Invalid path'));
+            }
+  
+          },
+  
+          $remove: function() {
+  
+            var args = Array.prototype.slice.call(arguments, 0),
+              path = validatePath(args);
+  
+            if (path) {
+  
+              disconnects[path] = true;
+              return root.child(path).onDisconnect().remove()
+              .catch(onDisconnectError);
+  
+            } else {
+              return $q.reject(new Error('Invalid path'));
+            }
+  
           }
   
         };
   
-        var getDisconnectContext = function(root) {
+      };
   
-          return {
+      var liveContext = {
+        $set: fp.set.bind(fp),
+        $remove: fp.remove.bind(fp),
+        $setWithPriority: fp.setWithPriority.bind(fp),
+        $update: fp.update.bind(fp)
+      };
   
-            $set: function() {
   
-              var args = Array.prototype.slice.call(arguments, 0),
-                data = args.pop(),
-                path = validatePath(args);
+      var attachListener = fp.onAttach(function(root) {
   
-              if (path) {
+        // attach disconnect to this Firebase
+        scope.$eval(attrs.onDisconnect, getDisconnectContext(root));
   
-                disconnects[path] = true;
-                return root.child(path).onDisconnect().set(data)
-                .catch(onDisconnectError);
+      });
   
-              } else {
-                return $q.reject(new Error('Invalid path'));
-              }
   
-            },
+      var detachListener = fp.onDetach(function(root) {
   
-            $update: function() {
+        for (var disconnectPath in disconnects) {
   
-              var args = Array.prototype.slice.call(arguments, 0),
-                data = args.pop(),
-                path = validatePath(args);
+          // cancel the disconnect expression, then actually run it
+          // (because detaching is effectively disconnecting)
+          root.child(disconnectPath).onDisconnect().cancel();
   
-              if (path) {
-  
-                disconnects[path] = true;
-                return root.child(path).onDisconnect().update(data)
-                .catch(onDisconnectError);
-  
-              } else {
-                return $q.reject(new Error('Invalid path'));
-              }
-  
-            },
-  
-            $setWithPriority: function() {
-  
-              var args = Array.prototype.slice.call(arguments, 0),
-                priority = args.pop(),
-                data = args.pop(),
-                path = validatePath(args);
-  
-              if (path) {
-  
-                disconnects[path] = true;
-                return root.child(path).onDisconnect().setWithPriority(data, priority)
-                .catch(onDisconnectError);
-  
-              } else {
-                return $q.reject(new Error('Invalid path'));
-              }
-  
-            },
-  
-            $remove: function() {
-  
-              var args = Array.prototype.slice.call(arguments, 0),
-                path = validatePath(args);
-  
-              if (path) {
-  
-                disconnects[path] = true;
-                return root.child(path).onDisconnect().remove()
-                .catch(onDisconnectError);
-  
-              } else {
-                return $q.reject(new Error('Invalid path'));
-              }
-  
-            }
-  
-          };
-  
-        };
-  
-        if (fp.root) {
-  
-          // fp.root already exists, better evaluate disconnect immediately
-          scope.$eval(attrs.onDisconnect, getDisconnectContext(fp.root));
+          scope.$eval(attrs.onDisconnect, liveContext);
   
         }
   
+        disconnects = {};
   
-        scope.$on('fpAttach', function(event, root) {
+      });
   
-          // attach disconnect to this Firebase
-          scope.$eval(attrs.onDisconnect, getDisconnectContext(root));
+      scope.$on('$destroy', function() {
+        fp.offAttach(attachListener);
+        fp.offDetach(detachListener);
+      });
   
-        });
+    }
   
-  
-        scope.$on('fpDetach', function(event, root) {
-  
-          // shut down my disconnects
-          for (var disconnectPath in disconnects) {
-            root.child(disconnectPath).onDisconnect().cancel();
-          }
-  
-          disconnects = {};
-  
-        });
-  
-      }
-  
+    return {
+      require: 'firebase',
+      restrict: 'A',
+      link: onDisconnectLink
     };
   
   }]);
@@ -748,6 +930,139 @@
   
   
   angular.module('flashpoint')
+  .factory('Feed', ["$q", function($q) {
+  
+    function Feed(paths, queryFn) {
+  
+      if (arguments.length < 2) {
+        throw new Error('Feed expects at least 2 arguments, got ' + arguments.length);
+      }
+  
+      if (!angular.isArray(paths)) {
+        paths = [paths];
+      }
+  
+  
+      this._queryFn = queryFn;
+  
+      this._positions = paths.reduce(function(obj, path) {
+  
+        obj[path] = undefined;
+        return obj;
+  
+      }, {});
+      this._presence = {};
+      this.items = [];
+  
+    }
+  
+    Feed.prototype._transformFn = function(obj) {
+      return obj;
+    };
+  
+    Feed.prototype._filterFn = function() {
+      return true;
+    };
+  
+    Feed.prototype.setTransform = function(fn) {
+      this._transformFn = fn;
+      return this;
+    };
+  
+    Feed.prototype.setSort = function(fn) {
+      this._sortFn = fn;
+      return this;
+    };
+  
+    Feed.prototype.setFilter = function(fn) {
+      this._filterFn = fn;
+      return this;
+    };
+  
+    Feed.prototype.more = function() {
+  
+      var self = this;
+  
+      if (!self._morePromise) {
+  
+        self._morePromise = $q.all(Object.keys(self._positions).map(function(path) {
+  
+          return self._queryFn(self.root.child(path), self._positions[path])
+          .then(function(snap) {
+  
+            var promises = [];
+            snap.forEach(function(feedEntry) {
+  
+              if (!self._presence.hasOwnProperty(feedEntry.ref().toString())) {
+  
+                self._presence[feedEntry.ref().toString()] = true;
+                promises.push($q.when(self._transformFn(feedEntry, self.root)));
+                self._positions[path] = feedEntry;
+  
+              }
+  
+            });
+  
+            return $q.all(promises);
+  
+          });
+  
+        }))
+        .then(function(feedResultsArrays) {
+  
+          var allResults = feedResultsArrays
+          .reduce(function(allResults, feedResultArray) {
+            return allResults.concat(feedResultArray);
+          }, [])
+          .filter(function(object, index, array) {
+            return self._filterFn(object, index, array, self.items);
+          });
+  
+          if (self._sortFn) {
+            allResults.sort(self._sortFn);
+          }
+  
+          allResults.forEach(function(result) {
+            self.items.push(result);
+          });
+  
+          self._morePromise = null;
+  
+        });
+  
+      }
+  
+      return self._morePromise;
+  
+    };
+  
+    Feed.prototype.connect = function(root) {
+  
+      this.disconnect();
+      this.root = root;
+      return this.more();
+  
+    };
+  
+    Feed.prototype.disconnect = function() {
+  
+      this._positions = Object.keys(this._positions).reduce(function(obj, path) {
+  
+        obj[path] = undefined;
+        return obj;
+  
+      }, {});
+      this._presence = {};
+      this.items.length = 0;
+  
+    };
+  
+    return Feed;
+  
+  }]);
+  
+  
+  angular.module('flashpoint')
   .factory('Firebase', function() {
   
   /**
@@ -826,15 +1141,20 @@
   
       function scrubListeners() {
   
+        var newWatchers = {};
+  
         for (var path in self.watchers) {
   
-          if (self.watchers[path] && !self.liveWatchers[path]) {
+          if (self.watchers[path] && self.liveWatchers[path]) {
+            newWatchers[path] = self.watchers[path];
+          } else {
             self.remove(path);
           }
   
         }
   
         // as of now, nothing is alive.
+        self.watchers = newWatchers;
         self.liveWatchers = {};
         scrubbingListeners = false;
   
@@ -902,18 +1222,22 @@
   
     ListenerSet.prototype.remove = function(path) {
   
-      // disconnect this watcher, it doesn't exist anymore.
-      if (this.watchers[path].disconnect) {
-        this.watchers[path].disconnect();
-      } else {
-        this.root.child(path).off('value', this.watchers[path]);
-      }
+      if (this.watchers[path]) {
   
-      // clear all values associated with the watcher
-      this.values[path] = null;
-      this.errors[path] = null;
-      this.priorities[path] = null;
-      this.watchers[path] = null;
+        // disconnect this watcher, it doesn't exist anymore.
+        if (this.watchers[path].disconnect) {
+          this.watchers[path].disconnect();
+        } else {
+          this.root.child(path).off('value', this.watchers[path]);
+        }
+  
+        // clear all values associated with the watcher
+        this.values[path] = null;
+        this.errors[path] = null;
+        this.priorities[path] = null;
+        this.watchers[path] = null;
+  
+      }
   
     };
   
@@ -924,11 +1248,178 @@
         this.remove(path);
       }
   
+      this.watchers = {};
+  
     };
   
     return ListenerSet;
   
   });
+  
+  
+  angular.module('flashpoint')
+  .factory('Page', ["$q", function($q) {
+  
+    function Page(pagingFn) {
+  
+      this._pagingFn = pagingFn;
+      this._pages = [];
+      this._presence = {};
+  
+      this.items = [];
+  
+      this.keys = [];
+      this.priorities = [];
+      this.values = [];
+  
+  
+      this.disconnect();
+  
+    }
+  
+  
+    Page.prototype.connect = function(root) {
+  
+      this.disconnect();
+  
+      this.root = root;
+      return this.next();
+  
+    };
+  
+  
+    Page.prototype.disconnect = function() {
+  
+      this.root = null;
+      this._pages.length = 0;
+  
+      this.items.length = 0;
+      this.keys.length = 0;
+      this.values.length = 0;
+      this.priorities.length = 0;
+  
+      this.number = 0;
+      this._presence = {};
+  
+    };
+  
+  
+    Page.prototype._handleSnap = function(snap) {
+  
+      var newPage = [],
+        presence = this._presence;
+  
+      snap.forEach(function(child) {
+  
+        if (!presence.hasOwnProperty(child.key()) ) {
+  
+          presence[child.key()] = true;
+          newPage.push(child);
+  
+        }
+  
+      });
+  
+      if (newPage.length > 0) {
+        this._pages.push(newPage);
+        this._setPage(this._pages.length);
+      } else {
+        this._lastPage = this.number;
+      }
+  
+      this._currentOperation = null;
+  
+    };
+  
+  
+    Page.prototype.next = function() {
+  
+      if (!this.hasNext()) {
+  
+        // nothing to set.
+        return $q.when();
+  
+      } else if (this._pages.length > this.number) {
+  
+        // we already have the page, just copy its contents into this.items
+        this._setPage(this.number+1);
+        return $q.when();
+  
+      } else if (this._currentOperation) {
+        return this._currentOperation;
+      } else if (this._pages.length === 0) {
+  
+        this._currentOperation = this._pagingFn(this.root, null)
+        .then(this._handleSnap.bind(this));
+  
+        return this._currentOperation;
+  
+      } else if (this._pages[this._pages.length-1].length > 0) {
+  
+        var lastPage = this._pages[this._pages.length-1];
+  
+        this._currentOperation = this._pagingFn(this.root, lastPage[lastPage.length-1])
+        .then(this._handleSnap.bind(this));
+  
+        return this._currentOperation;
+  
+      } else {
+        return $q.when();
+      }
+  
+    };
+  
+  
+    Page.prototype.hasNext = function() {
+      return this.hasOwnProperty('root') && this._lastPage !== this.number;
+    };
+  
+  
+    Page.prototype.hasPrevious = function() {
+      return this.hasOwnProperty('root') && this.number > 1;
+    };
+  
+  
+    Page.prototype.previous = function() {
+  
+      if (this.hasPrevious()) {
+        this._setPage(this.number-1);
+      }
+  
+      return $q.when();
+  
+    };
+  
+  
+    Page.prototype.reset = function() {
+      return this.connect(this.root);
+    };
+  
+  
+    Page.prototype._setPage = function(pageNumber) {
+  
+      this.items.length = 0;
+      this.keys.length = 0;
+      this.values.length = 0;
+      this.priorities.length = 0;
+  
+      this._pages[pageNumber-1].forEach(function(item) {
+  
+        this.items.push(item);
+        this.keys.push(item.key());
+        this.values.push(item.val());
+        this.priorities.push(item.getPriority());
+  
+      }, this);
+  
+      this.number = pageNumber;
+  
+    };
+  
+  
+    return Page;
+  
+  }]);
   
   
   angular.module('flashpoint')
@@ -990,10 +1481,24 @@
      *
      * @property {Error} accountError The error reported by the most recent attempt
      * to perform an account-related action on Firebase, or `null` otherwise.
+     *
+     * @property {Boolean} accountChanging True if an account-changing action
+     * (password reset, user delete, etc.) is in progress, false otherwise.
+     *
+     * @property {Boolean} authenticating True if an authentication attempt is
+     * in progress, false otherwise.
      */
   
     var self = this;
+  
+    var _attachListeners = [],
+      _detachListeners = [];
+  
     self.auth = null;
+    self.authError = null;
+    self.accountError = null;
+    self.authenticating = false;
+    self.accountChanging = false;
   
     function authHandler(authData) {
   
@@ -1017,6 +1522,7 @@
   
     function authPassHandler(auth) {
   
+      self.authenticating = false;
       self.authError = null;
       return auth;
   
@@ -1025,6 +1531,7 @@
   
     function authErrorHandler(err) {
   
+      self.authenticating = true;
       self.authError = err;
       return $q.reject(err);
   
@@ -1032,29 +1539,21 @@
   
   
     function accountPassHandler() {
+  
+      self.accountChanging = false;
       self.accountError = null;
+  
     }
   
   
     function accountErrorHandler(err) {
   
+      self.accountChanging = false;
       self.accountError = err;
       return $q.reject(err);
   
     }
   
-  
-    /**
-     * @ngdoc event
-     * @name fpDetach
-     * @description A FirebaseCtl has detached from a Firebase reference it was previously
-     * attached to.
-     * @param root The Fireproof reference that FirebaseCtl is detaching from. You
-     * should remove any event handlers associated with the FirebaseCtl (`onAuth`,
-     * `on`, etc.) during this event.
-     * @eventType broadcast
-     * @eventOf FirebaseCtl
-     */
   
     /**
      * @ngdoc method
@@ -1081,7 +1580,15 @@
       // detach all listeners to prevent leaks.
       self.root.off();
   
-      $scope.$broadcast('fpDetach', self.root);
+      self.auth = null;
+      self.authError = null;
+      self.accountError = null;
+      self.authenticating = false;
+      self.accountChanging = false;
+  
+      _detachListeners.forEach(function(listener) {
+        listener(self.root);
+      });
   
       // remove the actual root object itself, as it's now invalid.
       delete self.root;
@@ -1091,16 +1598,22 @@
     };
   
   
-    /**
-     * @ngdoc event
-     * @name fpAttach
-     * @description A FirebaseCtl has attached to a Firebase reference.
-     * @param root The Fireproof reference that FirebaseCtl is attaching to. You
-     * should add any event handlers associated with the FirebaseCtl (`onAuth`,
-     * `on`, etc.) during this event.
-     * @eventType broadcast
-     * @eventOf FirebaseCtl
-     */
+    self.onDetach = function(fn) {
+  
+      _detachListeners.push(fn);
+  
+      if (!self.root) {
+        fn();
+      }
+  
+      return fn;
+  
+    };
+  
+  
+    self.offDetach = function(fn) {
+      _detachListeners.splice(_detachListeners.indexOf(fn), 1);
+    };
   
     /**
      * @ngdoc method
@@ -1126,8 +1639,27 @@
       self.root.child('.info/connected')
       .on('value', connectedListener);
   
-      $scope.$broadcast('fpAttach', self.root);
+      _attachListeners.forEach(function(listener) {
+        listener(self.root);
+      });
   
+    };
+  
+    self.onAttach = function(fn) {
+  
+      _attachListeners.push(fn);
+  
+      if (self.root) {
+        fn(self.root);
+      }
+  
+      return fn;
+  
+    };
+  
+  
+    self.offAttach = function(fn) {
+      _attachListeners.splice(_attachListeners.indexOf(fn), 1);
     };
   
   
@@ -1154,6 +1686,7 @@
       Firebase.goOnline();
     };
   
+  
     /**
      * @ngdoc method
      * @name FirebaseCtl#unauth
@@ -1161,7 +1694,12 @@
      * @see Fireproof#unauth
      */
     self.unauth = function() {
+  
+      self.authError = null;
+      self.accountError = null;
+  
       self.root.unauth();
+  
     };
   
   
@@ -1174,6 +1712,8 @@
      * @see Fireproof#authWithCustomToken
      */
     self.authWithCustomToken = function(token) {
+  
+      self.authenticating = true;
   
       return self.root.authWithCustomToken(token)
       .then(authPassHandler, authErrorHandler);
@@ -1190,6 +1730,8 @@
      * @see Fireproof#authAnonymously
      */
     self.authAnonymously = function(options) {
+  
+      self.authenticating = true;
   
       return self.root.authAnonymously(null, options)
       .then(authPassHandler, authErrorHandler);
@@ -1208,6 +1750,8 @@
      */
     self.authWithPassword = function(email, password) {
   
+      self.authenticating = true;
+  
       return self.root.authWithPassword({ email: email, password: password })
       .then(authPassHandler, authErrorHandler);
   
@@ -1224,6 +1768,8 @@
      * @see Fireproof#authWithOAuthPopup
      */
     self.authWithOAuthPopup = function(provider, options) {
+  
+      self.authenticating = true;
   
       return self.root.authWithOAuthPopup(provider, null, options)
       .then(authPassHandler, authErrorHandler);
@@ -1243,6 +1789,8 @@
      */
     self.authWithOAuthToken = function(provider, credentials, options) {
   
+      self.authenticating = true;
+  
       return self.root.authWithOAuthToken(provider, credentials, null, options)
       .then(authPassHandler, authErrorHandler);
   
@@ -1259,6 +1807,8 @@
      * @see Fireproof#createUser
      */
     self.createUser = function(email, password) {
+  
+      self.accountChanging = true;
   
       return self.root.createUser({ email: email, password: password })
       .then(accountPassHandler, accountErrorHandler);
@@ -1277,6 +1827,8 @@
      */
     self.removeUser = function(email, password) {
   
+      self.accountChanging = true;
+  
       return self.root.removeUser({ email: email, password: password })
       .then(accountPassHandler, accountErrorHandler);
   
@@ -1294,6 +1846,8 @@
      * @see Fireproof#changeEmail
      */
     self.changeEmail = function(oldEmail, newEmail, password) {
+  
+      self.accountChanging = true;
   
       return self.root.changeEmail({
         oldEmail: oldEmail,
@@ -1317,6 +1871,8 @@
      */
     self.changePassword = function(email, oldPassword, newPassword) {
   
+      self.accountChanging = true;
+  
       return self.root.changePassword({
         email: email,
         oldPassword: oldPassword,
@@ -1337,6 +1893,8 @@
      * @see Fireproof#resetPassword
      */
     self.resetPassword = function(email) {
+  
+      self.accountChanging = true;
   
       return self.root.resetPassword({ email: email })
       .then(accountPassHandler, accountErrorHandler);
@@ -1362,12 +1920,12 @@
      * <button ng-click="fp.set('users', user, 'activated', true)">Activate!</button>
      * ```
      */
-     self.set = function() {
+    self.set = function() {
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-      value = args.pop(),
-      path = validatePath(args);
+        value = args.pop(),
+        path = validatePath(args);
   
       return self.root.child(path).set(value);
   
@@ -1392,12 +1950,12 @@
      * ```
      * @see Firebase#setPriority
      */
-     self.setPriority = function() {
+    self.setPriority = function() {
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-      priority = args.pop(),
-      path = validatePath(args);
+        priority = args.pop(),
+        path = validatePath(args);
   
       return self.root.child(path).setPriority(priority);
   
@@ -1423,13 +1981,13 @@
      * ```
      * @see Firebase#setWithPriority
      */
-     self.setWithPriority = function() {
+    self.setWithPriority = function() {
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-      priority = args.pop(),
-      value = args.pop(),
-      path = validatePath(args);
+        priority = args.pop(),
+        value = args.pop(),
+        path = validatePath(args);
   
       return self.root.child(path).setWithPriority(value, priority);
   
@@ -1456,12 +2014,12 @@
      * ```
      * @see Firebase#push
      */
-     self.push = function() {
+    self.push = function() {
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-      value = args.pop(),
-      path = validatePath(args);
+        value = args.pop(),
+        path = validatePath(args);
   
       return self.root.child(path).push(value);
   
@@ -1487,12 +2045,12 @@
      * ```
      * @see Firebase#update
      */
-     self.update = function() {
+    self.update = function() {
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-      value = args.pop(),
-      path = validatePath(args);
+        value = args.pop(),
+        path = validatePath(args);
   
       return self.root.child(path).update(value);
   
@@ -1517,11 +2075,11 @@
      * ```
      * @see Firebase#update
      */
-     self.remove = function() {
+    self.remove = function() {
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-      path = validatePath(args);
+        path = validatePath(args);
   
       return self.root.child(path).remove();
   
@@ -1548,7 +2106,7 @@
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-      path = validatePath(args);
+        path = validatePath(args);
   
   
       return self.root.child(path)
@@ -1594,7 +2152,7 @@
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-      path = validatePath(args);
+        path = validatePath(args);
   
       return self.root.child(path)
       .transaction(function(val) {
@@ -1643,8 +2201,8 @@
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-      fn = args.pop(),
-      path = validatePath(args);
+        fn = args.pop(),
+        path = validatePath(args);
   
       return self.root.child(path)
       .transaction(function(val) {
