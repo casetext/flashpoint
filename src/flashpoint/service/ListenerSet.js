@@ -45,7 +45,6 @@ angular.module('flashpoint')
       if (!scrubbingListeners) {
 
         scrubbingListeners = true;
-
         scope.$$postDigest(scrubListeners);
 
       }
@@ -54,7 +53,7 @@ angular.module('flashpoint')
 
   }
 
-  ListenerSet.prototype.add = function(path, watcher) {
+  ListenerSet.prototype.add = function(path) {
 
     var self = this;
 
@@ -62,30 +61,24 @@ angular.module('flashpoint')
 
     if (!self.watchers[path]) {
 
-      if (watcher) {
-        self.watchers[path] = watcher;
-      } else {
+      self.watchers[path] = self.root.child(path)
+      .on('value', function(snap) {
 
-        self.watchers[path] = self.root.child(path)
-        .on('value', function(snap) {
+        self.errors[path] = null;
+        self.values[path] = snap.val();
+        self.priorities[path] = snap.getPriority();
+        self.scope.$evalAsync();
 
-          self.errors[path] = null;
-          self.values[path] = snap.val();
-          self.priorities[path] = snap.getPriority();
-          self.scope.$evalAsync();
+      }, function(err) {
 
-        }, function(err) {
+        self.liveWatchers[path] = false;
+        self.watchers[path] = null;
+        self.errors[path] = err;
+        self.values[path] = null;
+        self.priorities[path] = null;
+        self.scope.$evalAsync();
 
-          self.liveWatchers[path] = false;
-          self.watchers[path] = null;
-          self.errors[path] = err;
-          self.values[path] = null;
-          self.priorities[path] = null;
-          self.scope.$evalAsync();
-
-        });
-
-      }
+      });
 
     }
 

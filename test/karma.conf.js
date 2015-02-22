@@ -17,7 +17,7 @@ module.exports = function(config) {
       'src/flashpoint/index.js',
       'src/flashpoint/**/*.js',
       'test/mocks.js',
-      'test/spec/**/*.js'
+      'test/spec/filter/filter.js'
     ],
     browserNoActivityTimeout: 30000,
     preprocessors: {

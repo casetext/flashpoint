@@ -129,43 +129,7 @@ describe('FirebaseCtl', function() {
 
   });
 
-  describe('#children', function() {
-
-    it('returns a LiveArray of Firebase children', function(done) {
-
-      expect(fp.children).to.be.a('function');
-      var array = fp.children().orderByKey().startAt('b').endAt('d').of('test/firebase/children');
-      expect(array).to.be.an.instanceof(Fireproof.LiveArray);
-      expect(fp.children().endAt('d').startAt('b').orderByKey().of('test/firebase/children'))
-      .to.equal(array);
-
-      setTimeout(function() {
-        expect(array.keys).to.deep.equal(['b', 'c', 'd']);
-        expect(array.values).to.deep.equal([false, true, true]);
-        expect(array.priorities).to.deep.equal([null, 0, 0]);
-        root.child('test/firebase/children/b1').set(true)
-        .then(function() {
-          expect(array.keys).to.deep.equal(['b', 'b1', 'c', 'd']);
-        });
-        done();
-
-      }, 250);
-
-    });
-
-    it('garbage collects disconnected listeners between scope cycles', function() {
-
-      $rootScope.$apply(function() {
-        expect(fp.children().of('test/firebase/children')).to.exist;
-      });
-
-      // a scope cycle goes by in which the same value is not requested...
-      $rootScope.$digest();
-
-      // and then the listener should be detached
-      expect(fp.listenerSet.watchers['test/firebase/children.children']).to.be.undefined;
-
-    });
+  describe('#ref', function() {
 
   });
 

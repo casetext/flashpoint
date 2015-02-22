@@ -853,25 +853,18 @@ function FirebaseCtl(
 
   /**
    * @ngdoc method
-   * @name FirebaseCtl#children
-   * @description Provides a live array of the children at a path in Firebase.
-   * @param {...string} pathPart Path components to be joined.
-   * @returns {Fireproof.LiveArray} A live array, which is an object with three keys:
-   * 'keys', 'priorities', and 'values'.
-   * The array references are guaranteed to remain stable, so you can bind to them
-   * directly.
-   * @see ChildQuery
-   * @example
-   * ```html
-   * <ul>
-   *   <li ng-repeat="user in fp.children().orderByChild('lastName').startAt('B').endAt('Bz').of('users').values">
-   *      <span>{{ user.firstName }} {{ user.lastName }} is a user whose last name starts with B!</span>
-   *   </li>
-   * </ul>
-   * ```
+   * @name FirebaseCtl#query
    */
-  self.children = function() {
-    return new ChildQuery(self.listenerSet);
+  self.query = function() {
+
+    var path = validatePath(Array.prototype.slice.call(arguments, 0));
+
+    if (path) {
+      return path;
+    } else {
+      return null;
+    }
+
   };
 
 
