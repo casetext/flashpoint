@@ -12,8 +12,8 @@ angular.module('flashpoint')
     if (template) {
 
       template = angular.element(template);
-      startPlaceholder.after(template);
-      endPlaceholder.after(startPlaceholder);
+      template.after(endPlaceholder);
+      template.after(startPlaceholder);
       template.remove();
 
     } else {
@@ -51,19 +51,24 @@ angular.module('flashpoint')
           cancelAttachListener();
         }
 
-        cancelAttachListener = scope.watch(attrs.fpBindChildren, function(newQueryStr) {
+        cancelAttachListener = scope.$watch(attrs.fpBindChildren, function(newQueryStr) {
 
           _detach();
 
-          var newQuery = _fpGetRef(fp.root, newQueryStr);
+          if (newQueryStr) {
 
-          if (newQuery && typeof newQuery.on === 'function') {
+            try {
 
-            query = newQuery;
-            query.on('child_added', onAdded, onError);
-            query.on('child_removed', onRemoved, onError);
-            query.on('child_moved', onMoved, onError);
-            query.on('child_changed', onChanged, onError);
+              query = _fpGetRef(fp.root, newQueryStr);
+
+              query.on('child_added', onAdded, onError);
+              query.on('child_removed', onRemoved, onError);
+              query.on('child_moved', onMoved, onError);
+              query.on('child_changed', onChanged, onError);
+
+            } catch(e) {
+              onError(e);
+            }
 
           }
 
@@ -91,7 +96,6 @@ angular.module('flashpoint')
 
           var deadEl = els[child.key()];
           deadEl.remove();
-          deadEl.scope().$destroy();
 
         });
 
@@ -101,99 +105,78 @@ angular.module('flashpoint')
 
       function onAdded(snap, prevKey) {
 
-        scope.$apply(function() {
+        var position = find(prevKey)+1;
+        scope.$children.splice(position, 0, snap);
 
-          var position = find(prevKey)+1;
-          scope.$children.splice(position, 0, snap);
+        var clone = template.clone(),
+          cloneScope = scope.$new();
 
-          var clone = template.clone(),
-            cloneScope = scope.$new();
+        $compile(clone)(cloneScope);
 
-          $compile(clone)(cloneScope);
+        var previousSibling = els[prevKey] || startPlaceholder;
 
-          var previousSibling = els[prevKey] || startPlaceholder;
+        cloneScope.$key = snap.key();
+        cloneScope.$value = snap.val();
+        cloneScope.$priority = snap.getPriority();
+        cloneScope.$index = position;
 
-          cloneScope.$key = snap.key();
-          cloneScope.$value = snap.val();
-          cloneScope.$priority = snap.getPriority();
-          cloneScope.$index = position;
+        els[snap.key()] = clone;
 
-          els[snap.key()] = clone;
-
-          $animate.enter(clone, el.parent(), previousSibling);
-
-        });
+        $animate.enter(clone, el.parent(), previousSibling);
 
       }
 
       function onRemoved(snap) {
 
-        scope.$apply(function() {
+        $animate.leave(els[snap.key()]);
 
-          $animate.leave(els[snap.key()]);
+        var position = find(snap.key());
+        scope.$children.splice(position, 1);
 
-          var position = find(snap.key());
-          scope.$children.splice(position, 1);
-
-          $animate.leave(els[snap.key()], el.parent())
-          .then(function() {
-            els[snap.key()].scope().$destroy();
-            els[snap.key()] = null;
-          });
-
+        $animate.leave(els[snap.key()], el.parent())
+        .then(function() {
+          els[snap.key()] = null;
         });
 
       }
 
       function onMoved(snap, prevKey) {
 
-        scope.$apply(function() {
+        var oldPosition = find(snap.key());
+        scope.$children.splice(oldPosition, 1);
 
-          var oldPosition = find(snap.key());
-          scope.$children.splice(oldPosition, 1);
+        var newPosition = find(prevKey) + 1;
+        scope.$children.splice(newPosition, 0, snap);
 
-          var newPosition = find(prevKey) + 1;
-          scope.$children.splice(newPosition, 0, snap);
+        els[snap.key()].scope().$key = snap.key();
+        els[snap.key()].scope().$value = snap.val();
+        els[snap.key()].scope().$priority = snap.getPriority();
+        els[snap.key()].scope().$index = newPosition+1;
 
-          els[snap.key()].scope().$key = snap.key();
-          els[snap.key()].scope().$value = snap.val();
-          els[snap.key()].scope().$priority = snap.getPriority();
-          els[snap.key()].scope().$index = newPosition+1;
-
-          $animate.move(els[snap.key()], el.parent(), els[prevKey]);
-
-        });
+        $animate.move(els[snap.key()], el.parent(), els[prevKey]);
 
       }
 
       function onChanged(snap) {
 
-        scope.$apply(function() {
+        var position = find(snap.key());
+        scope.$children.splice(position, 1, snap);
 
-          var position = find(snap.key());
-          scope.$children.splice(position, 1, snap);
+        els[snap.key()].scope().$key = snap.key();
+        els[snap.key()].scope().$value = snap.val();
+        els[snap.key()].scope().$priority = snap.getPriority();
 
-          els[snap.key()].scope().$key = snap.key();
-          els[snap.key()].scope().$value = snap.val();
-          els[snap.key()].scope().$priority = snap.getPriority();
-
-          $animate.addClass(els[snap.key()], 'fp-bind-children-changed')
-          .then(function() {
-            $animate.removeClass(els[snap.key()], 'fp-bind-children-changed');
-          });
-
+        $animate.addClass(els[snap.key()], 'fp-bind-children-changed')
+        .then(function() {
+          $animate.removeClass(els[snap.key()], 'fp-bind-children-changed');
         });
 
       }
 
       function onError(err) {
 
-        scope.$apply(function() {
-
-          scope.$error = err;
-          $animate.addClass(el, 'fp-bind-children-error');
-
-        });
+        scope.$error = err;
+        $animate.addClass(el, 'fp-bind-children-error');
 
       }
 
@@ -230,7 +213,7 @@ angular.module('flashpoint')
 
   return {
     restrict: 'A',
-    priority: 1000,
+    priority: 900,
     scope: true,
     require: '^firebase',
     compile: fpBindChildrenCompile

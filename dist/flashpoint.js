@@ -1,4 +1,4 @@
-/*! flashpoint 2.1.0, © 2015 J2H2 Inc. MIT License.
+/*! flashpoint 3.0.0-beta.1, © 2015 J2H2 Inc. MIT License.
  * https://github.com/casetext/flashpoint
  */
 (function (root, factory) {
@@ -130,6 +130,229 @@
   
   }]);
   
+  
+  
+  angular.module('flashpoint')
+  .directive('fpBindChildren', ["$animate", "$compile", "_fpGetRef", function($animate, $compile, _fpGetRef) {
+  
+    function fpBindChildrenCompile($templateEl) {
+  
+      // search the template for fp-child-repeat, that's what we'll repeat on each child
+      var template = $templateEl[0].querySelector('[fp-child-repeat]'),
+        startPlaceholder = angular.element(document.createComment('fp-child-repeat start')),
+        endPlaceholder = angular.element(document.createComment('fp-child-repeat end'));
+  
+      if (template) {
+  
+        template = angular.element(template);
+        template.after(endPlaceholder);
+        template.after(startPlaceholder);
+        template.remove();
+  
+      } else {
+        throw new Error('No fp-child-repeat was found in your fp-bind-children!');
+      }
+  
+      return function fpBindChildrenLink(scope, el, attrs, fp) {
+  
+        var query,
+          els = {},
+          cancelAttachListener;
+  
+        scope.$children = [];
+  
+  
+        function find(key) {
+  
+          // FIXME(goldibex): yes, I know this is linear time
+          for (var i = 0; i < scope.$children.length; i++) {
+  
+            if (scope.$children[i].key() === key) {
+              return i;
+            }
+  
+          }
+  
+          return -1;
+  
+        }
+  
+  
+        function _attach() {
+  
+          if (cancelAttachListener) {
+            cancelAttachListener();
+          }
+  
+          cancelAttachListener = scope.$watch(attrs.fpBindChildren, function(newQueryStr) {
+  
+            _detach();
+  
+            if (newQueryStr) {
+  
+              try {
+  
+                query = _fpGetRef(fp.root, newQueryStr);
+  
+                query.on('child_added', onAdded, onError);
+                query.on('child_removed', onRemoved, onError);
+                query.on('child_moved', onMoved, onError);
+                query.on('child_changed', onChanged, onError);
+  
+              } catch(e) {
+                onError(e);
+              }
+  
+            }
+  
+          });
+  
+        }
+  
+  
+        function _detach() {
+  
+          $animate.removeClass(el, 'fp-bind-children-error');
+  
+          if (query) {
+  
+            query.off('child_added', onAdded);
+            query.off('child_removed', onRemoved);
+            query.off('child_moved', onMoved);
+            query.off('child_changed', onChanged);
+  
+          }
+  
+          query = null;
+  
+          scope.$children.forEach(function(child) {
+  
+            var deadEl = els[child.key()];
+            deadEl.remove();
+  
+          });
+  
+          scope.$children.length = 0;
+  
+        }
+  
+        function onAdded(snap, prevKey) {
+  
+          var position = find(prevKey)+1;
+          scope.$children.splice(position, 0, snap);
+  
+          var clone = template.clone(),
+            cloneScope = scope.$new();
+  
+          $compile(clone)(cloneScope);
+  
+          var previousSibling = els[prevKey] || startPlaceholder;
+  
+          cloneScope.$key = snap.key();
+          cloneScope.$value = snap.val();
+          cloneScope.$priority = snap.getPriority();
+          cloneScope.$index = position;
+  
+          els[snap.key()] = clone;
+  
+          $animate.enter(clone, el.parent(), previousSibling);
+  
+        }
+  
+        function onRemoved(snap) {
+  
+          $animate.leave(els[snap.key()]);
+  
+          var position = find(snap.key());
+          scope.$children.splice(position, 1);
+  
+          $animate.leave(els[snap.key()], el.parent())
+          .then(function() {
+            els[snap.key()] = null;
+          });
+  
+        }
+  
+        function onMoved(snap, prevKey) {
+  
+          var oldPosition = find(snap.key());
+          scope.$children.splice(oldPosition, 1);
+  
+          var newPosition = find(prevKey) + 1;
+          scope.$children.splice(newPosition, 0, snap);
+  
+          els[snap.key()].scope().$key = snap.key();
+          els[snap.key()].scope().$value = snap.val();
+          els[snap.key()].scope().$priority = snap.getPriority();
+          els[snap.key()].scope().$index = newPosition+1;
+  
+          $animate.move(els[snap.key()], el.parent(), els[prevKey]);
+  
+        }
+  
+        function onChanged(snap) {
+  
+          var position = find(snap.key());
+          scope.$children.splice(position, 1, snap);
+  
+          els[snap.key()].scope().$key = snap.key();
+          els[snap.key()].scope().$value = snap.val();
+          els[snap.key()].scope().$priority = snap.getPriority();
+  
+          $animate.addClass(els[snap.key()], 'fp-bind-children-changed')
+          .then(function() {
+            $animate.removeClass(els[snap.key()], 'fp-bind-children-changed');
+          });
+  
+        }
+  
+        function onError(err) {
+  
+          scope.$error = err;
+          $animate.addClass(el, 'fp-bind-children-error');
+  
+        }
+  
+        var onAttachListener = fp.onAttach(_attach);
+        var onDetachListener = fp.onDetach(function() {
+  
+          if (cancelAttachListener) {
+            cancelAttachListener();
+            cancelAttachListener = null;
+          }
+  
+          _detach();
+  
+        });
+  
+        scope.$on('$destroy', function() {
+  
+          // remove the comment nodes
+          startPlaceholder.remove();
+          endPlaceholder.remove();
+          if (cancelAttachListener) {
+            cancelAttachListener();
+          }
+          _detach();
+  
+          fp.offAttach(onAttachListener);
+          fp.offDetach(onDetachListener);
+  
+        });
+  
+      };
+  
+    }
+  
+    return {
+      restrict: 'A',
+      priority: 900,
+      scope: true,
+      require: '^firebase',
+      compile: fpBindChildrenCompile
+    };
+  
+  }]);
   
   
   angular.module('flashpoint')
@@ -718,215 +941,159 @@
   
   
   angular.module('flashpoint')
-  .factory('ChildQuery', ["validatePath", function(validatePath) {
+  .filter('orderByKey', function() {
   
-    /**
-     * @ngdoc type
-     * @name ChildQuery
-     * @description A way to generate long Firebase queries inside an Angular expression.
-     */
-    function ChildQuery(listenerSet) {
+    return function(str) {
   
-      this.listenerSet = listenerSet;
-      this._props = {};
+      if (!angular.isString(str)) {
+        return null;
+      } else {
+        return str + '.orderByKey';
+      }
+  
+    };
+  
+  })
+  .filter('orderByValue', function() {
+  
+    return function(str) {
+  
+      if (!angular.isString(str)) {
+        return null;
+      } else {
+        return str + '.orderByValue';
+      }
+  
+    };
+  
+  })
+  .filter('orderByPriority', function() {
+  
+    return function(str) {
+  
+      if (!angular.isString(str)) {
+        return null;
+      } else {
+        return str + '.orderByPriority';
+      }
+  
+    };
+  
+  })
+  .filter('orderByChild', function() {
+  
+  
+    return function(str, child) {
+  
+      if (!angular.isString(str) || !angular.isString(child) || child.length === 0) {
+        return null;
+      } else {
+        return str + '.orderByChild:' + JSON.stringify(child);
+      }
+  
+    };
+  
+  })
+  .filter('startAt', function() {
+  
+    return function(str, startAt, startAtKey) {
+  
+      if (startAt === undefined) {
+        return null;
+      } else {
+        str += '.startAt:' + JSON.stringify(startAt);
+      }
+  
+      if (angular.isString(startAtKey) || angular.isNumber(startAtKey)) {
+        return str + ':' + JSON.stringify(startAtKey);
+      } else {
+        return str;
+      }
+  
+    };
+  
+  })
+  .filter('endAt', function() {
+  
+    return function(str, endAt, endAtKey) {
+  
+      if (endAt === undefined) {
+        return null;
+      } else {
+        str += '.endAt:' + JSON.stringify(endAt);
+      }
+  
+      if (angular.isString(endAtKey) || angular.isNumber(endAtKey)) {
+        return str + ':' + JSON.stringify(endAtKey);
+      } else {
+        return str;
+      }
+  
+    };
+  
+  })
+  .filter('limitToFirst', function() {
+  
+    return function(str, limitToFirst) {
+  
+      limitToFirst = parseInt(limitToFirst);
+  
+      if (isNaN(limitToFirst)) {
+        return null;
+      } else {
+        return str + '.limitToFirst:' + JSON.stringify(limitToFirst);
+      }
+  
+    };
+  
+  })
+  .filter('limitToLast', function() {
+  
+    return function(str, limitToLast) {
+  
+      limitToLast = parseInt(limitToLast);
+  
+      if (isNaN(limitToLast)) {
+        return null;
+      } else {
+        return str + '.limitToLast:' + JSON.stringify(limitToLast);
+      }
+  
+    };
+  
+  })
+  .constant('_fpGetRef', function(root, str) {
+  
+    if (str === null) {
+      return null;
+    } else {
+  
+      var params = str.split(/\./g),
+        query = root.child(params.shift());
+  
+      return params.reduce(function(query, part) {
+  
+        var name = part.split(':')[0],
+          args = part.split(':').slice(1).map(function(item) { return JSON.parse(item); });
+  
+        switch(name) {
+        case 'orderByKey':
+        case 'orderByValue':
+        case 'orderByPriority':
+          return query[name]();
+        case 'orderByChild':
+        case 'startAt':
+        case 'endAt':
+        case 'limitToFirst':
+        case 'limitToLast':
+          return query[name].apply(query, args);
+        }
+  
+      }, query);
   
     }
   
-    /**
-     * @ngdoc method
-     * @name ChildQuery#startAt
-     * @description Invokes Fireproof#startAt.
-     */
-    ChildQuery.prototype.startAt = function(value, key) {
-  
-      this._props.startAtValue = value;
-      if (key) {
-        this._props.startAtKey = key;
-      }
-  
-      return this;
-  
-    };
-  
-    /**
-     * @ngdoc method
-     * @name ChildQuery#endAt
-     * @description Invokes Fireproof#endAt.
-     */
-    ChildQuery.prototype.endAt = function(value, key) {
-  
-      this._props.endAtValue = value;
-      if (key) {
-        this._props.endAtKey = key;
-      }
-  
-      return this;
-  
-    };
-  
-    /**
-     * @ngdoc method
-     * @name ChildQuery#equalTo
-     * @description Invokes Fireproof#equalTo.
-     */
-    ChildQuery.prototype.equalTo = function(value, key) {
-  
-      this._props.equalToValue = value;
-      if (key) {
-        this._props.equalToKey = key;
-      }
-  
-      return this;
-  
-    };
-  
-    /**
-     * @ngdoc method
-     * @name ChildQuery#limitToFirst
-     * @description Invokes Fireproof#limitToFirst.
-     */
-    ChildQuery.prototype.limitToFirst = function(limit) {
-  
-      this._props.limitToFirst = limit;
-      return this;
-  
-    };
-  
-    /**
-     * @ngdoc method
-     * @name ChildQuery#limitToLast
-     * @description Invokes Fireproof#limitToLast.
-     */
-    ChildQuery.prototype.limitToLast = function(limit) {
-  
-      this._props.limitToLast = limit;
-      return this;
-  
-    };
-  
-    /**
-     * @ngdoc method
-     * @name ChildQuery#orderByKey
-     * @description Invokes Fireproof#orderByKey.
-     */
-    ChildQuery.prototype.orderByKey = function() {
-  
-      this._props.orderBy = 'key';
-      return this;
-  
-    };
-  
-    /**
-     * @ngdoc method
-     * @name ChildQuery#orderByPriority
-     * @description Invokes Fireproof#orderByPriority.
-     */
-    ChildQuery.prototype.orderByPriority = function() {
-  
-      this._props.orderBy = 'priority';
-      return this;
-  
-    };
-  
-    /**
-     * @ngdoc method
-     * @name ChildQuery#orderByChild
-     * @description Invokes Fireproof#orderByChild.
-     */
-    ChildQuery.prototype.orderByChild = function(child) {
-  
-      this._props.orderBy = 'child';
-      this._props.orderByChild = child;
-      return this;
-  
-    };
-  
-    /**
-     * @ngdoc method
-     * @name ChildQuery#of
-     * @description Specifies the path for the child query. NOTE: ALWAYS DO THIS LAST!
-     * @param {...String} pathParams The path parameters for this query.
-     */
-    ChildQuery.prototype.of = function() {
-  
-      var args = Array.prototype.slice.call(arguments, 0),
-        path = validatePath(args),
-        ref = this.listenerSet.root.child(path),
-        id = path + '.children';
-  
-      switch(this._props.orderBy || '') {
-      case 'key':
-        id += '.orderByKey';
-        ref = ref.orderByKey();
-        break;
-      case 'priority':
-        id += '.orderByPriority';
-        ref = ref.orderByPriority();
-        break;
-      case 'child':
-        id += '.orderByChild.' + this._props.orderByChild;
-        ref = ref.orderByChild(this._props.orderByChild);
-        break;
-      }
-  
-      if (this._props.startAtValue && this._props.startAtKey) {
-        id += '.startAtValue.' + this._props.startAtValue + '.startAtKey.' + this._props.startAtKey;
-        ref = ref.startAt(this._props.startAtValue, this._props.startAtKey);
-      } else if (this._props.startAtValue) {
-        id += '.startAtValue.' + this._props.startAtValue;
-        ref = ref.startAt(this._props.startAtValue);
-      }
-  
-      if (this._props.endAtValue && this._props.endAtKey) {
-        id += '.endAtValue.' + this._props.endAtValue + '.endAtKey.' + this._props.endAtKey;
-        ref = ref.endAt(this._props.endAtValue, this._props.endAtKey);
-      } else if (this._props.endAtValue) {
-        id += '.endAtValue.' + this._props.endAtValue;
-        ref = ref.endAt(this._props.endAtValue);
-      }
-  
-      if (this._props.equalToValue && this._props.equalToKey) {
-        id += '.equalToValue.' + this._props.equalToValue + '.equalToKey.' + this._props.equalToKey;
-        ref = ref.equalTo(this._props.equalToValue, this._props.equalToKey);
-      } else if (this._props.equalToValue) {
-        id += '.equalToValue.' + this._props.equalToValue;
-        ref = ref.equalTo(this._props.equalToValue);
-      }
-  
-      if (this._props.limitToFirst) {
-        id += '.limitToFirst.' + this._props.limitToFirst;
-        ref = ref.limitToFirst(this._props.limitToFirst);
-      }
-  
-      if (this._props.limitToLast) {
-        id += '.limitToLast.' + this._props.limitToLast;
-        ref = ref.limitToLast(this._props.limitToLast);
-      }
-  
-      if (this.listenerSet.has(id)) {
-        return this.listenerSet.watchers[id];
-      } else {
-  
-        var watcher = new Fireproof.LiveArray();
-        this.listenerSet.add(id, watcher);
-  
-        if (this._props.orderBy === 'child') {
-          watcher.connect(ref, this._props.orderBy, this._props.orderByChild);
-        } else if (this._props.orderBy) {
-          watcher.connect(ref, this._props.orderBy);
-        } else {
-          watcher.connect(ref);
-        }
-  
-        return watcher;
-  
-      }
-  
-    };
-  
-    return ChildQuery;
-  
-  }]);
+  });
   
   
   angular.module('flashpoint')
@@ -1168,7 +1335,6 @@
         if (!scrubbingListeners) {
   
           scrubbingListeners = true;
-  
           scope.$$postDigest(scrubListeners);
   
         }
@@ -1177,7 +1343,7 @@
   
     }
   
-    ListenerSet.prototype.add = function(path, watcher) {
+    ListenerSet.prototype.add = function(path) {
   
       var self = this;
   
@@ -1185,30 +1351,24 @@
   
       if (!self.watchers[path]) {
   
-        if (watcher) {
-          self.watchers[path] = watcher;
-        } else {
+        self.watchers[path] = self.root.child(path)
+        .on('value', function(snap) {
   
-          self.watchers[path] = self.root.child(path)
-          .on('value', function(snap) {
+          self.errors[path] = null;
+          self.values[path] = snap.val();
+          self.priorities[path] = snap.getPriority();
+          self.scope.$evalAsync();
   
-            self.errors[path] = null;
-            self.values[path] = snap.val();
-            self.priorities[path] = snap.getPriority();
-            self.scope.$evalAsync();
+        }, function(err) {
   
-          }, function(err) {
+          self.liveWatchers[path] = false;
+          self.watchers[path] = null;
+          self.errors[path] = err;
+          self.values[path] = null;
+          self.priorities[path] = null;
+          self.scope.$evalAsync();
   
-            self.liveWatchers[path] = false;
-            self.watchers[path] = null;
-            self.errors[path] = err;
-            self.values[path] = null;
-            self.priorities[path] = null;
-            self.scope.$evalAsync();
-  
-          });
-  
-        }
+        });
   
       }
   
@@ -1452,7 +1612,6 @@
     $q,
     Firebase,
     Fireproof,
-    ChildQuery,
     validatePath,
     ListenerSet) {
   
@@ -2301,25 +2460,18 @@
   
     /**
      * @ngdoc method
-     * @name FirebaseCtl#children
-     * @description Provides a live array of the children at a path in Firebase.
-     * @param {...string} pathPart Path components to be joined.
-     * @returns {Fireproof.LiveArray} A live array, which is an object with three keys:
-     * 'keys', 'priorities', and 'values'.
-     * The array references are guaranteed to remain stable, so you can bind to them
-     * directly.
-     * @see ChildQuery
-     * @example
-     * ```html
-     * <ul>
-     *   <li ng-repeat="user in fp.children().orderByChild('lastName').startAt('B').endAt('Bz').of('users').values">
-     *      <span>{{ user.firstName }} {{ user.lastName }} is a user whose last name starts with B!</span>
-     *   </li>
-     * </ul>
-     * ```
+     * @name FirebaseCtl#path
      */
-    self.children = function() {
-      return new ChildQuery(self.listenerSet);
+    self.path = function() {
+  
+      var path = validatePath(Array.prototype.slice.call(arguments, 0));
+  
+      if (path) {
+        return path;
+      } else {
+        return null;
+      }
+  
     };
   
   
@@ -2331,7 +2483,7 @@
     });
   
   }
-  FirebaseCtl.$inject = ["$scope", "$q", "Firebase", "Fireproof", "ChildQuery", "validatePath", "ListenerSet"];
+  FirebaseCtl.$inject = ["$scope", "$q", "Firebase", "Fireproof", "validatePath", "ListenerSet"];
   
   
   angular.module('flashpoint')

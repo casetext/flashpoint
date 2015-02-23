@@ -4,7 +4,6 @@ function FirebaseCtl(
   $q,
   Firebase,
   Fireproof,
-  ChildQuery,
   validatePath,
   ListenerSet) {
 
@@ -853,9 +852,9 @@ function FirebaseCtl(
 
   /**
    * @ngdoc method
-   * @name FirebaseCtl#query
+   * @name FirebaseCtl#path
    */
-  self.query = function() {
+  self.path = function() {
 
     var path = validatePath(Array.prototype.slice.call(arguments, 0));
 

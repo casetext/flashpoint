@@ -17,40 +17,6 @@ describe('FirebaseCtl', function() {
           smiley: true,
           displayName: 'La Mer, as performed by Julio Iglesias'
         }
-      },
-      children: {
-        'a': {
-          '.value': false,
-          '.priority': null
-        },
-        'b': {
-          '.value': false,
-          '.priority': null
-        },
-        'c': {
-          '.value': true,
-          '.priority': 0
-        },
-        'd': {
-          '.value': true,
-          '.priority': 0
-        },
-        'e': {
-          '.value': 0,
-          '.priority': 1
-        },
-        'f': {
-          '.value': 1,
-          '.priority': 2,
-        },
-        'g': {
-          '.value': 'hello',
-          '.priority': 'hello',
-        },
-        'h': {
-          '.value': 'world',
-          '.priority': 'world'
-        }
       }
     }, function() {
 
