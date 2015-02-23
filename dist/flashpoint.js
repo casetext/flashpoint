@@ -135,6 +135,17 @@
   angular.module('flashpoint')
   .directive('fpBindChildren', ["$animate", "$compile", "_fpGetRef", function($animate, $compile, _fpGetRef) {
   
+    /**
+     * @ngdoc directive
+     * @name fpBindChildren
+     * @description Binds DOM elements to the state of elements.
+     *
+     * @restrict A
+     * @element ANY
+     * @scope
+     * @param {expression} fpBindChildren The annotated path to the children to use.
+     */
+  
     function fpBindChildrenCompile($templateEl) {
   
       // search the template for fp-child-repeat, that's what we'll repeat on each child
