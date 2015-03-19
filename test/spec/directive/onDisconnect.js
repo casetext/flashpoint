@@ -44,6 +44,7 @@ describe('onDisconnect', function() {
 
   it('evaluates onDisconnectError in case of error', function(done) {
 
+    this.timeout(5000);
     inject(function($rootScope, $compile) {
 
       var el = angular.element('<div firebase="' + window.__env__.FIREBASE_TEST_URL +

@@ -299,6 +299,16 @@ describe('FirebaseCtl', function() {
 
   });
 
+
+  describe('#model', function() {
+
+    it('generates a function', function() {
+      expect(fp.model('test', 'foo', 'bar')).to.be.a('function');
+    });
+
+  });
+
+
   describe('#connected', function() {
 
     it('correctly reflects the connection state of the Firebase', inject(function(Firebase) {

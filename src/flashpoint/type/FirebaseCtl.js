@@ -802,6 +802,49 @@ function FirebaseCtl(
 
   /**
    * @ngdoc method
+   * @name FirebaseCtl#model
+   * @description Use a Firebase path with ng-model.
+   * @param {...string} pathPart Path components to be joined.
+   * @returns {Function} a function that can be used in an ng-model expression
+   * if ng-model-options has getterSetter: true.
+   *
+   * @example
+   * ```html
+   * <input name="firstname" ng-model="fp.model('users', user.id, 'firstName')" ng-model-options="{ getterSetter: true }">
+   * ```
+   */
+  self.model = function() {
+
+    var path = validatePath(Array.prototype.slice.call(arguments, 0));
+    return function(val) {
+
+      if (!path) {
+        return;
+      }
+
+      if (angular.isDefined(val)) {
+        // setter.
+        return self.root.set(path, val);
+      } else {
+
+        // getter.
+        self.listenerSet.add(path);
+
+        if (self.listenerSet.values.hasOwnProperty(path)) {
+          return self.listenerSet.values[path];
+        } else {
+          return null;
+        }
+
+      }
+
+    };
+
+  };
+
+
+  /**
+   * @ngdoc method
    * @name FirebaseCtl#priority
    * @description Gets a priority from Firebase and triggers scope refresh when that priority changes.
    * @param {...string} pathPart Path components to be joined.

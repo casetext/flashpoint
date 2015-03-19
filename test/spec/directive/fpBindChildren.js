@@ -36,7 +36,6 @@ describe('fpBindChildren', function() {
         setTimeout(done, 500);
       }, done);
 
-
     });
 
   });
