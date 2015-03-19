@@ -824,7 +824,7 @@ function FirebaseCtl(
 
       if (angular.isDefined(val)) {
         // setter.
-        return self.root.set(path, val);
+        return self.set(path, val);
       } else {
 
         // getter.
