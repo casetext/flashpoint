@@ -1,4 +1,4 @@
-/*! flashpoint 3.1.0-alpha.2, © 2015 J2H2 Inc. MIT License.
+/*! flashpoint 3.1.0-alpha.3, © 2015 J2H2 Inc. MIT License.
  * https://github.com/casetext/flashpoint
  */
 (function (root, factory) {
@@ -2443,7 +2443,7 @@
   
         if (angular.isDefined(val)) {
           // setter.
-          return self.root.set(path, val);
+          return self.set(path, val);
         } else {
   
           // getter.
