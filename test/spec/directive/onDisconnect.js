@@ -48,7 +48,7 @@ describe('onDisconnect', function() {
     inject(function($rootScope, $compile) {
 
       var el = angular.element('<div firebase="' + window.__env__.FIREBASE_TEST_URL +
-        '" on-disconnect-error="done($error)" on-disconnect="$set(\'error\', \'disconnect\', true)"></div>');
+        '" on-disconnect-error="done($error)" on-disconnect="promise = $set(\'error\', \'disconnect\', true)"></div>');
 
       $compile(el)($rootScope);
       $scope = el.scope();
@@ -59,6 +59,12 @@ describe('onDisconnect', function() {
 
       $rootScope.$digest();
 
+    });
+
+    return $scope.promise.then(function() {
+
+      Firebase.goOffline();
+      Firebase.goOnline();
     });
 
   });
