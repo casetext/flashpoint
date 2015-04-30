@@ -35,6 +35,10 @@ describe('filter', function() {
 
     });
 
+    it('works with arrays too', function() {
+      expect(orderByKey(['', ''])).to.deep.equal(['.orderByKey', '.orderByKey']);
+    });
+
   });
 
     describe('orderByValue', function() {
@@ -44,6 +48,10 @@ describe('filter', function() {
       expect(orderByValue('')).to.equal('.orderByValue');
       expect(orderByValue(null)).to.equal(null);
 
+    });
+
+    it('works with arrays too', function() {
+      expect(orderByValue(['', ''])).to.deep.equal(['.orderByValue', '.orderByValue']);
     });
 
   });
@@ -57,6 +65,10 @@ describe('filter', function() {
 
     });
 
+    it('works with arrays too', function() {
+      expect(orderByPriority(['', ''])).to.deep.equal(['.orderByPriority', '.orderByPriority']);
+    });
+
   });
 
   describe('orderByChild', function() {
@@ -66,6 +78,10 @@ describe('filter', function() {
       expect(orderByChild('', 'someChild')).to.equal('.orderByChild:"someChild"');
       expect(orderByChild('', '')).to.equal(null);
 
+    });
+
+    it('works with arrays too', function() {
+      expect(orderByChild(['', ''], 'someChild')).to.deep.equal(['.orderByKey', '.orderByKey']);
     });
 
   });
@@ -86,6 +102,10 @@ describe('filter', function() {
 
     });
 
+    it('works with arrays too', function() {
+      expect(startAt(['', '/bar'], 'foo')).to.deep.equal(['.startAt:"foo"', '/bar.startAt:"foo"']);
+    });
+
   });
 
   describe('endAt', function() {
@@ -104,6 +124,10 @@ describe('filter', function() {
 
     });
 
+    it('works with arrays too', function() {
+      expect(endAt(['', '/bar'], 'foo')).to.deep.equal(['.endAt:"foo"', '/bar.endAt:"foo"']);
+    });
+
   });
 
   describe('limitToFirst', function() {
@@ -116,6 +140,10 @@ describe('filter', function() {
 
     });
 
+    it('works with arrays too', function() {
+      expect(limitToFirst(['', '/bar'], '7')).to.deep.equal(['.limitToFirst:7', '/bar.limitToFirst:7']);
+    });
+
   });
 
   describe('limitToLast', function() {
@@ -126,6 +154,10 @@ describe('filter', function() {
       expect(limitToLast('', '7')).to.equal('.limitToLast:7');
       expect(limitToLast('', 'wut')).to.equal(null);
 
+    });
+
+    it('works with arrays too', function() {
+      expect(limitToLast(['', '/bar'], '7')).to.deep.equal(['.limitToLast:7', '/bar.limitToLast:7']);
     });
 
   });

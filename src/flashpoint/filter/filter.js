@@ -2,12 +2,14 @@
 angular.module('flashpoint')
 .filter('orderByKey', function() {
 
-  return function(str) {
+  return function orderByKey(path) {
 
-    if (!angular.isString(str)) {
-      return null;
+    if (angular.isArray(path)) {
+      return path.map(orderByKey);
+    } else if (angular.isString(path)) {
+      return path + '.orderByKey';
     } else {
-      return str + '.orderByKey';
+      return null;
     }
 
   };
@@ -15,12 +17,14 @@ angular.module('flashpoint')
 })
 .filter('orderByValue', function() {
 
-  return function(str) {
+  return function orderByValue(path) {
 
-    if (!angular.isString(str)) {
-      return null;
+    if (angular.isArray(path)) {
+      return path.map(orderByValue);
+    } else if (angular.isString(path)) {
+      return path + '.orderByValue';
     } else {
-      return str + '.orderByValue';
+      return null;
     }
 
   };
@@ -28,12 +32,14 @@ angular.module('flashpoint')
 })
 .filter('orderByPriority', function() {
 
-  return function(str) {
+  return function orderByPriority(path) {
 
-    if (!angular.isString(str)) {
-      return null;
+    if (angular.isArray(path)) {
+      return path.map(orderByPriority);
+    } else if (angular.isString(path)) {
+      return path + '.orderByPriority';
     } else {
-      return str + '.orderByPriority';
+      return null;
     }
 
   };
@@ -42,12 +48,16 @@ angular.module('flashpoint')
 .filter('orderByChild', function() {
 
 
-  return function(str, child) {
+  return function orderByChild(path, child) {
 
-    if (!angular.isString(str) || !angular.isString(child) || child.length === 0) {
-      return null;
+    if (angular.isArray(path)) {
+      return path.map(function(pathItem) {
+        return orderByChild(pathItem, child);
+      });
+    } else if (angular.isString(path) && angular.isString(child) && child.length > 0) {
+      return path + '.orderByChild:' + JSON.stringify(child);
     } else {
-      return str + '.orderByChild:' + JSON.stringify(child);
+      return null;
     }
 
   };
@@ -55,18 +65,28 @@ angular.module('flashpoint')
 })
 .filter('startAt', function() {
 
-  return function(str, startAt, startAtKey) {
+  return function startAt(path, startAtValue, startAtKey) {
 
-    if (startAt === undefined) {
-      return null;
-    } else {
-      str += '.startAt:' + JSON.stringify(startAt);
-    }
+    if (angular.isArray(path)) {
 
-    if (angular.isString(startAtKey) || angular.isNumber(startAtKey)) {
-      return str + ':' + JSON.stringify(startAtKey);
+      return path.map(function(pathItem) {
+        return startAt(pathItem, startAtValue, startAtKey);
+      });
+
     } else {
-      return str;
+
+      if (startAtValue === undefined) {
+        return null;
+      } else {
+        path += '.startAt:' + JSON.stringify(startAtValue);
+      }
+
+      if (angular.isString(startAtKey) || angular.isNumber(startAtKey)) {
+        return path + ':' + JSON.stringify(startAtKey);
+      } else {
+        return path;
+      }
+
     }
 
   };
@@ -74,18 +94,26 @@ angular.module('flashpoint')
 })
 .filter('endAt', function() {
 
-  return function(str, endAt, endAtKey) {
+  return function endAt(path, endAtValue, endAtKey) {
 
-    if (endAt === undefined) {
-      return null;
+    if (angular.isArray(path)) {
+      return path.map(function(pathItem) {
+        return endAt(pathItem, endAtValue, endAtKey);
+      });
     } else {
-      str += '.endAt:' + JSON.stringify(endAt);
-    }
 
-    if (angular.isString(endAtKey) || angular.isNumber(endAtKey)) {
-      return str + ':' + JSON.stringify(endAtKey);
-    } else {
-      return str;
+      if (endAtValue === undefined) {
+        return null;
+      } else {
+        path += '.endAt:' + JSON.stringify(endAtValue);
+      }
+
+      if (angular.isString(endAtKey) || angular.isNumber(endAtKey)) {
+        return path + ':' + JSON.stringify(endAtKey);
+      } else {
+        return path;
+      }
+
     }
 
   };
@@ -93,14 +121,20 @@ angular.module('flashpoint')
 })
 .filter('limitToFirst', function() {
 
-  return function(str, limitToFirst) {
+  return function limitToFirst(path, limitToFirstQuantity) {
 
-    limitToFirst = parseInt(limitToFirst);
+    limitToFirstQuantity = parseInt(limitToFirstQuantity);
 
-    if (isNaN(limitToFirst)) {
+    if (isNaN(limitToFirstQuantity)) {
       return null;
+    } else if (angular.isArray(path)) {
+
+      return path.map(function(pathItem) {
+        return limitToFirst(pathItem, limitToFirstQuantity);
+      });
+
     } else {
-      return str + '.limitToFirst:' + JSON.stringify(limitToFirst);
+      return path + '.limitToFirst:' + JSON.stringify(limitToFirstQuantity);
     }
 
   };
@@ -108,26 +142,36 @@ angular.module('flashpoint')
 })
 .filter('limitToLast', function() {
 
-  return function(str, limitToLast) {
+  return function limitToLast(path, limitToLastQuantity) {
 
-    limitToLast = parseInt(limitToLast);
+    limitToLastQuantity = parseInt(limitToLastQuantity);
 
-    if (isNaN(limitToLast)) {
+    if (isNaN(limitToLastQuantity)) {
       return null;
+    } else if (angular.isArray(path)) {
+
+      return path.map(function(pathItem) {
+        return limitToLast(pathItem, limitToLastQuantity);
+      });
+
     } else {
-      return str + '.limitToLast:' + JSON.stringify(limitToLast);
+      return path + '.limitToLast:' + JSON.stringify(limitToLastQuantity);
     }
 
   };
 
 })
-.constant('_fpGetRef', function(root, str) {
+.constant('_fpGetRef', function _fpGetRef(root, path) {
 
-  if (str === null) {
-    return null;
-  } else {
+  if (angular.isArray(path)) {
 
-    var params = str.split(/\./g),
+    return path.map(function(pathItem) {
+      return _fpGetRef(root, pathItem);
+    });
+
+  } else if (angular.isString(path)) {
+
+    var params = path.split(/\./g),
       query = root.child(params.shift());
 
     return params.reduce(function(query, part) {
@@ -150,6 +194,8 @@ angular.module('flashpoint')
 
     }, query);
 
+  } else {
+    return null;
   }
 
 });
