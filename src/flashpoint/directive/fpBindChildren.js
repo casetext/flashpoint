@@ -5,12 +5,13 @@ angular.module('flashpoint')
   /**
    * @ngdoc directive
    * @name fpBindChildren
-   * @description Binds DOM elements to the state of elements.
+   * @description Binds DOM elements to the children of a Firebase path.
    *
    * @restrict A
    * @element ANY
    * @scope
    * @param {expression} fpBindChildren The annotated path to the children to use.
+   * @param {expression} query An expression that evaluates to a Firebase query.
    */
 
   function fpBindChildrenCompile($templateEl) {

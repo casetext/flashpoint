@@ -17,10 +17,6 @@ angular.module('flashpoint')
    * @param {expression} fpFeed An expression that evaluates to an array of absolute
    * paths in Firebase you wish to query, for instance, `["feeds/" + username, "feeds/firehose"]`.
    *
-   * @param {expression} feedQuery An expression that evaluates to a query. This will be
-   * run over each path you have supplied with the special variables `$ref` and `$start`.
-   * Required.
-   *
    * @param {expression} feedTransform An optional expression to transform a feed object
    * into another linked object. It receives the
    * special variables `$object` and `$root` and should return
