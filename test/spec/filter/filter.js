@@ -81,7 +81,7 @@ describe('filter', function() {
     });
 
     it('works with arrays too', function() {
-      expect(orderByChild(['', ''], 'someChild')).to.deep.equal(['.orderByKey', '.orderByKey']);
+      expect(orderByChild(['', ''], 'someChild')).to.deep.equal(['.orderByChild:"someChild"', '.orderByChild:"someChild"']);
     });
 
   });
