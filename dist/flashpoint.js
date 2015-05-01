@@ -1,4 +1,4 @@
-/*! flashpoint 3.1.0-alpha.3, © 2015 J2H2 Inc. MIT License.
+/*! flashpoint 3.1.0, © 2015 J2H2 Inc. MIT License.
  * https://github.com/casetext/flashpoint
  */
 (function (root, factory) {
@@ -53,6 +53,9 @@
   
         if (attached && url === attachedUrl) {
           // already attached to this path, no action necessary
+          return;
+        } else if (typeof url !== 'string' || url === '') {
+          // no way to attach
           return;
         }
   
@@ -138,12 +141,13 @@
     /**
      * @ngdoc directive
      * @name fpBindChildren
-     * @description Binds DOM elements to the state of elements.
+     * @description Binds DOM elements to the children of a Firebase path.
      *
      * @restrict A
      * @element ANY
      * @scope
      * @param {expression} fpBindChildren The annotated path to the children to use.
+     * @param {expression} query An expression that evaluates to a Firebase query.
      */
   
     function fpBindChildrenCompile($templateEl) {
@@ -383,10 +387,6 @@
      *
      * @param {expression} fpFeed An expression that evaluates to an array of absolute
      * paths in Firebase you wish to query, for instance, `["feeds/" + username, "feeds/firehose"]`.
-     *
-     * @param {expression} feedQuery An expression that evaluates to a query. This will be
-     * run over each path you have supplied with the special variables `$ref` and `$start`.
-     * Required.
      *
      * @param {expression} feedTransform An optional expression to transform a feed object
      * into another linked object. It receives the
@@ -954,12 +954,14 @@
   angular.module('flashpoint')
   .filter('orderByKey', function() {
   
-    return function(str) {
+    return function orderByKey(path) {
   
-      if (!angular.isString(str)) {
-        return null;
+      if (angular.isArray(path)) {
+        return path.map(orderByKey);
+      } else if (angular.isString(path)) {
+        return path + '.orderByKey';
       } else {
-        return str + '.orderByKey';
+        return null;
       }
   
     };
@@ -967,12 +969,14 @@
   })
   .filter('orderByValue', function() {
   
-    return function(str) {
+    return function orderByValue(path) {
   
-      if (!angular.isString(str)) {
-        return null;
+      if (angular.isArray(path)) {
+        return path.map(orderByValue);
+      } else if (angular.isString(path)) {
+        return path + '.orderByValue';
       } else {
-        return str + '.orderByValue';
+        return null;
       }
   
     };
@@ -980,12 +984,14 @@
   })
   .filter('orderByPriority', function() {
   
-    return function(str) {
+    return function orderByPriority(path) {
   
-      if (!angular.isString(str)) {
-        return null;
+      if (angular.isArray(path)) {
+        return path.map(orderByPriority);
+      } else if (angular.isString(path)) {
+        return path + '.orderByPriority';
       } else {
-        return str + '.orderByPriority';
+        return null;
       }
   
     };
@@ -994,12 +1000,16 @@
   .filter('orderByChild', function() {
   
   
-    return function(str, child) {
+    return function orderByChild(path, child) {
   
-      if (!angular.isString(str) || !angular.isString(child) || child.length === 0) {
-        return null;
+      if (angular.isArray(path)) {
+        return path.map(function(pathItem) {
+          return orderByChild(pathItem, child);
+        });
+      } else if (angular.isString(path) && angular.isString(child) && child.length > 0) {
+        return path + '.orderByChild:' + JSON.stringify(child);
       } else {
-        return str + '.orderByChild:' + JSON.stringify(child);
+        return null;
       }
   
     };
@@ -1007,18 +1017,28 @@
   })
   .filter('startAt', function() {
   
-    return function(str, startAt, startAtKey) {
+    return function startAt(path, startAtValue, startAtKey) {
   
-      if (startAt === undefined) {
-        return null;
-      } else {
-        str += '.startAt:' + JSON.stringify(startAt);
-      }
+      if (angular.isArray(path)) {
   
-      if (angular.isString(startAtKey) || angular.isNumber(startAtKey)) {
-        return str + ':' + JSON.stringify(startAtKey);
+        return path.map(function(pathItem) {
+          return startAt(pathItem, startAtValue, startAtKey);
+        });
+  
       } else {
-        return str;
+  
+        if (startAtValue === undefined) {
+          return null;
+        } else {
+          path += '.startAt:' + JSON.stringify(startAtValue);
+        }
+  
+        if (angular.isString(startAtKey) || angular.isNumber(startAtKey)) {
+          return path + ':' + JSON.stringify(startAtKey);
+        } else {
+          return path;
+        }
+  
       }
   
     };
@@ -1026,18 +1046,26 @@
   })
   .filter('endAt', function() {
   
-    return function(str, endAt, endAtKey) {
+    return function endAt(path, endAtValue, endAtKey) {
   
-      if (endAt === undefined) {
-        return null;
+      if (angular.isArray(path)) {
+        return path.map(function(pathItem) {
+          return endAt(pathItem, endAtValue, endAtKey);
+        });
       } else {
-        str += '.endAt:' + JSON.stringify(endAt);
-      }
   
-      if (angular.isString(endAtKey) || angular.isNumber(endAtKey)) {
-        return str + ':' + JSON.stringify(endAtKey);
-      } else {
-        return str;
+        if (endAtValue === undefined) {
+          return null;
+        } else {
+          path += '.endAt:' + JSON.stringify(endAtValue);
+        }
+  
+        if (angular.isString(endAtKey) || angular.isNumber(endAtKey)) {
+          return path + ':' + JSON.stringify(endAtKey);
+        } else {
+          return path;
+        }
+  
       }
   
     };
@@ -1045,14 +1073,20 @@
   })
   .filter('limitToFirst', function() {
   
-    return function(str, limitToFirst) {
+    return function limitToFirst(path, limitToFirstQuantity) {
   
-      limitToFirst = parseInt(limitToFirst);
+      limitToFirstQuantity = parseInt(limitToFirstQuantity);
   
-      if (isNaN(limitToFirst)) {
+      if (isNaN(limitToFirstQuantity)) {
         return null;
+      } else if (angular.isArray(path)) {
+  
+        return path.map(function(pathItem) {
+          return limitToFirst(pathItem, limitToFirstQuantity);
+        });
+  
       } else {
-        return str + '.limitToFirst:' + JSON.stringify(limitToFirst);
+        return path + '.limitToFirst:' + JSON.stringify(limitToFirstQuantity);
       }
   
     };
@@ -1060,26 +1094,36 @@
   })
   .filter('limitToLast', function() {
   
-    return function(str, limitToLast) {
+    return function limitToLast(path, limitToLastQuantity) {
   
-      limitToLast = parseInt(limitToLast);
+      limitToLastQuantity = parseInt(limitToLastQuantity);
   
-      if (isNaN(limitToLast)) {
+      if (isNaN(limitToLastQuantity)) {
         return null;
+      } else if (angular.isArray(path)) {
+  
+        return path.map(function(pathItem) {
+          return limitToLast(pathItem, limitToLastQuantity);
+        });
+  
       } else {
-        return str + '.limitToLast:' + JSON.stringify(limitToLast);
+        return path + '.limitToLast:' + JSON.stringify(limitToLastQuantity);
       }
   
     };
   
   })
-  .constant('_fpGetRef', function(root, str) {
+  .constant('_fpGetRef', function _fpGetRef(root, path) {
   
-    if (str === null) {
-      return null;
-    } else {
+    if (angular.isArray(path)) {
   
-      var params = str.split(/\./g),
+      return path.map(function(pathItem) {
+        return _fpGetRef(root, pathItem);
+      });
+  
+    } else if (angular.isString(path)) {
+  
+      var params = path.split(/\./g),
         query = root.child(params.shift());
   
       return params.reduce(function(query, part) {
@@ -1102,6 +1146,8 @@
   
       }, query);
   
+    } else {
+      return null;
     }
   
   });
@@ -1621,6 +1667,7 @@
   function FirebaseCtl(
     $scope,
     $q,
+    $interpolate,
     Firebase,
     Fireproof,
     validatePath,
@@ -1798,7 +1845,7 @@
         self.detachFirebase();
       }
   
-      self.root = new Fireproof(new Firebase(url));
+      self.root = new Fireproof(new Firebase($interpolate(url)($scope)) );
   
       self.listenerSet = new ListenerSet(self.root, $scope);
       self.root.onAuth(authHandler);
@@ -2537,7 +2584,7 @@
     });
   
   }
-  FirebaseCtl.$inject = ["$scope", "$q", "Firebase", "Fireproof", "validatePath", "ListenerSet"];
+  FirebaseCtl.$inject = ["$scope", "$q", "$interpolate", "Firebase", "Fireproof", "validatePath", "ListenerSet"];
   
   
   angular.module('flashpoint')

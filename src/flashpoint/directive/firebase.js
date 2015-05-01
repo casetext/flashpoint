@@ -26,6 +26,9 @@ angular.module('flashpoint')
       if (attached && url === attachedUrl) {
         // already attached to this path, no action necessary
         return;
+      } else if (typeof url !== 'string' || url === '') {
+        // no way to attach
+        return;
       }
 
       fp.attachFirebase(url);
