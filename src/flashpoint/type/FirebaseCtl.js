@@ -786,7 +786,7 @@ function FirebaseCtl(
   self.val = function() {
 
     var path = validatePath(Array.prototype.slice.call(arguments, 0));
-    if (!path) {
+    if (!path || !self.listenerSet) {
       return;
     }
 
@@ -819,7 +819,8 @@ function FirebaseCtl(
     var path = validatePath(Array.prototype.slice.call(arguments, 0));
     return function(val) {
 
-      if (!path) {
+      // do nothing if we have no path or we aren't attached.
+      if (!path && !self.listenerSet) {
         return;
       }
 
@@ -854,7 +855,7 @@ function FirebaseCtl(
   self.priority = function() {
 
     var path = validatePath(Array.prototype.slice.call(arguments, 0));
-    if (!path) {
+    if (!path || !self.listenerSet) {
       return;
     }
 
@@ -885,7 +886,7 @@ function FirebaseCtl(
 
     var path = validatePath(Array.prototype.slice.call(arguments, 0));
 
-    if (path && self.listenerSet.errors.hasOwnProperty(path)) {
+    if (path && self.listenerSet && self.listenerSet.errors.hasOwnProperty(path)) {
       return self.listenerSet.errors[path];
     } else {
       return null;
