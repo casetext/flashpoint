@@ -17,9 +17,9 @@ angular.module('flashpoint')
    * `https://my-firebase.firebaseio.com`. Interpolatable.
    */
 
-  var attached, attachedUrl;
-
   function firebasePreLink(scope, el, attrs, fp) {
+
+    var attached, attachedUrl;
 
     var attachToController = function(url) {
 
