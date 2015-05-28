@@ -1,4 +1,4 @@
-/*! flashpoint 3.1.0, © 2015 J2H2 Inc. MIT License.
+/*! flashpoint 3.1.1, © 2015 J2H2 Inc. MIT License.
  * https://github.com/casetext/flashpoint
  */
 (function (root, factory) {
@@ -2451,7 +2451,7 @@
     self.val = function() {
   
       var path = validatePath(Array.prototype.slice.call(arguments, 0));
-      if (!path) {
+      if (!path || !self.listenerSet) {
         return;
       }
   
@@ -2484,7 +2484,8 @@
       var path = validatePath(Array.prototype.slice.call(arguments, 0));
       return function(val) {
   
-        if (!path) {
+        // do nothing if we have no path or we aren't attached.
+        if (!path && !self.listenerSet) {
           return;
         }
   
@@ -2519,7 +2520,7 @@
     self.priority = function() {
   
       var path = validatePath(Array.prototype.slice.call(arguments, 0));
-      if (!path) {
+      if (!path || !self.listenerSet) {
         return;
       }
   
@@ -2550,7 +2551,7 @@
   
       var path = validatePath(Array.prototype.slice.call(arguments, 0));
   
-      if (path && self.listenerSet.errors.hasOwnProperty(path)) {
+      if (path && self.listenerSet && self.listenerSet.errors.hasOwnProperty(path)) {
         return self.listenerSet.errors[path];
       } else {
         return null;
