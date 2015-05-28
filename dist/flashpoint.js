@@ -1,4 +1,4 @@
-/*! flashpoint 3.1.1, © 2015 J2H2 Inc. MIT License.
+/*! flashpoint 3.1.2, © 2015 J2H2 Inc. MIT License.
  * https://github.com/casetext/flashpoint
  */
 (function (root, factory) {
