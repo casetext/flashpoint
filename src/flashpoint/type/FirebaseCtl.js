@@ -820,7 +820,7 @@ function FirebaseCtl(
     return function(val) {
 
       // do nothing if we have no path or we aren't attached.
-      if (!path && !self.listenerSet) {
+      if (!path || !self.listenerSet) {
         return;
       }
 
