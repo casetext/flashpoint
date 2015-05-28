@@ -123,14 +123,7 @@ function FirebaseCtl(
 
     }
 
-    // detach any remaining listeners here.
-    self.root.offAuth(authHandler);
-
-    self.root.child('.info/connected').off('value', connectedListener);
     delete self.connected;
-
-    // detach all listeners to prevent leaks.
-    self.root.off();
 
     self.auth = null;
     self.authError = null;
@@ -138,12 +131,21 @@ function FirebaseCtl(
     self.authenticating = false;
     self.accountChanging = false;
 
-    _detachListeners.forEach(function(listener) {
-      listener(self.root);
-    });
+    if (self.root) {
 
-    // remove the actual root object itself, as it's now invalid.
-    delete self.root;
+      // detach any remaining listeners here.
+      self.root.offAuth(authHandler);
+      self.root.child('.info/connected').off('value', connectedListener);
+      self.root.off();
+
+      _detachListeners.forEach(function(listener) {
+        listener(self.root);
+      });
+
+      // remove the actual root object itself, as it's now invalid.
+      delete self.root;
+
+    }
 
     $scope.$evalAsync();
 
