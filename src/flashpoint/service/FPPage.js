@@ -1,8 +1,8 @@
 
 angular.module('flashpoint')
-.factory('Page', function($q) {
+.factory('FPPage', function($q) {
 
-  function Page(pagingFn) {
+  function FPPage(pagingFn) {
 
     this._pagingFn = pagingFn;
     this._pages = [];
@@ -20,7 +20,7 @@ angular.module('flashpoint')
   }
 
 
-  Page.prototype.connect = function(root) {
+  FPPage.prototype.connect = function(root) {
 
     this.disconnect();
 
@@ -30,7 +30,7 @@ angular.module('flashpoint')
   };
 
 
-  Page.prototype.disconnect = function() {
+  FPPage.prototype.disconnect = function() {
 
     this.root = null;
     this._pages.length = 0;
@@ -46,9 +46,9 @@ angular.module('flashpoint')
   };
 
 
-  Page.prototype._handleSnap = function(snap) {
+  FPPage.prototype._handleSnap = function(snap) {
 
-    var newPage = [],
+    var newFPPage = [],
       presence = this._presence;
 
     snap.forEach(function(child) {
@@ -56,17 +56,17 @@ angular.module('flashpoint')
       if (!presence.hasOwnProperty(child.key()) ) {
 
         presence[child.key()] = true;
-        newPage.push(child);
+        newFPPage.push(child);
 
       }
 
     });
 
-    if (newPage.length > 0) {
-      this._pages.push(newPage);
-      this._setPage(this._pages.length);
+    if (newFPPage.length > 0) {
+      this._pages.push(newFPPage);
+      this._setFPPage(this._pages.length);
     } else {
-      this._lastPage = this.number;
+      this._lastFPPage = this.number;
     }
 
     this._currentOperation = null;
@@ -74,7 +74,7 @@ angular.module('flashpoint')
   };
 
 
-  Page.prototype.next = function() {
+  FPPage.prototype.next = function() {
 
     if (!this.hasNext()) {
 
@@ -84,7 +84,7 @@ angular.module('flashpoint')
     } else if (this._pages.length > this.number) {
 
       // we already have the page, just copy its contents into this.items
-      this._setPage(this.number+1);
+      this._setFPPage(this.number+1);
       return $q.when();
 
     } else if (this._currentOperation) {
@@ -98,9 +98,9 @@ angular.module('flashpoint')
 
     } else if (this._pages[this._pages.length-1].length > 0) {
 
-      var lastPage = this._pages[this._pages.length-1];
+      var lastFPPage = this._pages[this._pages.length-1];
 
-      this._currentOperation = this._pagingFn(this.root, lastPage[lastPage.length-1])
+      this._currentOperation = this._pagingFn(this.root, lastFPPage[lastFPPage.length-1])
       .then(this._handleSnap.bind(this));
 
       return this._currentOperation;
@@ -112,20 +112,20 @@ angular.module('flashpoint')
   };
 
 
-  Page.prototype.hasNext = function() {
-    return this.hasOwnProperty('root') && this._lastPage !== this.number;
+  FPPage.prototype.hasNext = function() {
+    return this.hasOwnProperty('root') && this._lastFPPage !== this.number;
   };
 
 
-  Page.prototype.hasPrevious = function() {
+  FPPage.prototype.hasPrevious = function() {
     return this.hasOwnProperty('root') && this.number > 1;
   };
 
 
-  Page.prototype.previous = function() {
+  FPPage.prototype.previous = function() {
 
     if (this.hasPrevious()) {
-      this._setPage(this.number-1);
+      this._setFPPage(this.number-1);
     }
 
     return $q.when();
@@ -133,12 +133,12 @@ angular.module('flashpoint')
   };
 
 
-  Page.prototype.reset = function() {
+  FPPage.prototype.reset = function() {
     return this.connect(this.root);
   };
 
 
-  Page.prototype._setPage = function(pageNumber) {
+  FPPage.prototype._setFPPage = function(pageNumber) {
 
     this.items.length = 0;
     this.keys.length = 0;
@@ -159,6 +159,6 @@ angular.module('flashpoint')
   };
 
 
-  return Page;
+  return FPPage;
 
 });

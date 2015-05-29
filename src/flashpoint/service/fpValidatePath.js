@@ -1,8 +1,8 @@
 
 angular.module('flashpoint')
-.factory('validatePath', function() {
+.factory('fpValidatePath', function() {
 
-  function validatePath(pathParts) {
+  function fpValidatePath(pathParts) {
 
     // check the arguments
     var path = pathParts.join('/');
@@ -19,6 +19,6 @@ angular.module('flashpoint')
 
   }
 
-  return validatePath;
+  return fpValidatePath;
 
 });

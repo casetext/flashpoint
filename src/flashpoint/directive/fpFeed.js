@@ -1,6 +1,6 @@
 
 angular.module('flashpoint')
-.directive('fpFeed', function($q, Feed) {
+.directive('fpFeed', function($q, FPFeed) {
 
   /**
    * @ngdoc directive
@@ -42,7 +42,7 @@ angular.module('flashpoint')
 
     var onAttachListener = fp.onAttach(function(root) {
 
-      scope.$feed = new Feed(scope.$eval(attrs.fpFeed), function(ref, start) {
+      scope.$feed = new FPFeed(scope.$eval(attrs.fpFeed), function(ref, start) {
 
         if (attrs.feedQuery) {
           return scope.$eval(attrs.feedQuery, { $ref: ref, $start: start });

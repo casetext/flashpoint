@@ -1,11 +1,11 @@
 
 angular.module('flashpoint')
-.factory('Feed', function($q) {
+.factory('FPFeed', function($q) {
 
-  function Feed(paths, queryFn) {
+  function FPFeed(paths, queryFn) {
 
     if (arguments.length < 2) {
-      throw new Error('Feed expects at least 2 arguments, got ' + arguments.length);
+      throw new Error('FPFeed expects at least 2 arguments, got ' + arguments.length);
     }
 
     if (!angular.isArray(paths)) {
@@ -26,30 +26,30 @@ angular.module('flashpoint')
 
   }
 
-  Feed.prototype._transformFn = function(obj) {
+  FPFeed.prototype._transformFn = function(obj) {
     return obj;
   };
 
-  Feed.prototype._filterFn = function() {
+  FPFeed.prototype._filterFn = function() {
     return true;
   };
 
-  Feed.prototype.setTransform = function(fn) {
+  FPFeed.prototype.setTransform = function(fn) {
     this._transformFn = fn;
     return this;
   };
 
-  Feed.prototype.setSort = function(fn) {
+  FPFeed.prototype.setSort = function(fn) {
     this._sortFn = fn;
     return this;
   };
 
-  Feed.prototype.setFilter = function(fn) {
+  FPFeed.prototype.setFilter = function(fn) {
     this._filterFn = fn;
     return this;
   };
 
-  Feed.prototype.more = function() {
+  FPFeed.prototype.more = function() {
 
     var self = this;
 
@@ -106,7 +106,7 @@ angular.module('flashpoint')
 
   };
 
-  Feed.prototype.connect = function(root) {
+  FPFeed.prototype.connect = function(root) {
 
     this.disconnect();
     this.root = root;
@@ -114,7 +114,7 @@ angular.module('flashpoint')
 
   };
 
-  Feed.prototype.disconnect = function() {
+  FPFeed.prototype.disconnect = function() {
 
     this._positions = Object.keys(this._positions).reduce(function(obj, path) {
 
@@ -127,6 +127,6 @@ angular.module('flashpoint')
 
   };
 
-  return Feed;
+  return FPFeed;
 
 });

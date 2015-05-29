@@ -1,8 +1,8 @@
 
 angular.module('flashpoint')
-.factory('ListenerSet', function() {
+.factory('FPListenerSet', function() {
 
-  function ListenerSet(root, scope) {
+  function FPListenerSet(root, scope) {
 
     var self = this,
       scrubbingListeners = false;
@@ -53,7 +53,7 @@ angular.module('flashpoint')
 
   }
 
-  ListenerSet.prototype.add = function(path) {
+  FPListenerSet.prototype.add = function(path) {
 
     var self = this;
 
@@ -85,12 +85,12 @@ angular.module('flashpoint')
   };
 
 
-  ListenerSet.prototype.has = function(path) {
+  FPListenerSet.prototype.has = function(path) {
     return this.watchers.hasOwnProperty(path);
   };
 
 
-  ListenerSet.prototype.remove = function(path) {
+  FPListenerSet.prototype.remove = function(path) {
 
     if (this.watchers[path]) {
 
@@ -112,7 +112,7 @@ angular.module('flashpoint')
   };
 
 
-  ListenerSet.prototype.clear = function() {
+  FPListenerSet.prototype.clear = function() {
 
     for (var path in this.watchers) {
       this.remove(path);
@@ -122,6 +122,6 @@ angular.module('flashpoint')
 
   };
 
-  return ListenerSet;
+  return FPListenerSet;
 
 });

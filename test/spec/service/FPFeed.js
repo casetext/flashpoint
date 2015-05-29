@@ -1,7 +1,7 @@
 
-describe('Feed', function() {
+describe('FPFeed', function() {
 
-  var root, Feed;
+  var root, FPFeed;
 
 
   beforeEach(function() {
@@ -9,8 +9,8 @@ describe('Feed', function() {
     module('flashpoint');
     module('flashpoint.mocks.pump');
 
-    inject(function(_Feed_, Firebase, Fireproof) {
-      Feed = _Feed_;
+    inject(function(_FPFeed_, Firebase, Fireproof) {
+      FPFeed = _FPFeed_;
       root = new Fireproof(new Firebase(window.__env__.FIREBASE_TEST_URL));
     });
 
@@ -56,7 +56,7 @@ describe('Feed', function() {
 
     beforeEach(function() {
 
-      feed = new Feed(['test/feeds/a', 'test/feeds/b', 'test/feeds/c'], function(ref, start) {
+      feed = new FPFeed(['test/feeds/a', 'test/feeds/b', 'test/feeds/c'], function(ref, start) {
 
         if (start) {
 

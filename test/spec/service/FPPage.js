@@ -1,15 +1,15 @@
 
-describe('Page', function() {
+describe('FPPage', function() {
 
-  var root, Page, page;
+  var root, FPPage, page;
 
   beforeEach(function() {
 
     module('flashpoint');
     module('flashpoint.mocks.pump');
 
-    inject(function(_Page_, Fireproof, Firebase) {
-      Page = _Page_;
+    inject(function(_FPPage_, Fireproof, Firebase) {
+      FPPage = _FPPage_;
       root = new Fireproof(new Firebase(window.__env__.FIREBASE_TEST_URL));
     });
 
@@ -24,7 +24,7 @@ describe('Page', function() {
       'g': true
     })
     .then(function() {
-      page = new Page(function(root, last) {
+      page = new FPPage(function(root, last) {
 
         var query = root.child('test/pages').orderByPriority().limitToFirst(5);
         if (last) {
@@ -104,7 +104,7 @@ describe('Page', function() {
 
     it('does not break when we hit the caching threshold', function() {
 
-      page = new Page(function(root, last) {
+      page = new FPPage(function(root, last) {
 
         var query = root.child('test/pages').orderByPriority();
 

@@ -1,7 +1,7 @@
 
 angular.module('flashpoint')
 .constant('FP_DEFAULT_PAGE_SIZE', 3)
-.directive('fpPage', function(FP_DEFAULT_PAGE_SIZE, Page) {
+.directive('fpPage', function(FP_DEFAULT_PAGE_SIZE, FPPage) {
 
   /**
    * @ngdoc directive
@@ -141,7 +141,7 @@ angular.module('flashpoint')
 
     var onAttachListener = fp.onAttach(function(root) {
 
-      scope.$page = new Page(scope.$eval(attrs.fpPage, orderingMethods));
+      scope.$page = new FPPage(scope.$eval(attrs.fpPage, orderingMethods));
       scope.$page.connect(root);
 
     });

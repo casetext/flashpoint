@@ -5,8 +5,8 @@ function FirebaseCtl(
   $interpolate,
   Firebase,
   Fireproof,
-  validatePath,
-  ListenerSet) {
+  fpValidatePath,
+  FPListenerSet) {
 
   /**
    * @ngdoc type
@@ -184,7 +184,7 @@ function FirebaseCtl(
 
     self.root = new Fireproof(new Firebase($interpolate(url)($scope)) );
 
-    self.listenerSet = new ListenerSet(self.root, $scope);
+    self.listenerSet = new FPListenerSet(self.root, $scope);
     self.root.onAuth(authHandler);
 
     // maintain knowledge of connection status
@@ -479,7 +479,7 @@ function FirebaseCtl(
     // check the arguments
     var args = Array.prototype.slice.call(arguments, 0),
       value = args.pop(),
-      path = validatePath(args);
+      path = fpValidatePath(args);
 
     return self.root.child(path).set(value);
 
@@ -509,7 +509,7 @@ function FirebaseCtl(
     // check the arguments
     var args = Array.prototype.slice.call(arguments, 0),
       priority = args.pop(),
-      path = validatePath(args);
+      path = fpValidatePath(args);
 
     return self.root.child(path).setPriority(priority);
 
@@ -541,7 +541,7 @@ function FirebaseCtl(
     var args = Array.prototype.slice.call(arguments, 0),
       priority = args.pop(),
       value = args.pop(),
-      path = validatePath(args);
+      path = fpValidatePath(args);
 
     return self.root.child(path).setWithPriority(value, priority);
 
@@ -573,7 +573,7 @@ function FirebaseCtl(
     // check the arguments
     var args = Array.prototype.slice.call(arguments, 0),
       value = args.pop(),
-      path = validatePath(args);
+      path = fpValidatePath(args);
 
     return self.root.child(path).push(value);
 
@@ -604,7 +604,7 @@ function FirebaseCtl(
     // check the arguments
     var args = Array.prototype.slice.call(arguments, 0),
       value = args.pop(),
-      path = validatePath(args);
+      path = fpValidatePath(args);
 
     return self.root.child(path).update(value);
 
@@ -633,7 +633,7 @@ function FirebaseCtl(
 
     // check the arguments
     var args = Array.prototype.slice.call(arguments, 0),
-      path = validatePath(args);
+      path = fpValidatePath(args);
 
     return self.root.child(path).remove();
 
@@ -660,7 +660,7 @@ function FirebaseCtl(
 
     // check the arguments
     var args = Array.prototype.slice.call(arguments, 0),
-      path = validatePath(args);
+      path = fpValidatePath(args);
 
 
     return self.root.child(path)
@@ -706,7 +706,7 @@ function FirebaseCtl(
 
     // check the arguments
     var args = Array.prototype.slice.call(arguments, 0),
-      path = validatePath(args);
+      path = fpValidatePath(args);
 
     return self.root.child(path)
     .transaction(function(val) {
@@ -756,7 +756,7 @@ function FirebaseCtl(
     // check the arguments
     var args = Array.prototype.slice.call(arguments, 0),
       fn = args.pop(),
-      path = validatePath(args);
+      path = fpValidatePath(args);
 
     return self.root.child(path)
     .transaction(function(val) {
@@ -787,7 +787,7 @@ function FirebaseCtl(
    */
   self.val = function() {
 
-    var path = validatePath(Array.prototype.slice.call(arguments, 0));
+    var path = fpValidatePath(Array.prototype.slice.call(arguments, 0));
     if (!path || !self.listenerSet) {
       return;
     }
@@ -818,7 +818,7 @@ function FirebaseCtl(
    */
   self.model = function() {
 
-    var path = validatePath(Array.prototype.slice.call(arguments, 0));
+    var path = fpValidatePath(Array.prototype.slice.call(arguments, 0));
     return function(val) {
 
       // do nothing if we have no path or we aren't attached.
@@ -856,7 +856,7 @@ function FirebaseCtl(
    */
   self.priority = function() {
 
-    var path = validatePath(Array.prototype.slice.call(arguments, 0));
+    var path = fpValidatePath(Array.prototype.slice.call(arguments, 0));
     if (!path || !self.listenerSet) {
       return;
     }
@@ -886,7 +886,7 @@ function FirebaseCtl(
    */
   self.error = function() {
 
-    var path = validatePath(Array.prototype.slice.call(arguments, 0));
+    var path = fpValidatePath(Array.prototype.slice.call(arguments, 0));
 
     if (path && self.listenerSet && self.listenerSet.errors.hasOwnProperty(path)) {
       return self.listenerSet.errors[path];
@@ -903,7 +903,7 @@ function FirebaseCtl(
    */
   self.path = function() {
 
-    var path = validatePath(Array.prototype.slice.call(arguments, 0));
+    var path = fpValidatePath(Array.prototype.slice.call(arguments, 0));
 
     if (path) {
       return path;

@@ -1,6 +1,6 @@
 
 angular.module('flashpoint')
-.directive('onDisconnect', function($q, $log, validatePath) {
+.directive('onDisconnect', function($q, $log, fpValidatePath) {
 
   /**
    * @ngdoc directive
@@ -51,7 +51,7 @@ angular.module('flashpoint')
 
           var args = Array.prototype.slice.call(arguments, 0),
             data = args.pop(),
-            path = validatePath(args);
+            path = fpValidatePath(args);
 
           if (path) {
 
@@ -69,7 +69,7 @@ angular.module('flashpoint')
 
           var args = Array.prototype.slice.call(arguments, 0),
             data = args.pop(),
-            path = validatePath(args);
+            path = fpValidatePath(args);
 
           if (path) {
 
@@ -88,7 +88,7 @@ angular.module('flashpoint')
           var args = Array.prototype.slice.call(arguments, 0),
             priority = args.pop(),
             data = args.pop(),
-            path = validatePath(args);
+            path = fpValidatePath(args);
 
           if (path) {
 
@@ -105,7 +105,7 @@ angular.module('flashpoint')
         $remove: function() {
 
           var args = Array.prototype.slice.call(arguments, 0),
-            path = validatePath(args);
+            path = fpValidatePath(args);
 
           if (path) {
 
