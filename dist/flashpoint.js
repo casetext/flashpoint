@@ -1,4 +1,4 @@
-/*! flashpoint 4.0.0, © 2015 J2H2 Inc. MIT License.
+/*! flashpoint 4.1.0, © 2015 J2H2 Inc. MIT License.
  * https://github.com/casetext/flashpoint
  */
 (function (root, factory) {
@@ -40,7 +40,6 @@
      *
      * @restrict A
      * @element ANY
-     * @scope
      * @param {expression} firebase Full URL to the Firebase, like
      * `https://my-firebase.firebaseio.com`. Interpolatable.
      */
@@ -121,7 +120,6 @@
     return {
   
       restrict: 'A',
-      scope: true,
       controller: 'FirebaseCtl',
       controllerAs: 'fp',
       priority: 1000,
