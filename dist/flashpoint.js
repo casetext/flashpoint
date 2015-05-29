@@ -1,4 +1,4 @@
-/*! flashpoint 3.1.4, © 2015 J2H2 Inc. MIT License.
+/*! flashpoint 4.0.0, © 2015 J2H2 Inc. MIT License.
  * https://github.com/casetext/flashpoint
  */
 (function (root, factory) {
@@ -371,7 +371,7 @@
   
   
   angular.module('flashpoint')
-  .directive('fpFeed', ["$q", "Feed", function($q, Feed) {
+  .directive('fpFeed', ["$q", "FPFeed", function($q, FPFeed) {
   
     /**
      * @ngdoc directive
@@ -413,7 +413,7 @@
   
       var onAttachListener = fp.onAttach(function(root) {
   
-        scope.$feed = new Feed(scope.$eval(attrs.fpFeed), function(ref, start) {
+        scope.$feed = new FPFeed(scope.$eval(attrs.fpFeed), function(ref, start) {
   
           if (attrs.feedQuery) {
             return scope.$eval(attrs.feedQuery, { $ref: ref, $start: start });
@@ -499,7 +499,7 @@
   
   angular.module('flashpoint')
   .constant('FP_DEFAULT_PAGE_SIZE', 3)
-  .directive('fpPage', ["FP_DEFAULT_PAGE_SIZE", "Page", function(FP_DEFAULT_PAGE_SIZE, Page) {
+  .directive('fpPage', ["FP_DEFAULT_PAGE_SIZE", "FPPage", function(FP_DEFAULT_PAGE_SIZE, FPPage) {
   
     /**
      * @ngdoc directive
@@ -639,7 +639,7 @@
   
       var onAttachListener = fp.onAttach(function(root) {
   
-        scope.$page = new Page(scope.$eval(attrs.fpPage, orderingMethods));
+        scope.$page = new FPPage(scope.$eval(attrs.fpPage, orderingMethods));
         scope.$page.connect(root);
   
       });
@@ -780,7 +780,7 @@
   
   
   angular.module('flashpoint')
-  .directive('onDisconnect', ["$q", "$log", "validatePath", function($q, $log, validatePath) {
+  .directive('onDisconnect', ["$q", "$log", "fpValidatePath", function($q, $log, fpValidatePath) {
   
     /**
      * @ngdoc directive
@@ -831,7 +831,7 @@
   
             var args = Array.prototype.slice.call(arguments, 0),
               data = args.pop(),
-              path = validatePath(args);
+              path = fpValidatePath(args);
   
             if (path) {
   
@@ -849,7 +849,7 @@
   
             var args = Array.prototype.slice.call(arguments, 0),
               data = args.pop(),
-              path = validatePath(args);
+              path = fpValidatePath(args);
   
             if (path) {
   
@@ -868,7 +868,7 @@
             var args = Array.prototype.slice.call(arguments, 0),
               priority = args.pop(),
               data = args.pop(),
-              path = validatePath(args);
+              path = fpValidatePath(args);
   
             if (path) {
   
@@ -885,7 +885,7 @@
           $remove: function() {
   
             var args = Array.prototype.slice.call(arguments, 0),
-              path = validatePath(args);
+              path = fpValidatePath(args);
   
             if (path) {
   
@@ -1154,12 +1154,12 @@
   
   
   angular.module('flashpoint')
-  .factory('Feed', ["$q", function($q) {
+  .factory('FPFeed', ["$q", function($q) {
   
-    function Feed(paths, queryFn) {
+    function FPFeed(paths, queryFn) {
   
       if (arguments.length < 2) {
-        throw new Error('Feed expects at least 2 arguments, got ' + arguments.length);
+        throw new Error('FPFeed expects at least 2 arguments, got ' + arguments.length);
       }
   
       if (!angular.isArray(paths)) {
@@ -1180,30 +1180,30 @@
   
     }
   
-    Feed.prototype._transformFn = function(obj) {
+    FPFeed.prototype._transformFn = function(obj) {
       return obj;
     };
   
-    Feed.prototype._filterFn = function() {
+    FPFeed.prototype._filterFn = function() {
       return true;
     };
   
-    Feed.prototype.setTransform = function(fn) {
+    FPFeed.prototype.setTransform = function(fn) {
       this._transformFn = fn;
       return this;
     };
   
-    Feed.prototype.setSort = function(fn) {
+    FPFeed.prototype.setSort = function(fn) {
       this._sortFn = fn;
       return this;
     };
   
-    Feed.prototype.setFilter = function(fn) {
+    FPFeed.prototype.setFilter = function(fn) {
       this._filterFn = fn;
       return this;
     };
   
-    Feed.prototype.more = function() {
+    FPFeed.prototype.more = function() {
   
       var self = this;
   
@@ -1260,7 +1260,7 @@
   
     };
   
-    Feed.prototype.connect = function(root) {
+    FPFeed.prototype.connect = function(root) {
   
       this.disconnect();
       this.root = root;
@@ -1268,7 +1268,7 @@
   
     };
   
-    Feed.prototype.disconnect = function() {
+    FPFeed.prototype.disconnect = function() {
   
       this._positions = Object.keys(this._positions).reduce(function(obj, path) {
   
@@ -1281,7 +1281,300 @@
   
     };
   
-    return Feed;
+    return FPFeed;
+  
+  }]);
+  
+  
+  angular.module('flashpoint')
+  .factory('FPListenerSet', function() {
+  
+    function FPListenerSet(root, scope) {
+  
+      var self = this,
+        scrubbingListeners = false;
+  
+      self.watchers = {};
+      self.liveWatchers = {};
+      self.values = {};
+      self.priorities = {};
+      self.errors = {};
+  
+      self.root = root;
+      self.scope = scope;
+  
+      function scrubListeners() {
+  
+        var newWatchers = {};
+  
+        for (var path in self.watchers) {
+  
+          if (self.watchers[path] && self.liveWatchers[path]) {
+            newWatchers[path] = self.watchers[path];
+          } else {
+            self.remove(path);
+          }
+  
+        }
+  
+        // as of now, nothing is alive.
+        self.watchers = newWatchers;
+        self.liveWatchers = {};
+        scrubbingListeners = false;
+  
+      }
+  
+      self.scope.$watch(function() {
+  
+        // after each scope cycle, sweep out any "orphaned" listeners, i.e.,
+        // ones we previously connected but don't need anymore.
+  
+        if (!scrubbingListeners) {
+  
+          scrubbingListeners = true;
+          scope.$$postDigest(scrubListeners);
+  
+        }
+  
+      });
+  
+    }
+  
+    FPListenerSet.prototype.add = function(path) {
+  
+      var self = this;
+  
+      self.liveWatchers[path] = true;
+  
+      if (!self.watchers[path]) {
+  
+        self.watchers[path] = self.root.child(path)
+        .on('value', function(snap) {
+  
+          self.errors[path] = null;
+          self.values[path] = snap.val();
+          self.priorities[path] = snap.getPriority();
+          self.scope.$evalAsync();
+  
+        }, function(err) {
+  
+          self.liveWatchers[path] = false;
+          self.watchers[path] = null;
+          self.errors[path] = err;
+          self.values[path] = null;
+          self.priorities[path] = null;
+          self.scope.$evalAsync();
+  
+        });
+  
+      }
+  
+    };
+  
+  
+    FPListenerSet.prototype.has = function(path) {
+      return this.watchers.hasOwnProperty(path);
+    };
+  
+  
+    FPListenerSet.prototype.remove = function(path) {
+  
+      if (this.watchers[path]) {
+  
+        // disconnect this watcher, it doesn't exist anymore.
+        if (this.watchers[path].disconnect) {
+          this.watchers[path].disconnect();
+        } else {
+          this.root.child(path).off('value', this.watchers[path]);
+        }
+  
+        // clear all values associated with the watcher
+        this.values[path] = null;
+        this.errors[path] = null;
+        this.priorities[path] = null;
+        this.watchers[path] = null;
+  
+      }
+  
+    };
+  
+  
+    FPListenerSet.prototype.clear = function() {
+  
+      for (var path in this.watchers) {
+        this.remove(path);
+      }
+  
+      this.watchers = {};
+  
+    };
+  
+    return FPListenerSet;
+  
+  });
+  
+  
+  angular.module('flashpoint')
+  .factory('FPPage', ["$q", function($q) {
+  
+    function FPPage(pagingFn) {
+  
+      this._pagingFn = pagingFn;
+      this._pages = [];
+      this._presence = {};
+  
+      this.items = [];
+  
+      this.keys = [];
+      this.priorities = [];
+      this.values = [];
+  
+  
+      this.disconnect();
+  
+    }
+  
+  
+    FPPage.prototype.connect = function(root) {
+  
+      this.disconnect();
+  
+      this.root = root;
+      return this.next();
+  
+    };
+  
+  
+    FPPage.prototype.disconnect = function() {
+  
+      this.root = null;
+      this._pages.length = 0;
+  
+      this.items.length = 0;
+      this.keys.length = 0;
+      this.values.length = 0;
+      this.priorities.length = 0;
+  
+      this.number = 0;
+      this._presence = {};
+  
+    };
+  
+  
+    FPPage.prototype._handleSnap = function(snap) {
+  
+      var newFPPage = [],
+        presence = this._presence;
+  
+      snap.forEach(function(child) {
+  
+        if (!presence.hasOwnProperty(child.key()) ) {
+  
+          presence[child.key()] = true;
+          newFPPage.push(child);
+  
+        }
+  
+      });
+  
+      if (newFPPage.length > 0) {
+        this._pages.push(newFPPage);
+        this._setFPPage(this._pages.length);
+      } else {
+        this._lastFPPage = this.number;
+      }
+  
+      this._currentOperation = null;
+  
+    };
+  
+  
+    FPPage.prototype.next = function() {
+  
+      if (!this.hasNext()) {
+  
+        // nothing to set.
+        return $q.when();
+  
+      } else if (this._pages.length > this.number) {
+  
+        // we already have the page, just copy its contents into this.items
+        this._setFPPage(this.number+1);
+        return $q.when();
+  
+      } else if (this._currentOperation) {
+        return this._currentOperation;
+      } else if (this._pages.length === 0) {
+  
+        this._currentOperation = this._pagingFn(this.root, null)
+        .then(this._handleSnap.bind(this));
+  
+        return this._currentOperation;
+  
+      } else if (this._pages[this._pages.length-1].length > 0) {
+  
+        var lastFPPage = this._pages[this._pages.length-1];
+  
+        this._currentOperation = this._pagingFn(this.root, lastFPPage[lastFPPage.length-1])
+        .then(this._handleSnap.bind(this));
+  
+        return this._currentOperation;
+  
+      } else {
+        return $q.when();
+      }
+  
+    };
+  
+  
+    FPPage.prototype.hasNext = function() {
+      return this.hasOwnProperty('root') && this._lastFPPage !== this.number;
+    };
+  
+  
+    FPPage.prototype.hasPrevious = function() {
+      return this.hasOwnProperty('root') && this.number > 1;
+    };
+  
+  
+    FPPage.prototype.previous = function() {
+  
+      if (this.hasPrevious()) {
+        this._setFPPage(this.number-1);
+      }
+  
+      return $q.when();
+  
+    };
+  
+  
+    FPPage.prototype.reset = function() {
+      return this.connect(this.root);
+    };
+  
+  
+    FPPage.prototype._setFPPage = function(pageNumber) {
+  
+      this.items.length = 0;
+      this.keys.length = 0;
+      this.values.length = 0;
+      this.priorities.length = 0;
+  
+      this._pages[pageNumber-1].forEach(function(item) {
+  
+        this.items.push(item);
+        this.keys.push(item.key());
+        this.values.push(item.val());
+        this.priorities.push(item.getPriority());
+  
+      }, this);
+  
+      this.number = pageNumber;
+  
+    };
+  
+  
+    return FPPage;
   
   }]);
   
@@ -1347,302 +1640,9 @@
   
   
   angular.module('flashpoint')
-  .factory('ListenerSet', function() {
+  .factory('fpValidatePath', function() {
   
-    function ListenerSet(root, scope) {
-  
-      var self = this,
-        scrubbingListeners = false;
-  
-      self.watchers = {};
-      self.liveWatchers = {};
-      self.values = {};
-      self.priorities = {};
-      self.errors = {};
-  
-      self.root = root;
-      self.scope = scope;
-  
-      function scrubListeners() {
-  
-        var newWatchers = {};
-  
-        for (var path in self.watchers) {
-  
-          if (self.watchers[path] && self.liveWatchers[path]) {
-            newWatchers[path] = self.watchers[path];
-          } else {
-            self.remove(path);
-          }
-  
-        }
-  
-        // as of now, nothing is alive.
-        self.watchers = newWatchers;
-        self.liveWatchers = {};
-        scrubbingListeners = false;
-  
-      }
-  
-      self.scope.$watch(function() {
-  
-        // after each scope cycle, sweep out any "orphaned" listeners, i.e.,
-        // ones we previously connected but don't need anymore.
-  
-        if (!scrubbingListeners) {
-  
-          scrubbingListeners = true;
-          scope.$$postDigest(scrubListeners);
-  
-        }
-  
-      });
-  
-    }
-  
-    ListenerSet.prototype.add = function(path) {
-  
-      var self = this;
-  
-      self.liveWatchers[path] = true;
-  
-      if (!self.watchers[path]) {
-  
-        self.watchers[path] = self.root.child(path)
-        .on('value', function(snap) {
-  
-          self.errors[path] = null;
-          self.values[path] = snap.val();
-          self.priorities[path] = snap.getPriority();
-          self.scope.$evalAsync();
-  
-        }, function(err) {
-  
-          self.liveWatchers[path] = false;
-          self.watchers[path] = null;
-          self.errors[path] = err;
-          self.values[path] = null;
-          self.priorities[path] = null;
-          self.scope.$evalAsync();
-  
-        });
-  
-      }
-  
-    };
-  
-  
-    ListenerSet.prototype.has = function(path) {
-      return this.watchers.hasOwnProperty(path);
-    };
-  
-  
-    ListenerSet.prototype.remove = function(path) {
-  
-      if (this.watchers[path]) {
-  
-        // disconnect this watcher, it doesn't exist anymore.
-        if (this.watchers[path].disconnect) {
-          this.watchers[path].disconnect();
-        } else {
-          this.root.child(path).off('value', this.watchers[path]);
-        }
-  
-        // clear all values associated with the watcher
-        this.values[path] = null;
-        this.errors[path] = null;
-        this.priorities[path] = null;
-        this.watchers[path] = null;
-  
-      }
-  
-    };
-  
-  
-    ListenerSet.prototype.clear = function() {
-  
-      for (var path in this.watchers) {
-        this.remove(path);
-      }
-  
-      this.watchers = {};
-  
-    };
-  
-    return ListenerSet;
-  
-  });
-  
-  
-  angular.module('flashpoint')
-  .factory('Page', ["$q", function($q) {
-  
-    function Page(pagingFn) {
-  
-      this._pagingFn = pagingFn;
-      this._pages = [];
-      this._presence = {};
-  
-      this.items = [];
-  
-      this.keys = [];
-      this.priorities = [];
-      this.values = [];
-  
-  
-      this.disconnect();
-  
-    }
-  
-  
-    Page.prototype.connect = function(root) {
-  
-      this.disconnect();
-  
-      this.root = root;
-      return this.next();
-  
-    };
-  
-  
-    Page.prototype.disconnect = function() {
-  
-      this.root = null;
-      this._pages.length = 0;
-  
-      this.items.length = 0;
-      this.keys.length = 0;
-      this.values.length = 0;
-      this.priorities.length = 0;
-  
-      this.number = 0;
-      this._presence = {};
-  
-    };
-  
-  
-    Page.prototype._handleSnap = function(snap) {
-  
-      var newPage = [],
-        presence = this._presence;
-  
-      snap.forEach(function(child) {
-  
-        if (!presence.hasOwnProperty(child.key()) ) {
-  
-          presence[child.key()] = true;
-          newPage.push(child);
-  
-        }
-  
-      });
-  
-      if (newPage.length > 0) {
-        this._pages.push(newPage);
-        this._setPage(this._pages.length);
-      } else {
-        this._lastPage = this.number;
-      }
-  
-      this._currentOperation = null;
-  
-    };
-  
-  
-    Page.prototype.next = function() {
-  
-      if (!this.hasNext()) {
-  
-        // nothing to set.
-        return $q.when();
-  
-      } else if (this._pages.length > this.number) {
-  
-        // we already have the page, just copy its contents into this.items
-        this._setPage(this.number+1);
-        return $q.when();
-  
-      } else if (this._currentOperation) {
-        return this._currentOperation;
-      } else if (this._pages.length === 0) {
-  
-        this._currentOperation = this._pagingFn(this.root, null)
-        .then(this._handleSnap.bind(this));
-  
-        return this._currentOperation;
-  
-      } else if (this._pages[this._pages.length-1].length > 0) {
-  
-        var lastPage = this._pages[this._pages.length-1];
-  
-        this._currentOperation = this._pagingFn(this.root, lastPage[lastPage.length-1])
-        .then(this._handleSnap.bind(this));
-  
-        return this._currentOperation;
-  
-      } else {
-        return $q.when();
-      }
-  
-    };
-  
-  
-    Page.prototype.hasNext = function() {
-      return this.hasOwnProperty('root') && this._lastPage !== this.number;
-    };
-  
-  
-    Page.prototype.hasPrevious = function() {
-      return this.hasOwnProperty('root') && this.number > 1;
-    };
-  
-  
-    Page.prototype.previous = function() {
-  
-      if (this.hasPrevious()) {
-        this._setPage(this.number-1);
-      }
-  
-      return $q.when();
-  
-    };
-  
-  
-    Page.prototype.reset = function() {
-      return this.connect(this.root);
-    };
-  
-  
-    Page.prototype._setPage = function(pageNumber) {
-  
-      this.items.length = 0;
-      this.keys.length = 0;
-      this.values.length = 0;
-      this.priorities.length = 0;
-  
-      this._pages[pageNumber-1].forEach(function(item) {
-  
-        this.items.push(item);
-        this.keys.push(item.key());
-        this.values.push(item.val());
-        this.priorities.push(item.getPriority());
-  
-      }, this);
-  
-      this.number = pageNumber;
-  
-    };
-  
-  
-    return Page;
-  
-  }]);
-  
-  
-  angular.module('flashpoint')
-  .factory('validatePath', function() {
-  
-    function validatePath(pathParts) {
+    function fpValidatePath(pathParts) {
   
       // check the arguments
       var path = pathParts.join('/');
@@ -1659,7 +1659,7 @@
   
     }
   
-    return validatePath;
+    return fpValidatePath;
   
   });
   
@@ -1670,8 +1670,8 @@
     $interpolate,
     Firebase,
     Fireproof,
-    validatePath,
-    ListenerSet) {
+    fpValidatePath,
+    FPListenerSet) {
   
     /**
      * @ngdoc type
@@ -1849,7 +1849,7 @@
   
       self.root = new Fireproof(new Firebase($interpolate(url)($scope)) );
   
-      self.listenerSet = new ListenerSet(self.root, $scope);
+      self.listenerSet = new FPListenerSet(self.root, $scope);
       self.root.onAuth(authHandler);
   
       // maintain knowledge of connection status
@@ -2144,7 +2144,7 @@
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
         value = args.pop(),
-        path = validatePath(args);
+        path = fpValidatePath(args);
   
       return self.root.child(path).set(value);
   
@@ -2174,7 +2174,7 @@
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
         priority = args.pop(),
-        path = validatePath(args);
+        path = fpValidatePath(args);
   
       return self.root.child(path).setPriority(priority);
   
@@ -2206,7 +2206,7 @@
       var args = Array.prototype.slice.call(arguments, 0),
         priority = args.pop(),
         value = args.pop(),
-        path = validatePath(args);
+        path = fpValidatePath(args);
   
       return self.root.child(path).setWithPriority(value, priority);
   
@@ -2238,7 +2238,7 @@
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
         value = args.pop(),
-        path = validatePath(args);
+        path = fpValidatePath(args);
   
       return self.root.child(path).push(value);
   
@@ -2269,7 +2269,7 @@
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
         value = args.pop(),
-        path = validatePath(args);
+        path = fpValidatePath(args);
   
       return self.root.child(path).update(value);
   
@@ -2298,7 +2298,7 @@
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-        path = validatePath(args);
+        path = fpValidatePath(args);
   
       return self.root.child(path).remove();
   
@@ -2325,7 +2325,7 @@
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-        path = validatePath(args);
+        path = fpValidatePath(args);
   
   
       return self.root.child(path)
@@ -2371,7 +2371,7 @@
   
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
-        path = validatePath(args);
+        path = fpValidatePath(args);
   
       return self.root.child(path)
       .transaction(function(val) {
@@ -2421,7 +2421,7 @@
       // check the arguments
       var args = Array.prototype.slice.call(arguments, 0),
         fn = args.pop(),
-        path = validatePath(args);
+        path = fpValidatePath(args);
   
       return self.root.child(path)
       .transaction(function(val) {
@@ -2452,7 +2452,7 @@
      */
     self.val = function() {
   
-      var path = validatePath(Array.prototype.slice.call(arguments, 0));
+      var path = fpValidatePath(Array.prototype.slice.call(arguments, 0));
       if (!path || !self.listenerSet) {
         return;
       }
@@ -2483,7 +2483,7 @@
      */
     self.model = function() {
   
-      var path = validatePath(Array.prototype.slice.call(arguments, 0));
+      var path = fpValidatePath(Array.prototype.slice.call(arguments, 0));
       return function(val) {
   
         // do nothing if we have no path or we aren't attached.
@@ -2521,7 +2521,7 @@
      */
     self.priority = function() {
   
-      var path = validatePath(Array.prototype.slice.call(arguments, 0));
+      var path = fpValidatePath(Array.prototype.slice.call(arguments, 0));
       if (!path || !self.listenerSet) {
         return;
       }
@@ -2551,7 +2551,7 @@
      */
     self.error = function() {
   
-      var path = validatePath(Array.prototype.slice.call(arguments, 0));
+      var path = fpValidatePath(Array.prototype.slice.call(arguments, 0));
   
       if (path && self.listenerSet && self.listenerSet.errors.hasOwnProperty(path)) {
         return self.listenerSet.errors[path];
@@ -2568,7 +2568,7 @@
      */
     self.path = function() {
   
-      var path = validatePath(Array.prototype.slice.call(arguments, 0));
+      var path = fpValidatePath(Array.prototype.slice.call(arguments, 0));
   
       if (path) {
         return path;
@@ -2587,7 +2587,7 @@
     });
   
   }
-  FirebaseCtl.$inject = ["$scope", "$q", "$interpolate", "Firebase", "Fireproof", "validatePath", "ListenerSet"];
+  FirebaseCtl.$inject = ["$scope", "$q", "$interpolate", "Firebase", "Fireproof", "fpValidatePath", "FPListenerSet"];
   
   
   angular.module('flashpoint')
