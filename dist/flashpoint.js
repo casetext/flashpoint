@@ -1,4 +1,4 @@
-/*! flashpoint 4.1.0, © 2015 J2H2 Inc. MIT License.
+/*! flashpoint 4.2.0, © 2015 J2H2 Inc. MIT License.
  * https://github.com/casetext/flashpoint
  */
 (function (root, factory) {
@@ -152,14 +152,12 @@
   
       // search the template for fp-child-repeat, that's what we'll repeat on each child
       var template = $templateEl[0].querySelector('[fp-child-repeat]'),
-        startPlaceholder = angular.element(document.createComment('fp-child-repeat start')),
-        endPlaceholder = angular.element(document.createComment('fp-child-repeat end'));
+        placeholder = angular.element(document.createElement('fp-child-repeat-placeholder'));
   
       if (template) {
   
         template = angular.element(template);
-        template.after(endPlaceholder);
-        template.after(startPlaceholder);
+        template.after(placeholder);
         template.remove();
   
       } else {
@@ -167,6 +165,14 @@
       }
   
       return function fpBindChildrenLink(scope, el, attrs, fp) {
+  
+        var startPlaceholder = angular.element(document.createComment('fp-child-repeat start')),
+          endPlaceholder = angular.element(document.createComment('fp-child-repeat end')),
+          oldPlaceholder = el.find('fp-child-repeat-placeholder');
+  
+        oldPlaceholder.after(endPlaceholder);
+        oldPlaceholder.after(startPlaceholder);
+        oldPlaceholder.remove();
   
         var query,
           els = {},
@@ -255,9 +261,15 @@
           scope.$children.splice(position, 0, snap);
   
           var clone = template.clone(),
-            cloneScope = scope.$new();
+            cloneScope = scope.$new(),
+            cloneFn = $compile(clone);
   
-          $compile(clone)(cloneScope);
+          // make sure the children know about flashpoint
+          cloneFn(cloneScope, null, {
+            transcludeControllers: {
+              firebase: { instance: fp }
+            }
+          });
   
           var previousSibling = els[prevKey] || startPlaceholder;
   
@@ -360,7 +372,6 @@
     return {
       restrict: 'A',
       priority: 900,
-      scope: true,
       require: '^firebase',
       compile: fpBindChildrenCompile
     };
