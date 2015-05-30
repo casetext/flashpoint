@@ -2,7 +2,6 @@
 function FirebaseCtl(
   $scope,
   $q,
-  $interpolate,
   Firebase,
   Fireproof,
   fpValidatePath,
@@ -182,7 +181,7 @@ function FirebaseCtl(
       self.detachFirebase();
     }
 
-    self.root = new Fireproof(new Firebase($interpolate(url)($scope)) );
+    self.root = new Fireproof(new Firebase(url));
 
     self.listenerSet = new FPListenerSet(self.root, $scope);
     self.root.onAuth(authHandler);

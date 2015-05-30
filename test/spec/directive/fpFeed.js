@@ -5,7 +5,7 @@ describe('fpFeed', function() {
 
     var promise;
 
-    inject(function($rootScope, $compile) {
+    inject(function($rootScope, $compile, $q) {
 
      var el = angular.element(elStr);
 
@@ -17,29 +17,40 @@ describe('fpFeed', function() {
 
       $compile(el)($rootScope);
 
-      promise = el.scope().fp.set('test/feed', {
+      var defer = $q.defer();
+      var fn = $rootScope.fp.onAttach(function() {
+        $rootScope.fp.offAttach(fn);
+        defer.resolve();
+      });
 
-        'a': {
-          'a': true,
-          'd': true,
-          'g': true,
-        },
+      promise = defer.promise
+      .then(function() {
 
-        'b': {
-          'b': true,
-          'f': true,
-          'h': true
-        },
+        return $rootScope.fp.set('test/feed', {
 
-        'c': {
-          'c': true,
-          'e': true,
-          'i': true
-        }
+          'a': {
+            'a': true,
+            'd': true,
+            'g': true,
+          },
+
+          'b': {
+            'b': true,
+            'f': true,
+            'h': true
+          },
+
+          'c': {
+            'c': true,
+            'e': true,
+            'i': true
+          }
+
+        });
 
       })
       .then(function() {
-        return el.scope().fp.set('test/things', {
+        return $rootScope.fp.set('test/things', {
           '0': 'foo',
           '1': 'bar',
           '2': 'baz',
@@ -50,7 +61,7 @@ describe('fpFeed', function() {
 
       })
       .then(function() {
-        return el.scope().$feed._morePromise;
+        return $rootScope.$feed._morePromise;
       })
       .then(function() {
         return {

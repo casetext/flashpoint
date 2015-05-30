@@ -9,7 +9,6 @@ angular.module('flashpoint')
    *
    * @restrict A
    * @element ANY
-   * @scope
    * @param {expression} fpBindChildren The annotated path to the children to use.
    * @param {expression} query An expression that evaluates to a Firebase query.
    */

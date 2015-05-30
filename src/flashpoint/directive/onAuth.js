@@ -31,7 +31,11 @@ angular.module('flashpoint')
     });
 
     fp.onDetach(function(root) {
-      root.offAuth(authHandler);
+
+      if (root) {
+        root.offAuth(authHandler);
+      }
+
     });
 
   }

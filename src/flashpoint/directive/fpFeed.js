@@ -12,7 +12,6 @@ angular.module('flashpoint')
    *
    * @restrict A
    * @element ANY
-   * @scope
    *
    * @param {expression} fpFeed An expression that evaluates to an array of absolute
    * paths in Firebase you wish to query, for instance, `["feeds/" + username, "feeds/firehose"]`.
@@ -103,7 +102,11 @@ angular.module('flashpoint')
     });
 
     var onDetachListener = fp.onDetach(function() {
-      scope.$feed.disconnect();
+
+      if (scope.$feed) {
+        scope.$feed.disconnect();
+      }
+
     });
 
     scope.$on('$destroy', function() {
@@ -119,7 +122,6 @@ angular.module('flashpoint')
 
   return {
     require: '^firebase',
-    scope: true,
     link: fpFeedLink
   };
 

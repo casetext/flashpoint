@@ -17,7 +17,6 @@ angular.module('flashpoint')
    *
    * @restrict A
    * @element ANY
-   * @scope
    *
    * @param {expression} fpPage An expression that evaluates to a Firebase query to
    * be used to retrieve items. Some special functions are provided:
@@ -72,7 +71,6 @@ angular.module('flashpoint')
         } else {
           return query.limitToFirst(size);
         }
-
 
       };
 
@@ -147,7 +145,11 @@ angular.module('flashpoint')
     });
 
     var onDetachListener = fp.onDetach(function() {
-      scope.$page.disconnect();
+
+      if (scope.$page) {
+        scope.$page.disconnect();
+      }
+
     });
 
     scope.$on('$destroy', function() {
@@ -165,7 +167,6 @@ angular.module('flashpoint')
     link: fpPageLink,
     restrict: 'A',
     priority: 750,
-    scope: true,
     require: '^firebase'
   };
 

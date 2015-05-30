@@ -81,11 +81,4 @@ describe('fpBindChildren', function() {
 
   });
 
-  it('handles disconnection gracefully', function() {
-
-
-
-  });
-
-
 });

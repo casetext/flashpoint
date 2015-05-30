@@ -36,10 +36,6 @@ angular.module('flashpoint')
 
     };
 
-    if (attrs.firebase) {
-      attachToController(attrs.firebase);
-    }
-
     attrs.$observe('firebase', attachToController);
 
     scope.$watch('fp.connected', function(connected) {
