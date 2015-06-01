@@ -12,6 +12,7 @@ angular.module('flashpoint')
    *
    * @restrict A
    * @element ANY
+   * @scope true
    * @param {expression} firebase Full URL to the Firebase, like
    * `https://my-firebase.firebaseio.com`. Interpolatable.
    */
@@ -91,6 +92,7 @@ angular.module('flashpoint')
     controller: 'FirebaseCtl',
     controllerAs: 'fp',
     priority: 1000,
+    scope: true,
     link: {
       pre: firebasePreLink
     }

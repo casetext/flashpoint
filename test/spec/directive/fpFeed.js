@@ -18,15 +18,15 @@ describe('fpFeed', function() {
       $compile(el)($rootScope);
 
       var defer = $q.defer();
-      var fn = $rootScope.fp.onAttach(function() {
-        $rootScope.fp.offAttach(fn);
+      var fn = el.scope().fp.onAttach(function() {
+        el.scope().fp.offAttach(fn);
         defer.resolve();
       });
 
       promise = defer.promise
       .then(function() {
 
-        return $rootScope.fp.set('test/feed', {
+        return el.scope().fp.set('test/feed', {
 
           'a': {
             'a': true,
@@ -50,7 +50,7 @@ describe('fpFeed', function() {
 
       })
       .then(function() {
-        return $rootScope.fp.set('test/things', {
+        return el.scope().fp.set('test/things', {
           '0': 'foo',
           '1': 'bar',
           '2': 'baz',
@@ -61,7 +61,7 @@ describe('fpFeed', function() {
 
       })
       .then(function() {
-        return $rootScope.$feed._morePromise;
+        return el.scope().$feed._morePromise;
       })
       .then(function() {
         return {
