@@ -1,6 +1,6 @@
 {
   "name": "flashpoint",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "Angular bindings for Fireproof. Replaces AngularFire.",
   "repository": "https://github.com/casetext/flashpoint",
   "main": "dist/flashpoint.js",
