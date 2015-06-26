@@ -23,7 +23,6 @@ describe('fpBindChildren', function() {
 
     scope.fp.onAttach(function(_root_) {
 
-      console.log('attached');
       root = _root_;
       root.child('test/children').set({
         'a': 1,
