@@ -46,7 +46,7 @@ angular.module('flashpoint')
       } else if (connected === false) {
         $animate.setClass(el, 'fp-disconnected', 'fp-connected');
       } else {
-        $animate.setClass(el, [], ['fp-connected', 'fp-disconnected']);
+        $animate.setClass(el, '', 'fp-connected fp-disconnected');
       }
 
     });
@@ -54,7 +54,7 @@ angular.module('flashpoint')
     scope.$watch('fp.auth', function(auth) {
 
       if (auth === undefined) {
-        $animate.setClass(el, [], ['fp-unauthenticated', 'fp-authenticated']);
+        $animate.setClass(el, '', 'fp-unauthenticated fp-authenticated');
       } else if (auth === null) {
         $animate.setClass(el, 'fp-unauthenticated', 'fp-authenticated');
       } else {

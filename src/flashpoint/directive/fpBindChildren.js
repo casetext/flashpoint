@@ -143,7 +143,7 @@ angular.module('flashpoint')
         cloneScope.$priority = snap.getPriority();
         cloneScope.$index = position;
 
-        els[snap.key()] = clone;
+        els[snap.key()] = angular.element(clone);
 
         $animate.enter(clone, el.parent(), previousSibling);
 
@@ -156,7 +156,7 @@ angular.module('flashpoint')
         var position = find(snap.key());
         scope.$children.splice(position, 1);
 
-        $animate.leave(els[snap.key()], el.parent())
+        $animate.leave(els[snap.key()])
         .then(function() {
           els[snap.key()] = null;
         });
